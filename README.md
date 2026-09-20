@@ -2,7 +2,7 @@
 
 Animation vs Animator style desktop buddies for **Shimeji-ee on Linux**, with a
 batch of brand-new crisp animations generated in the pack's exact art style
-(128×128, feet anchored at 64,128, supersampled for clean edges).
+(128×128, feet anchored at 64,128, hard pixel edges like the originals).
 
 This repo was trimmed down to the core four. Purple, Red, TCO, TDL and victim
 were removed.
