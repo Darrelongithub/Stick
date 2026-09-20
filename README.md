@@ -7,7 +7,7 @@ batch of brand-new crisp animations generated in the pack's exact art style
 This repo was trimmed down to the core four. Purple, Red, TCO, TDL and victim
 were removed.
 
-## New animations (166 frames)
+## New animations (266 frames)
 
 Shared by all four:
 
@@ -23,6 +23,12 @@ Shared by all four:
 | CursorSlash | Leaps at your cursor with a huge slash (triggers near the cursor) |
 | GlitchOut | Slice-displaced "surviving deletion" flicker |
 | BattleRage | Full sequence: fists → sword → cursor slash |
+| Backflip | Crouch, jump, full backward rotation, stuck landing |
+| SnackTime | Munches an apple (visible bite + crumbs) |
+| PowerSlide | Sprint slide with dust and speed lines |
+| PushUps | Full plank push-up reps |
+| Sneeze | Big inhale… ACHOO spray |
+| PaperPlane | Folds? No — throws a paper plane that soars off |
 
 Signatures (one per character, AvA canon):
 

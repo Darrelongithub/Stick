@@ -546,6 +546,65 @@
 			</Animation>
 		</Action>
 
+			<!-- AvA custom animations (Stick pack generator) -->
+		<Action Name="Backflip" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/flip01.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/flip02.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip03.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip04.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip05.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip06.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+			</Animation>
+		</Action>
+
+		<Action Name="SnackTime" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/snack01.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/snack02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/snack03.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/snack03.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/snack04.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="PowerSlide" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/slide01.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/slide02.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/slide03.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/slide04.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="PushUps" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/pushup01.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup01.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup01.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="Sneeze" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/sneeze01.png" ImageAnchor="64,128" Velocity="0,0" Duration="6" />
+				<Pose Image="/sneeze02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/sneeze02.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/sneeze03.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="PaperPlane" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/plane01.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/plane02.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/plane03.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/plane04.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
 	</ActionList>
 
 	<!-- Actual Behavior -->
@@ -1052,6 +1111,65 @@
 				<Pose Image="/draw04.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
 				<Pose Image="/draw05.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
 				<Pose Image="/draw06.png" ImageAnchor="64,128" Velocity="0,0" Duration="7" />
+			</Animation>
+		</Action>
+
+			<!-- AvA custom animations (Stick pack generator) -->
+		<Action Name="Backflip" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/flip01.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/flip02.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip03.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip04.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip05.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
+				<Pose Image="/flip06.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+			</Animation>
+		</Action>
+
+		<Action Name="SnackTime" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/snack01.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/snack02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/snack03.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/snack03.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/snack04.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="PowerSlide" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/slide01.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/slide02.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/slide03.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/slide04.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="PushUps" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/pushup01.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup01.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup01.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="Sneeze" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/sneeze01.png" ImageAnchor="64,128" Velocity="0,0" Duration="6" />
+				<Pose Image="/sneeze02.png" ImageAnchor="64,128" Velocity="0,0" Duration="4" />
+				<Pose Image="/sneeze02.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/sneeze03.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+			</Animation>
+		</Action>
+
+		<Action Name="PaperPlane" Type="Animate" BorderType="Floor">
+			<Animation>
+				<Pose Image="/plane01.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/plane02.png" ImageAnchor="64,128" Velocity="0,0" Duration="3" />
+				<Pose Image="/plane03.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
+				<Pose Image="/plane04.png" ImageAnchor="64,128" Velocity="0,0" Duration="5" />
 			</Animation>
 		</Action>
 
