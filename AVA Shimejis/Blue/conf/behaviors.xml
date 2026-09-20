@@ -1,0 +1,199 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Mascot xmlns="http://www.group-finity.com/Mascot" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.group-finity.com/Mascot Mascot.xsd">
+
+	<BehaviorList>
+	
+		<!-- ALWAYS REQUIRED -->
+		<Behavior Name="ChaseMouse" Frequency="0" Hidden="true">
+			<NextBehavior Add="false">
+				<BehaviorReference Name="SitAndFaceMouse" Frequency="1" />
+			</NextBehavior>
+		</Behavior>
+		
+		<Behavior Name="SitAndFaceMouse" Frequency="50">
+			<NextBehavior Add="false">
+				<BehaviorReference Name="SitAndFaceMouse" Frequency="100" />
+				<BehaviorReference Name="SitWhileDanglingLegs" Frequency="1" />
+			</NextBehavior>
+		</Behavior>
+		
+		<!-- ALWAYS REQUIRED -->
+		<Behavior Name="Fall" Frequency="0" Hidden="true" />
+		
+		<!-- ALWAYS REQUIRED -->
+		<Behavior Name="Dragged" Frequency="0" Hidden="true" />
+		
+		<!-- ALWAYS REQUIRED -->
+		<Behavior Name="Thrown" Frequency="0" Hidden="true" />
+		
+		<Behavior Name="PullUp" Frequency="0" Hidden="true" />
+		
+		<Behavior Name="Trip" Frequency="10" />
+
+		               <Behavior Name="Dance" Frequency="10">
+                   <ActionReference Name="Dancing" />
+               </Behavior>
+		<!-- AvA custom behaviors (Stick pack generator) -->
+
+		<Behavior Name="Backflipper" Frequency="20">
+			<ActionReference Name="Backflip" />
+		</Behavior>
+
+		<Behavior Name="SnackBreak" Frequency="25">
+			<ActionReference Name="SnackTime" />
+		</Behavior>
+
+		<Behavior Name="Slider" Frequency="22">
+			<ActionReference Name="PowerSlide" />
+		</Behavior>
+
+		<Behavior Name="Workout" Frequency="20">
+			<ActionReference Name="PushUps" />
+		</Behavior>
+
+		<Behavior Name="Achoo" Frequency="15">
+			<ActionReference Name="Sneeze" />
+		</Behavior>
+
+		<Behavior Name="PaperPilot" Frequency="20">
+			<ActionReference Name="PaperPlane" />
+		</Behavior>
+		<!-- AvA custom behaviors (Stick pack generator) -->
+
+		<Behavior Name="WaveHello" Frequency="40">
+			<ActionReference Name="Wave" />
+		</Behavior>
+
+		<Behavior Name="Cheerful" Frequency="30">
+			<ActionReference Name="Cheer" />
+		</Behavior>
+
+		<Behavior Name="Sparring" Frequency="25">
+			<ActionReference Name="BattleRage" />
+		</Behavior>
+
+		<Behavior Name="SwordTraining" Frequency="25">
+			<ActionReference Name="SwordPractice" />
+		</Behavior>
+
+		<Behavior Name="Mining" Frequency="30">
+			<ActionReference Name="Mine" />
+		</Behavior>
+
+		<Behavior Name="Nap" Frequency="18">
+			<ActionReference Name="Sleep" />
+		</Behavior>
+
+		<Behavior Name="CursorBattle" Frequency="40" Condition="${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 &amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}">
+			<ActionReference Name="CursorSlash" />
+		</Behavior>
+
+		<Behavior Name="GlitchSurvive" Frequency="12">
+			<ActionReference Name="GlitchOut" />
+		</Behavior>
+
+		<Behavior Name="Bonked" Frequency="10">
+			<ActionReference Name="Bonk" />
+		</Behavior>
+
+		<Behavior Name="PotionBrewing" Frequency="30">
+			<ActionReference Name="BrewPotion" />
+		</Behavior>
+
+		<Behavior Name="HuggingSolid" Frequency="0" Hidden="true" />
+		<Behavior Name="HuggedSolid" Frequency="0" Hidden="true" />
+
+		<!-- On the Floor -->
+		<Condition Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}">
+			<Behavior Name="StandUp" Frequency="200" Hidden="true" />
+			<Behavior Name="SitDown" Frequency="200">
+				<NextBehavior Add="true">
+					<BehaviorReference Name="SitWhileDanglingLegs" Frequency="100" />
+					<BehaviorReference Name="LieDown" Frequency="100" />
+				</NextBehavior>
+			</Behavior>
+			<Behavior Name="SitWhileDanglingLegs" Frequency="50" />
+			<Behavior Name="LieDown" Frequency="25">
+				<NextBehavior Add="false">
+					<BehaviorReference Name="SitDown" Frequency="100" />
+				</NextBehavior>
+			</Behavior>
+			<Behavior Name="HugAffordance" Frequency="30" />
+			<Behavior Name="HugSearch" Frequency="1000" />
+		</Condition>
+
+		<!-- On the Wall -->
+		<Condition Condition="#{ mascot.lookRight ? (
+					mascot.environment.workArea.rightBorder.isOn(mascot.anchor) || 
+					mascot.environment.activeIE.leftBorder.isOn(mascot.anchor) ) : (
+					mascot.environment.workArea.leftBorder.isOn(mascot.anchor) || 
+					mascot.environment.activeIE.rightBorder.isOn(mascot.anchor) ) }">
+			<Behavior Name="HoldOntoWall" Frequency="100" Hidden="true" />
+			<Behavior Name="FallFromWall" Frequency="50" Condition="${!mascot.environment.floor.isOn(mascot.anchor)}" Hidden="true" />
+		</Condition>
+		
+		<!-- On the Ceiling -->
+		<Condition Condition="#{mascot.environment.ceiling.isOn(mascot.anchor) || mascot.environment.activeIE.bottomBorder.isOn(mascot.anchor)}">
+			<Behavior Name="HoldOntoCeiling" Frequency="100" Hidden="true" />
+			<Behavior Name="FallFromCeiling" Frequency="50" Hidden="true" />
+		</Condition>
+		
+		<!-- On Work Area Floor -->
+		<Condition Condition="#{mascot.environment.floor.isOn(mascot.anchor)}">
+			<Behavior Name="WalkAlongWorkAreaFloor" Frequency="100" Hidden="true" />
+			<Behavior Name="RunAlongWorkAreaFloor" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkLeftAlongFloorAndSit" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkRightAlongFloorAndSit" Frequency="100" Hidden="true" />
+			<Behavior Name="GrabWorkAreaBottomLeftWall" Frequency="100" Hidden="true" />
+			<Behavior Name="GrabWorkAreaBottomRightWall" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkLeftAndSit" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkRightAndSit" Frequency="100" Hidden="true" />
+			<Behavior Name="RunAndGrabBottomLeftWall" Frequency="100" />
+			<Behavior Name="RunAndGrabBottomRightWall" Frequency="100" />
+			<Behavior Name="PullUpShimeji" Frequency="50" Condition="#{mascot.totalCount &lt; 50}" />
+		</Condition>
+		
+		<!-- On Work Area Facing the Wall -->
+		<Condition Condition="#{mascot.lookRight ? mascot.environment.workArea.rightBorder.isOn(mascot.anchor) :
+					mascot.environment.workArea.leftBorder.isOn(mascot.anchor)}">
+			<Behavior Name="ClimbHalfwayAlongWall" Frequency="100" Hidden="true" />
+			<Behavior Name="ClimbAlongWall" Frequency="100" />
+		</Condition>
+		
+		<!-- On Work Area Top Facing -->
+		<Condition Condition="#{mascot.environment.ceiling.isOn(mascot.anchor)}">
+			<!-- Only Blue does this. Good arm strength -->
+			<Behavior Name="ClimbAlongCeiling" Frequency="100" />
+		</Condition>
+		
+		<!-- On Top of IE -->
+		<Condition Condition="#{mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}">
+			<Behavior Name="WalkAlongIECeiling" Frequency="100" Hidden="true" />
+			<Behavior Name="RunAlongIECeiling" Frequency="100" Hidden="true" />
+			<Behavior Name="SitOnTheLeftEdgeOfIE" Frequency="100" Hidden="true" />
+			<Behavior Name="SitOnTheRightEdgeOfIE" Frequency="100" Hidden="true" />
+			<Behavior Name="JumpFromLeftEdgeOfIE" Frequency="100" Hidden="true" />
+			<Behavior Name="JumpFromRightEdgeOfIE" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkLeftAlongIEAndSit" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkRightAlongIEAndSit" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkLeftAlongIEAndJump" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkRightAlongIEAndJump" Frequency="100" Hidden="true" />
+		</Condition>
+		
+		<!-- On IE's Side -->
+		<Condition Condition="#{mascot.lookRight ? mascot.environment.activeIE.leftBorder.isOn(mascot.anchor) :
+					mascot.environment.activeIE.rightBorder.isOn(mascot.anchor)}">
+			<Behavior Name="HoldOntoIEWall" Frequency="100" Hidden="true" />
+			<Behavior Name="ClimbIEWall" Frequency="100" Hidden="true" />
+			
+		</Condition>
+
+		<!-- On the Bottom of IE -->
+		<Condition Condition="#{mascot.environment.activeIE.bottomBorder.isOn(mascot.anchor)}">
+			<Behavior Name="ClimbIEBottom" Frequency="100" Hidden="true" />
+			<Behavior Name="GrabIEBottomLeftWall" Frequency="100" Hidden="true" />
+			<Behavior Name="GrabIEBottomRightWall" Frequency="100" Hidden="true" />
+		</Condition>
+	</BehaviorList>
+</Mascot>
