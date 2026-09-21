@@ -68,6 +68,26 @@ Tip: bind that script to a hotkey (GNOME: Settings → Keyboard → Custom
 Shortcut, KDE: Custom Shortcuts). To stop them starting on boot, delete
 `~/.config/autostart/ava-shimeji.desktop`.
 
+## Troubleshooting
+
+Shimeji-ee failing to load a character? These are the classic errors:
+
+| Error / symptom | Cause & fix |
+|---|---|
+| `duplicate action found: <name>` | The same action defined twice in `conf/actions.xml` (an old version of `patch_xml.py` inserted into both `<ActionList>` sections). Fixed in this repo; check any copy with `python3 tools/validate.py`. |
+| `no corresponding action <name>` | A `Behavior` whose `Name` doesn't match any action — Shimeji-ee resolves a behavior's action by the behavior's own `Name`, and an `<ActionReference>` child is not valid inside `<Behavior>`. Run `python3 tools/repair_xml.py` (one-time fix), then `python3 tools/validate.py`. |
+| `NoClassDefFoundError: NimRODTheme` | Shimeji-ee's jar manifest expects its bundled jars under `lib/`, but some extractions dump them into the Shimeji-ee root. `install.sh` now copies `jna.jar`, `examples.jar`, `AbsoluteLayout.jar` and `nimrodlf.jar` into `lib/` automatically; by hand: move those four jars from the root into `lib/`. |
+| `HeadlessException` on startup | Your `java` is a headless JRE (e.g. Fedora's `java-NN-openjdk-headless`). Install a full JRE instead: Fedora `sudo dnf install java-<version>-openjdk` (not `-headless`), Debian/Ubuntu `default-jre` (not `-headless`). `install.sh` warns about this. |
+
+Notes:
+
+* **GNOME/Wayland:** Java runs through XWayland there, so shimejis may
+  glitch — black boxes instead of sprites, or no interaction with native
+  Wayland windows. Log into an X11 session for fully correct behavior.
+* **Shijima-Qt** is a *different* app (not Shimeji-ee); it imports
+  per-character zip archives, which this repo's `install.sh` does not
+  produce or handle.
+
 ## Regenerating / making more
 
 Frames are procedural — tweak poses in `tools/stickgen.py`, then:
@@ -76,10 +96,13 @@ Frames are procedural — tweak poses in `tools/stickgen.py`, then:
 pip install pillow
 python3 tools/stickgen.py                 # renders all chars into AVA Shimejis/
 python3 tools/patch_xml.py                # (re)wires actions.xml + behaviors.xml
+python3 tools/validate.py                 # sanity-checks all four characters
 ```
 
 Preview contact sheets land in `preview/new/`. The patch script is idempotent
-(running it twice won't duplicate entries).
+(running it twice won't duplicate entries). If you ever meet XMLs patched by
+the old buggy version of the script, `python3 tools/repair_xml.py` fixes them
+in place.
 
 ## Layout
 
@@ -87,6 +110,8 @@ Preview contact sheets land in `preview/new/`. The patch script is idempotent
 AVA Shimejis/{Blue,Orange,Yellow,Green}/  image sets + per-character conf/
 tools/stickgen.py      frame generator (poses, props, fx)
 tools/patch_xml.py     XML wiring for new actions/behaviors
+tools/repair_xml.py    one-time repair for XMLs damaged by the old patcher
+tools/validate.py      validates actions/behaviors/images for all characters
 linux/install.sh       installer: image sets + toggle + autostart
 linux/ava-toggle.sh    on/off toggle with desktop notification
 ```

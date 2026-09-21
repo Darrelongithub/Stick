@@ -2,11 +2,23 @@
 """Append new AvA actions + behaviors to each character's Shimeji-ee XML.
 
 Per-name idempotent: only inserts actions/behaviors not already present.
-Preserves CRLF line endings. Validates XML after patching.
+Preserves UTF-8 BOM and CRLF line endings exactly. Validates XML after
+patching.
+
+Shimeji-ee rules this script must respect:
+
+* Each actions.xml has TWO <ActionList> sections; generated actions are
+  inserted before the FIRST </ActionList> ONLY (str.replace with count=1).
+  Inserting before every close duplicated every action and Shimeji-ee
+  aborted with "duplicate action found: wave".
+* A Behavior resolves its action by the Behavior's OWN Name - an
+  <ActionReference> child is not valid inside <Behavior>. So generated
+  behaviors are emitted as <Behavior Name="<action name>" ... /> with the
+  action's name, no child elements.
 """
 import os, sys, xml.etree.ElementTree as ET
 
-ROOT = "AVA Shimejis"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHARS = ["Blue", "Orange", "Yellow", "Green"]
 
 def pose(img, dur, vx=0, vy=0, anchor="64,128"):
@@ -25,10 +37,11 @@ def seq_action(name, refs):
         lines.append(f'\t\t\t<ActionReference Name="{r}" />')
     return (name, lines + ['\t\t</Action>', ''])
 
-def behavior(name, freq, action_ref, cond=None):
+def behavior(action_name, freq, cond=None):
+    # The Behavior's Name IS the action it runs (Shimeji-ee looks the action
+    # up by the Behavior's own Name; no ActionReference child allowed).
     c = f' Condition="{cond}"' if cond else ''
-    return (name, ['', f'\t\t<Behavior Name="{name}" Frequency="{freq}"{c}>',
-            f'\t\t\t<ActionReference Name="{action_ref}" />', '\t\t</Behavior>'])
+    return (action_name, [f'\t\t<Behavior Name="{action_name}" Frequency="{freq}"{c} />'])
 
 CURSOR_NEAR = ("${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 "
                "&amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}")
@@ -94,30 +107,32 @@ SIG_ACTIONS = {
         ("music01.png", 4), ("music02.png", 4), ("music03.png", 4), ("music04.png", 4)])],
 }
 
+# Behavior names are the action names (see behavior()); Shimeji-ee resolves
+# a Behavior's action by the Behavior's own Name.
 COMMON_BEHAVIORS = [
-    behavior("WaveHello", 40, "Wave"),
-    behavior("Cheerful", 30, "Cheer"),
-    behavior("Sparring", 25, "BattleRage"),
-    behavior("SwordTraining", 25, "SwordPractice"),
-    behavior("Mining", 30, "Mine"),
-    behavior("Nap", 18, "Sleep"),
-    behavior("CursorBattle", 40, "CursorSlash", CURSOR_NEAR),
-    behavior("GlitchSurvive", 12, "GlitchOut"),
-    behavior("Bonked", 10, "Bonk"),
+    behavior("Wave", 40),
+    behavior("Cheer", 30),
+    behavior("BattleRage", 25),
+    behavior("SwordPractice", 25),
+    behavior("Mine", 30),
+    behavior("Sleep", 18),
+    behavior("CursorSlash", 40, CURSOR_NEAR),
+    behavior("GlitchOut", 12),
+    behavior("Bonk", 10),
     # --- batch 2 ---
-    behavior("Backflipper", 20, "Backflip"),
-    behavior("SnackBreak", 25, "SnackTime"),
-    behavior("Slider", 22, "PowerSlide"),
-    behavior("Workout", 20, "PushUps"),
-    behavior("Achoo", 15, "Sneeze"),
-    behavior("PaperPilot", 20, "PaperPlane"),
+    behavior("Backflip", 20),
+    behavior("SnackTime", 25),
+    behavior("PowerSlide", 22),
+    behavior("PushUps", 20),
+    behavior("Sneeze", 15),
+    behavior("PaperPlane", 20),
 ]
 
 SIG_BEHAVIORS = {
-    "Orange": [behavior("DrawingAlive", 30, "DrawAlive")],
-    "Yellow": [behavior("RedstoneTinker", 30, "Tinker")],
-    "Blue": [behavior("PotionBrewing", 30, "BrewPotion")],
-    "Green": [behavior("GuitarSolo", 30, "PlayGuitar")],
+    "Orange": [behavior("DrawAlive", 30)],
+    "Yellow": [behavior("Tinker", 30)],
+    "Blue": [behavior("BrewPotion", 30)],
+    "Green": [behavior("PlayGuitar", 30)],
 }
 
 DANCE_ANCHOR = '<Behavior Name="Dance"'
@@ -133,10 +148,25 @@ def patch_actions(path, wanted):
     block = eol.join(['\t\t<!-- AvA custom animations (Stick pack generator) -->'] +
                      [ln for _, l in missing for ln in l])
     assert "</ActionList>" in raw
-    raw = raw.replace("</ActionList>", block + eol + "\t</ActionList>")
+    # Insert into the FIRST </ActionList> only: each actions.xml has two
+    # <ActionList> sections and Shimeji-ee rejects duplicate action names
+    # ("duplicate action found: ...").
+    raw = raw.replace("</ActionList>", block + eol + "\t</ActionList>", 1)
     with open(path, "wb") as f:
         f.write(raw.encode("utf-8"))
     print(f"  {path}: +{len(missing)} actions {[n for n, _ in missing]}")
+
+def behavior_element_end(raw, start):
+    """Index just past the Behavior element that opens at raw[start]:
+    end of its line if self-closing, else just past its </Behavior>."""
+    nl = raw.find("\n", start)
+    if nl == -1:
+        nl = len(raw)
+    if raw[start:nl].rstrip().endswith("/>"):
+        return nl + 1
+    close = raw.find("</Behavior>", start)
+    assert close != -1
+    return close + len("</Behavior>")
 
 def patch_behaviors(path, wanted):
     with open(path, "rb") as f:
@@ -148,13 +178,17 @@ def patch_behaviors(path, wanted):
         return
     block = eol.join(['\t\t<!-- AvA custom behaviors (Stick pack generator) -->'] +
                      [ln for _, l in missing for ln in l])
-    idx = raw.find(DANCE_ANCHOR)
-    if idx != -1:
-        # insert after the LAST custom behavior if present, else after Dance
-        anchor = raw.rfind('<Behavior Name="PaperPilot"')
-        if anchor == -1:
-            anchor = idx
-        end = raw.find("</Behavior>", anchor) + len("</Behavior>")
+    # insert after the last already-present wanted behavior if any, else
+    # after the stock Dance behavior, else before </BehaviorList>
+    anchor = -1
+    for n, _ in wanted:
+        i = raw.find(f'<Behavior Name="{n}"')
+        if i > anchor:
+            anchor = i
+    if anchor == -1:
+        anchor = raw.find(DANCE_ANCHOR)
+    if anchor != -1:
+        end = behavior_element_end(raw, anchor)
         raw = raw[:end] + eol + block + raw[end:]
     else:
         assert "</BehaviorList>" in raw
@@ -169,8 +203,8 @@ def main():
                 "flip", "snack", "slide", "pushup", "sneeze", "plane")
     for char in CHARS:
         print(char)
-        a_path = os.path.join(ROOT, char, "conf", "actions.xml")
-        b_path = os.path.join(ROOT, char, "conf", "behaviors.xml")
+        a_path = os.path.join(ROOT, "AVA Shimejis", char, "conf", "actions.xml")
+        b_path = os.path.join(ROOT, "AVA Shimejis", char, "conf", "behaviors.xml")
         patch_actions(a_path, COMMON_ACTIONS + SIG_ACTIONS[char])
         patch_behaviors(b_path, COMMON_BEHAVIORS + SIG_BEHAVIORS[char])
         tree = ET.parse(a_path)
@@ -178,7 +212,7 @@ def main():
         names = {p.get("Image").lstrip("/") for p in tree.getroot().iter()
                  if p.tag.endswith("Pose") and p.get("Image")}
         missing = [n for n in sorted(names) if n.startswith(prefixes)
-                   and not os.path.exists(os.path.join(ROOT, char, n))]
+                   and not os.path.exists(os.path.join(ROOT, "AVA Shimejis", char, n))]
         if missing:
             print(f"  MISSING IMAGES in {char}: {missing}")
             sys.exit(1)

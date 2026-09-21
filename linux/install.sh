@@ -29,6 +29,42 @@ JAR="$(ls "$TARGET"/Shimeji-ee.jar "$TARGET"/Shimeji.jar "$TARGET"/*himeji*.jar 
 [ -n "${JAR:-}" ] || { echo "No Shimeji jar found in $TARGET"; exit 1; }
 echo "Found: $JAR"
 
+# 0a. Fix flat jar extractions BEFORE installing: Shimeji-ee's manifest
+# Class-Path is ./lib/jna.jar ./lib/examples.jar ./lib/AbsoluteLayout.jar
+# ./lib/nimrodlf.jar, but some archive tools dump those jars into the
+# Shimeji-ee root and leave lib/ missing/empty -> NoClassDefFoundError
+# NimRODTheme on startup.
+for j in jna.jar examples.jar AbsoluteLayout.jar nimrodlf.jar; do
+  if [ ! -f "$TARGET/lib/$j" ] && [ -f "$TARGET/$j" ]; then
+    mkdir -p "$TARGET/lib"
+    cp -p "$TARGET/$j" "$TARGET/lib/$j"
+    echo "Fixed jar layout: copied $j from the Shimeji-ee root into lib/"
+  fi
+done
+for j in jna.jar examples.jar AbsoluteLayout.jar nimrodlf.jar; do
+  if [ ! -f "$TARGET/lib/$j" ]; then
+    echo "WARNING: lib/$j not found anywhere - Shimeji-ee may fail to start" \
+         "with NoClassDefFoundError. Re-extract your Shimeji-ee download" \
+         "so its lib/ folder is populated." >&2
+  fi
+done
+
+# 0b. Warn (non-fatal) if the resolved java has no GUI support: headless
+# JREs (e.g. Fedora's java-NN-openjdk-headless) throw HeadlessException.
+JAVA_BIN="$(command -v java)"
+JAVA_HOME_DIR="$(dirname "$(dirname "$(readlink -f "$JAVA_BIN" 2>/dev/null || echo "$JAVA_BIN")")")"
+if ! find "$JAVA_HOME_DIR" -name libawt_xawt.so -print -quit 2>/dev/null | grep -q .; then
+  JAVA_VER="$("$JAVA_BIN" -version 2>&1 | head -n 1 | sed -e 's/.*version "//' -e 's/".*//' -e 's/^1\.//' -e 's/[._].*//')"
+  echo "WARNING: $JAVA_BIN looks like a headless JRE (no libawt_xawt.so under $JAVA_HOME_DIR)." >&2
+  echo "         Shimeji-ee needs GUI support; expect HeadlessException otherwise." >&2
+  if [ -n "${JAVA_VER:-}" ]; then
+    echo "         Fedora:       sudo dnf install java-$JAVA_VER-openjdk   (not -headless)" >&2
+  else
+    echo "         Fedora:       sudo dnf install java-<version>-openjdk  (not -headless)" >&2
+  fi
+  echo "         Debian/Ubuntu: install default-jre                     (not -headless)" >&2
+fi
+
 # 1. image sets (each folder carries its own conf/actions.xml + behaviors.xml)
 mkdir -p "$TARGET/img/unused"
 for c in Blue Orange Yellow Green; do
