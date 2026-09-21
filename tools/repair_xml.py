@@ -17,10 +17,12 @@ The old script had two bugs that made Shimeji-ee refuse to load the pack:
 This script repairs both in place, for every character:
 
 * actions.xml: keep the FIRST definition of each action name, delete later
-  duplicates together with the blank line that followed them. Marker
-  comments the old script left orphaned at the tail of a section (a comment
-  with no action between it and the next marker/</ActionList>) are dropped,
-  restoring the stock layout.
+  duplicates together with the blank line that followed them. The action name
+  is matched in ANY attribute position, so <Action Type="Animate"
+  Name="Wave"> duplicates are repaired just like <Action Name="Wave" ...>.
+  Marker comments the old script left orphaned at the tail of a section (a
+  comment with no action between it and the next marker/</ActionList>) are
+  dropped, restoring the stock layout.
 * behaviors.xml: any Behavior whose Name has no same-named action and that
   has exactly one <ActionReference> child whose target action exists gets
   its Name set to that target and the child dropped (the element becomes a
@@ -44,7 +46,18 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHARS = ["Blue", "Orange", "Yellow", "Green"]
 BOM = b"\xef\xbb\xbf"
 MARKER = "AvA custom animations (Stick pack generator)"
-ACTION_START = re.compile(r'<Action\s+Name="([^"]+)"')
+# Name= may sit in ANY attribute position: the old, narrower
+# r'<Action\s+Name="..."' only saw it as the first attribute, so duplicates
+# written as <Action Type="Animate" Name="Wave"> survived the repair and
+# Shimeji-ee still aborted with "duplicate action found: wave".
+# \b keeps <ActionList>/<ActionReference> out; [^>]*? keeps the match in-tag.
+ACTION_START = re.compile(r'<Action\b[^>]*?\bName="([^"]+)"', re.S)
+
+
+def behavior_open_re(name):
+    """Matcher for a `<Behavior ... Name="name"` opening, any attribute
+    order."""
+    return re.compile(r'<Behavior\b[^>]*?\bName="' + re.escape(name) + r'"')
 
 
 def local(tag):
@@ -166,11 +179,14 @@ def apply_behavior_renames(lines, renames):
     """Rename Behavior opening tags and drop their ActionReference child.
     Elements left with no other children become self-closing."""
     for old, new in renames.items():
-        needle = f'<Behavior Name="{old}"'
-        start = next((k for k, l in enumerate(lines) if needle in l), None)
+        # Name= may sit in any attribute position, same as for actions.
+        opener = behavior_open_re(old)
+        start = next((k for k, l in enumerate(lines) if opener.search(l)), None)
         if start is None:
             raise SystemExit(f'Behavior "{old}" not found for renaming')
-        lines[start] = lines[start].replace(f'Name="{old}"', f'Name="{new}"', 1)
+        lines[start] = re.sub(r'\bName="' + re.escape(old) + r'"',
+                              lambda _m, new=new: f'Name="{new}"',
+                              lines[start], count=1)
         if lines[start].rstrip().endswith("/>"):
             continue  # self-closing already: no child to drop
         end = start

@@ -15,11 +15,46 @@ Shimeji-ee rules this script must respect:
   <ActionReference> child is not valid inside <Behavior>. So generated
   behaviors are emitted as <Behavior Name="<action name>" ... /> with the
   action's name, no child elements.
+* "Is this already present?" must be asked per ELEMENT. A bare
+  `Name="Wave" in raw` substring test is also satisfied by
+  <ActionReference Name="Wave"/> inside a Sequence action, which silently
+  suppressed inserting the real <Action Name="Wave"> - Shimeji-ee then
+  failed to load with "no corresponding action Wave".
 """
-import os, sys, xml.etree.ElementTree as ET
+import os, re, sys, xml.etree.ElementTree as ET
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHARS = ["Blue", "Orange", "Yellow", "Green"]
+
+# An XML start tag (self-closing or not). Comments, PIs and CDATA never match:
+# they do not begin with a name character. Well-formed XML cannot contain a
+# raw ">" inside an attribute value (it must be &gt;), so [^>]* stays in-tag.
+START_TAG_RE = re.compile(r'<([A-Za-z_][\w:.-]*)\b([^>]*?)/?>', re.S)
+
+
+def attr_value(attrs, name):
+    """Value of attribute `name` inside a tag's attribute text, in any
+    position, double- or single-quoted. None when absent."""
+    m = re.search(r'(?:^|\s)' + re.escape(name) + r'\s*=\s*'
+                  r'("([^"]*)"|\'([^\']*)\')', attrs)
+    if not m:
+        return None
+    return m.group(2) if m.group(2) is not None else m.group(3)
+
+
+def element_present(raw, tag, name):
+    """True iff `<tag ... Name="name" ...>` exists as an ELEMENT in `raw`.
+    Attribute order is irrelevant; a differently named element (e.g.
+    <ActionReference Name="Wave"/>) never counts as <Action Name="Wave">."""
+    return any(m.group(1) == tag and attr_value(m.group(2), "Name") == name
+               for m in START_TAG_RE.finditer(raw))
+
+
+def element_start_re(tag, name):
+    """Compiled matcher for a `<tag ... Name="name"` opening, any attribute
+    order - used to locate an insertion anchor."""
+    return re.compile(r'<' + re.escape(tag) + r'\b[^>]*?\bName="'
+                      + re.escape(name) + r'"')
 
 def pose(img, dur, vx=0, vy=0, anchor="64,128"):
     return (f'\t\t\t\t<Pose Image="/{img}" ImageAnchor="{anchor}" '
@@ -135,19 +170,20 @@ SIG_BEHAVIORS = {
     "Green": [behavior("PlayGuitar", 30)],
 }
 
-DANCE_ANCHOR = '<Behavior Name="Dance"'
-
 def patch_actions(path, wanted):
     with open(path, "rb") as f:
         raw = f.read().decode("utf-8")
     eol = "\r\n" if "\r\n" in raw else "\n"
-    missing = [(n, l) for n, l in wanted if f'Name="{n}"' not in raw]
+    # Element-scoped test: only a real <Action Name="X"> counts as present.
+    missing = [(n, l) for n, l in wanted
+               if not element_present(raw, "Action", n)]
     if not missing:
         print(f"  {path}: actions up to date")
         return
     block = eol.join(['\t\t<!-- AvA custom animations (Stick pack generator) -->'] +
                      [ln for _, l in missing for ln in l])
-    assert "</ActionList>" in raw
+    if "</ActionList>" not in raw:
+        raise SystemExit(f"REFUSING to patch {path}: no </ActionList> to insert into")
     # Insert into the FIRST </ActionList> only: each actions.xml has two
     # <ActionList> sections and Shimeji-ee rejects duplicate action names
     # ("duplicate action found: ...").
@@ -161,18 +197,32 @@ def behavior_element_end(raw, start):
     end of its line if self-closing, else just past its </Behavior>."""
     nl = raw.find("\n", start)
     if nl == -1:
-        nl = len(raw)
+        return len(raw)
     if raw[start:nl].rstrip().endswith("/>"):
         return nl + 1
     close = raw.find("</Behavior>", start)
-    assert close != -1
+    if close == -1:
+        raise SystemExit(f"unterminated <Behavior> at offset {start}")
     return close + len("</Behavior>")
+
+
+def last_element_start(raw, tag, name):
+    """Offset of the last `<tag ... Name="name"` opening in raw, any
+    attribute order, or -1 when there is none."""
+    pos = -1
+    for m in element_start_re(tag, name).finditer(raw):
+        pos = m.start()
+    return pos
+
 
 def patch_behaviors(path, wanted):
     with open(path, "rb") as f:
         raw = f.read().decode("utf-8")
     eol = "\r\n" if "\r\n" in raw else "\n"
-    missing = [(n, l) for n, l in wanted if f'Name="{n}"' not in raw]
+    # Element-scoped test: a <BehaviorReference Name="X"/> child of some other
+    # behavior does not mean behavior X already exists.
+    missing = [(n, l) for n, l in wanted
+               if not element_present(raw, "Behavior", n)]
     if not missing:
         print(f"  {path}: behaviors up to date")
         return
@@ -182,17 +232,18 @@ def patch_behaviors(path, wanted):
     # after the stock Dance behavior, else before </BehaviorList>
     anchor = -1
     for n, _ in wanted:
-        i = raw.find(f'<Behavior Name="{n}"')
+        i = last_element_start(raw, "Behavior", n)
         if i > anchor:
             anchor = i
     if anchor == -1:
-        anchor = raw.find(DANCE_ANCHOR)
+        anchor = last_element_start(raw, "Behavior", "Dance")
     if anchor != -1:
         end = behavior_element_end(raw, anchor)
         raw = raw[:end] + eol + block + raw[end:]
     else:
-        assert "</BehaviorList>" in raw
-        raw = raw.replace("</BehaviorList>", block + eol + "\t</BehaviorList>")
+        if "</BehaviorList>" not in raw:
+            raise SystemExit(f"REFUSING to patch {path}: no </BehaviorList> to insert into")
+        raw = raw.replace("</BehaviorList>", block + eol + "\t</BehaviorList>", 1)
     with open(path, "wb") as f:
         f.write(raw.encode("utf-8"))
     print(f"  {path}: +{len(missing)} behaviors {[n for n, _ in missing]}")
