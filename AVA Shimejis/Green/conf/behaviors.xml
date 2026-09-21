@@ -36,70 +36,38 @@
                </Behavior>
 		<!-- AvA custom behaviors (Stick pack generator) -->
 
-		<Behavior Name="Backflipper" Frequency="20">
-			<ActionReference Name="Backflip" />
-		</Behavior>
+		<Behavior Name="Backflip" Frequency="20" />
 
-		<Behavior Name="SnackBreak" Frequency="25">
-			<ActionReference Name="SnackTime" />
-		</Behavior>
+		<Behavior Name="SnackTime" Frequency="25" />
 
-		<Behavior Name="Slider" Frequency="22">
-			<ActionReference Name="PowerSlide" />
-		</Behavior>
+		<Behavior Name="PowerSlide" Frequency="22" />
 
-		<Behavior Name="Workout" Frequency="20">
-			<ActionReference Name="PushUps" />
-		</Behavior>
+		<Behavior Name="PushUps" Frequency="20" />
 
-		<Behavior Name="Achoo" Frequency="15">
-			<ActionReference Name="Sneeze" />
-		</Behavior>
+		<Behavior Name="Sneeze" Frequency="15" />
 
-		<Behavior Name="PaperPilot" Frequency="20">
-			<ActionReference Name="PaperPlane" />
-		</Behavior>
+		<Behavior Name="PaperPlane" Frequency="20" />
 		<!-- AvA custom behaviors (Stick pack generator) -->
 
-		<Behavior Name="WaveHello" Frequency="40">
-			<ActionReference Name="Wave" />
-		</Behavior>
+		<Behavior Name="Wave" Frequency="40" />
 
-		<Behavior Name="Cheerful" Frequency="30">
-			<ActionReference Name="Cheer" />
-		</Behavior>
+		<Behavior Name="Cheer" Frequency="30" />
 
-		<Behavior Name="Sparring" Frequency="25">
-			<ActionReference Name="BattleRage" />
-		</Behavior>
+		<Behavior Name="BattleRage" Frequency="25" />
 
-		<Behavior Name="SwordTraining" Frequency="25">
-			<ActionReference Name="SwordPractice" />
-		</Behavior>
+		<Behavior Name="SwordPractice" Frequency="25" />
 
-		<Behavior Name="Mining" Frequency="30">
-			<ActionReference Name="Mine" />
-		</Behavior>
+		<Behavior Name="Mine" Frequency="30" />
 
-		<Behavior Name="Nap" Frequency="18">
-			<ActionReference Name="Sleep" />
-		</Behavior>
+		<Behavior Name="Sleep" Frequency="18" />
 
-		<Behavior Name="CursorBattle" Frequency="40" Condition="${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 &amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}">
-			<ActionReference Name="CursorSlash" />
-		</Behavior>
+		<Behavior Name="CursorSlash" Frequency="40" Condition="${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 &amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}" />
 
-		<Behavior Name="GlitchSurvive" Frequency="12">
-			<ActionReference Name="GlitchOut" />
-		</Behavior>
+		<Behavior Name="GlitchOut" Frequency="12" />
 
-		<Behavior Name="Bonked" Frequency="10">
-			<ActionReference Name="Bonk" />
-		</Behavior>
+		<Behavior Name="Bonk" Frequency="10" />
 
-		<Behavior Name="GuitarSolo" Frequency="30">
-			<ActionReference Name="PlayGuitar" />
-		</Behavior>
+		<Behavior Name="PlayGuitar" Frequency="30" />
 
 		<Behavior Name="HuggingSolid" Frequency="0" Hidden="true" />
 		<Behavior Name="HuggedSolid" Frequency="0" Hidden="true" />
