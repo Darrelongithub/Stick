@@ -11,7 +11,8 @@ Checks every character (Blue, Orange, Yellow, Green):
     an existing action
   * every BehaviorReference resolves to an existing Behavior,
     and there are no duplicate Behavior names
-  * every <Pose Image="/x.png"> file exists in that character's folder
+  * every <Pose Image="/x.png"> file exists in that character's folder AND
+    stays inside it: "..", NUL bytes and empty image paths are rejected
   * no files ending in ~ (editor backups) anywhere in the pack
 
 Exits non-zero if anything fails. Run from anywhere; paths are resolved
@@ -108,13 +109,41 @@ def check_char(char, failures):
                     f"points at a non-existent behavior")
 
     # ---- pose images -------------------------------------------------------
+    # A pose path is resolved relative to the character folder. Anything that
+    # climbs out of it (../, a NUL, an empty value) must be rejected outright:
+    # a <Pose Image="/../secret.png"> would otherwise happily load a frame
+    # from outside the image set.
     for e in a_root.iter():
-        if local(e.tag) == "Pose" and e.get("Image"):
-            img = e.get("Image").replace("\\", "/").lstrip("/")
-            if not os.path.isfile(os.path.join(base, img)):
-                failures.append(
-                    f'{char}: {a_path}: pose image "{e.get("Image")}" '
-                    f"not found in {base}")
+        if local(e.tag) != "Pose":
+            continue
+        raw_img = e.get("Image")
+        if raw_img is None or raw_img.strip() == "":
+            failures.append(f"{char}: {a_path}: <Pose> has no usable Image= value")
+            continue
+        if "\x00" in raw_img:
+            failures.append(
+                f'{char}: {a_path}: pose image "{raw_img!r}" contains a NUL '
+                f"byte - not a usable path")
+            continue
+        img = raw_img.replace("\\", "/").lstrip("/")
+        if any(part == ".." for part in img.split("/")):
+            failures.append(
+                f'{char}: {a_path}: pose image "{raw_img}" escapes the '
+                f"character folder ({base}) - frames must live inside it")
+            continue
+        target = os.path.join(base, img)
+        if not os.path.isfile(target):
+            failures.append(
+                f'{char}: {a_path}: pose image "{raw_img}" '
+                f"not found in {base}")
+            continue
+        # last line of defence: a symlink inside the set could still point out
+        real = os.path.realpath(target)
+        if os.path.commonpath([os.path.realpath(base), real]) \
+                != os.path.realpath(base):
+            failures.append(
+                f'{char}: {a_path}: pose image "{raw_img}" resolves outside '
+                f"the character folder ({base})")
 
     # ---- no editor backup files --------------------------------------------
     for dirpath, _dirnames, filenames in os.walk(base):
