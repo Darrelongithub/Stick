@@ -1,0 +1,52 @@
+# AvA Stickman Pack - Setup Guide for Shijima-Qt on Linux
+
+## 1. Import the pack
+Open Shijima-Qt → drag & drop the zip → click "Add" to spawn.
+
+## 2. Auto-start on boot (stickmen appear when you log in)
+Create an autostart entry:
+
+    mkdir -p ~/.config/autostart
+    cat > ~/.config/autostart/shijima.desktop << 'EOF'
+    [Desktop Entry]
+    Type=Application
+    Name=Shijima-Qt
+    Exec=shijima-qt --minimized
+    X-GNOME-Autostart-enabled=true
+    EOF
+
+NOTE: If `--minimized` doesn't work (it's alpha), remove that flag and
+the manager window will pop up — just close it, the stickmen stay.
+
+If shijima-qt isn't in your PATH, use the full path in Exec=, e.g.:
+    Exec=/home/youruser/Downloads/Shijima-Qt/shijima-qt
+
+## 3. Kill hotkey (emergency kill switch)
+Set up a global keyboard shortcut to instantly kill all stickmen:
+
+### On GNOME:
+    Settings → Keyboard → Custom Shortcuts → Add
+    Name: Kill Stickmen
+    Command: pkill -f shijima-qt
+    Shortcut: Ctrl+Alt+K (or whatever you prefer)
+
+### On KDE:
+    System Settings → Shortcuts → Custom Shortcuts → Edit → New → Command/URL
+    Action: pkill -f shijima-qt
+    Trigger: Ctrl+Alt+K
+
+### On any Linux (xbindkeys):
+    sudo apt install xbindkeys
+    echo '"pkill -f shijima-qt"' >> ~/.xbindkeysrc
+    echo '  control+alt+k' >> ~/.xbindkeysrc
+    xbindkeys
+
+## 4. Restart after kill
+If you want Ctrl+Alt+K to kill AND Ctrl+Alt+Shift+K to restart:
+
+    # Kill:  pkill -f shijima-qt
+    # Start: shijima-qt &disown
+
+## 5. Removing the pack
+In Shijima-Qt, click the X next to each character to remove them.
+Or just delete the imported files from Shijima's data directory.

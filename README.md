@@ -1,8 +1,9 @@
 # Stick — AvA Shimeji 4-Pack (Blue / Orange / Yellow / Green)
 
-Animation vs Animator style desktop buddies for **Shimeji-ee on Linux**, with a
-batch of brand-new crisp animations generated in the pack's exact art style
-(128×128, feet anchored at 64,128, hard pixel edges like the originals).
+Animation vs Animator style desktop buddies for **Shijima-Qt** (and Shimeji-ee)
+on Linux, with a batch of brand-new crisp animations generated in the pack's
+exact art style (128×128, feet anchored at 64,128, hard pixel edges like the
+originals).
 
 This repo was trimmed down to the core four. Purple, Red, TCO, TDL and victim
 were removed.
@@ -42,7 +43,41 @@ Signatures (one per character, AvA canon):
 All actions are already wired into each character's `conf/actions.xml` and
 `conf/behaviors.xml` — just install and they happen automatically.
 
-## Install (Linux)
+## Install
+
+### Shijima-Qt (recommended — works on Linux, no Java needed)
+
+Shijima-Qt is a modern cross-platform shimeji app. It imports character packs
+from zip archives.
+
+```bash
+git clone <this-repo> && cd Stick
+pip install pillow                          # only if regenerating frames
+python3 tools/build_shijima.py              # builds per-character zips
+python3 tools/build_shijima.py --all        # builds per-char + full pack zip
+```
+
+This creates ready-to-import zips in `dist/shijima/`:
+
+| File | What's inside |
+|---|---|
+| `AvA_Blue.zip` | Blue character (images + conf/) |
+| `AvA_Orange.zip` | Orange character |
+| `AvA_Yellow.zip` | Yellow character |
+| `AvA_Green.zip` | Green character |
+| `AvA_Stick_Pack.zip` | All four in standard `img/` layout |
+
+**To import:**
+
+1. Open Shijima-Qt
+2. Drag & drop any zip file(s) into the app window
+3. Click **Add** to spawn them on your desktop
+
+If importing a single character zip doesn't work, try the full pack zip
+(`AvA_Stick_Pack.zip`) instead — it uses the standard `img/CharacterName/`
+layout that Shijima-Qt expects.
+
+### Shimeji-ee (Java, legacy)
 
 ```bash
 git clone <this-repo> && cd Stick
@@ -84,9 +119,14 @@ Notes:
 * **GNOME/Wayland:** Java runs through XWayland there, so shimejis may
   glitch — black boxes instead of sprites, or no interaction with native
   Wayland windows. Log into an X11 session for fully correct behavior.
-* **Shijima-Qt** is a *different* app (not Shimeji-ee); it imports
-  per-character zip archives, which this repo's `install.sh` does not
-  produce or handle.
+* **Shijima-Qt:** Use `python3 tools/build_shijima.py --all` to create
+  import-ready zips. Drag & drop into the Shijima-Qt app window. See the
+  [Install](#shijima-qt-recommended--works-on-linux-no-java-needed) section
+  above for details.
+* **Shijima-Qt says "successful" but nothing appears?** Make sure you import
+  a zip file (not the raw repo folder). The zip must contain a character
+  folder with PNG images and a `conf/` subfolder. Try `AvA_Stick_Pack.zip`
+  (the full pack zip) if the per-character zips don't work.
 
 ## Regenerating / making more
 
@@ -97,6 +137,7 @@ pip install pillow
 python3 tools/stickgen.py                 # renders all chars into AVA Shimejis/
 python3 tools/patch_xml.py                # (re)wires actions.xml + behaviors.xml
 python3 tools/validate.py                 # sanity-checks all four characters
+python3 tools/build_shijima.py --all      # builds import-ready zips for Shijima-Qt
 ```
 
 Preview contact sheets land in `preview/new/`. The patch script is idempotent
@@ -112,6 +153,7 @@ tools/stickgen.py      frame generator (poses, props, fx)
 tools/patch_xml.py     XML wiring for new actions/behaviors
 tools/repair_xml.py    one-time repair for XMLs damaged by the old patcher
 tools/validate.py      validates actions/behaviors/images for all characters
+tools/build_shijima.py builds import-ready zips for Shijima-Qt
 linux/install.sh       installer: image sets + toggle + autostart
 linux/ava-toggle.sh    on/off toggle with desktop notification
 ```
