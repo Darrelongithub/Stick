@@ -14,8 +14,9 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 usage() {
-  echo "Usage: $0 [path-to-shimeji-folder] [--replace]"
-  echo "  --replace : move any other image sets into img/unused"
+  echo "Usage: $0 [path-to-shimeji-folder] [--replace] [--no-hyprland]"
+  echo "  --replace     : move any other image sets into img/unused"
+  echo "  --no-hyprland : skip the Hyprland window rules + autostart step"
 }
 
 # Run a command under a wall-clock cap. `timeout` is not everywhere
@@ -60,9 +61,12 @@ esc_desktop_arg() {
 # ---------------- arguments ----------------
 TARGET=""
 REPLACE=false
+SKIP_HYPRLAND=false
 for arg in "$@"; do
   case "$arg" in
     --replace) REPLACE=true ;;
+    --no-hyprland) SKIP_HYPRLAND=true ;;
+    --hyprland) SKIP_HYPRLAND=false ;;
     -h|--help) usage; exit 0 ;;
     -*) die "unknown option: $arg" ;;
     *) if [ -z "$TARGET" ]; then TARGET="$arg"; else die "unexpected argument: $arg"; fi ;;
@@ -146,6 +150,26 @@ if $REPLACE; then
   done
 fi
 
+# 1b. Shimeji-ee clones itself while walking (the PullUpShimeji behaviour, cap
+# 50 mascots) unless Breeding is off.  The pack's own behaviours.xml disables
+# it, and so does this, for good measure - a four-man crew, not a crowd.
+SETTINGS="$TARGET/conf/settings.properties"
+if [ -d "$TARGET/conf" ]; then
+  [ -f "$SETTINGS" ] || : > "$SETTINGS"
+  [ -f "$SETTINGS.ava-bak" ] || cp -p "$SETTINGS" "$SETTINGS.ava-bak" 2>/dev/null || true
+  if grep -q '^[[:space:]]*Breeding=' "$SETTINGS"; then
+    sed -i 's/^[[:space:]]*Breeding=.*/Breeding=false/' "$SETTINGS"
+  else
+    printf 'Breeding=false\n' >> "$SETTINGS"
+  fi
+  if grep -q '^[[:space:]]*ActiveShimeji=' "$SETTINGS"; then
+    sed -i 's|^[[:space:]]*ActiveShimeji=.*|ActiveShimeji=Blue/Orange/Yellow/Green|' "$SETTINGS"
+  else
+    printf 'ActiveShimeji=Blue/Orange/Yellow/Green\n' >> "$SETTINGS"
+  fi
+  echo "Cloning off, four characters active (conf/settings.properties)"
+fi
+
 # 2. toggle script lives next to the jar (auto-detects its own location)
 cp "$REPO/linux/ava-toggle.sh" "$TARGET/ava-toggle.sh" || die "cannot install the toggle script into $TARGET"
 chmod +x "$TARGET/ava-toggle.sh" || die "cannot make $TARGET/ava-toggle.sh executable"
@@ -168,6 +192,31 @@ printf '%s\n' \
   "X-GNOME-Autostart-enabled=true" > "$DESKTOP" || die "cannot write $DESKTOP"
 [ -s "$DESKTOP" ] || die "wrote an empty $DESKTOP"
 echo "Installed autostart: ~/.config/autostart/ava-shimeji.desktop"
+echo "  (read by GNOME, KDE, XFCE... - NOT by Hyprland, which has no XDG"
+echo "   autostart support; the Hyprland step below handles that case)"
+
+# 4. Hyprland: window rules (no more boxes) + real autostart.  Hyprland tiles
+# every window Shimeji-ee opens and draws a border around it, and it ignores
+# ~/.config/autostart entirely, so this step is what makes the pack usable
+# there.  Skipped with --no-hyprland, and a no-op elsewhere.
+IS_HYPR=false
+if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+  IS_HYPR=true
+elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
+  case "$XDG_CURRENT_DESKTOP" in *[Hh]yprland*) IS_HYPR=true ;; esac
+elif [ -f "$HOME/.config/hypr/hyprland.conf" ] || [ -f "$HOME/.config/hypr/hyprland.lua" ]; then
+  IS_HYPR=true
+fi
+if ! $SKIP_HYPRLAND && $IS_HYPR; then
+  echo
+  echo "Hyprland detected - setting up window rules and autostart:"
+  if bash "$REPO/linux/hyprland.sh" "$TARGET" --no-start; then
+    :
+  else
+    echo "WARNING: the Hyprland step failed; run it by hand:"
+    echo "  $REPO/linux/hyprland.sh \"$TARGET\""
+  fi
+fi
 
 echo
 echo "Done! Restart Shimeji-ee to meet the crew:"
