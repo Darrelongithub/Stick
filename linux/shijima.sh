@@ -94,6 +94,25 @@ build() {
     cp "$src/conf/behaviors.xml" "$dest/behaviors.xml" || die "cannot copy behaviors.xml"
     cp "$src"/*.png "$dest/img/" 2>/dev/null || die "no frames found in $src"
     note "$char.mascot  ($(ls "$dest/img" | wc -l | tr -d ' ') frames)"
+    # Shijima-Qt resolves every <Pose Image="..."> against <mascot>/img, and it
+    # lowercases the name before it looks it up - catch a broken folder here
+    # instead of with an invisible mascot.
+    python3 - "$dest" <<'PY' || die "$char.mascot would not load in Shijima-Qt"
+import os, re, sys
+dest = sys.argv[1]
+root = os.path.join(dest, "img")
+have = set(os.listdir(root))
+bad = []
+for xml in ("actions.xml", "behaviors.xml"):
+    text = open(os.path.join(dest, xml), encoding="utf-8-sig", errors="surrogateescape").read()
+    for name in re.findall(r'Image="([^"]+)"', text):
+        base = name.lstrip("/")
+        if base.lower() not in have:
+            bad.append(base)
+if bad:
+    print("  missing image(s) referenced by actions.xml: %s" % ", ".join(sorted(set(bad))[:5]))
+    sys.exit(1)
+PY
     if command -v zip >/dev/null 2>&1; then
       ( cd "$OUT" && zip -qr "$char.mascot.zip" "$char.mascot" ) \
         || die "cannot zip $char.mascot"
