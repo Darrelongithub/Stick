@@ -223,3 +223,6 @@ echo "Done! Restart Shimeji-ee to meet the crew:"
 echo "  \"$TARGET/ava-toggle.sh\"   # stop/start any time"
 echo "They will also auto-start on every boot."
 echo "Tip: bind ava-toggle.sh to a hotkey in your desktop's Keyboard settings."
+echo
+echo "Rather stay on Shijima-Qt? This same pack works there:"
+echo "  $REPO/linux/shijima.sh --install --autostart"

@@ -18,6 +18,8 @@ Recently rebuilt:
 * **No more cloning.** Shimeji-ee's breeding behaviour is switched off in the
   XML, in the installer and in `conf/settings.properties`: the crew stays at
   four.
+* **Shijima-Qt path** (`linux/shijima.sh`) that repackages this same crew for
+  the other runner and autostarts it, if that is what you already use.
 * **Hyprland script** (`linux/hyprland.sh`) that stops the window boxes and
   makes the shimejis actually start with your session.
 
@@ -56,21 +58,42 @@ back. It also adds `exec-once = java -jar …/Shimeji-ee.jar` so the crew starts
 with your session, and disables the dead `~/.config/autostart` entry (kept for
 GNOME/KDE users) so you never get two runners.
 
-### About Shijima-Qt
+### Already running Shijima-Qt?
 
-[Shijima-Qt](https://github.com/pixelomer/Shijima-Qt) is a different app, and it
-was [archived/discontinued](https://github.com/pixelomer/Shijima-Qt) in 2026
-(Flathub marked it EOL). It also cannot autostart on Hyprland for the same
-reason as above. This pack is built for **Shimeji-ee**:
+[Shijima-Qt](https://github.com/pixelomer/Shijima-Qt) is the other shimeji
+runner for Linux, and the one this repo is usually used with. It was
+[archived/discontinued](https://github.com/pixelomer/Shijima-Qt) in 2026
+(Flathub marked it EOL), but it still works — and it can still use this pack,
+including the fixed animations and the no-breeding setup, because it reads the
+same XML schema.
+
+What it cannot do by itself is autostart: Hyprland never reads
+`~/.config/autostart`, and Shijima-Qt has no Hyprland integration, which is why
+it never came back after a reboot. `linux/shijima.sh` fixes that:
 
 ```bash
-pkill -f shijima          # don't run two runners at once
+./linux/shijima.sh --install --autostart
+```
+
+It repackages each character into the `<Name>.mascot` folder (and `.mascot.zip`
+archive) Shijima-Qt's import dialog expects, copies them into Shijima-Qt's
+mascots folder — keeping any previous import as `<Name>.mascot.old-<pid>` — and
+writes an `exec-once` line plus window rules so Shijima-Qt starts with your
+session and puts the four characters on screen through its
+[HTTP API](https://github.com/pixelomer/Shijima-Qt/blob/main/HTTP-API.md).
+`--check` reports what is installed and what Hyprland can see; `--uninstall`
+puts it all back.
+
+Running both runners at once gives you eight mascots, so pick one:
+
+```bash
+pkill -f shijima          # switching to Shimeji-ee
 ~/Shimeji-ee/ava-toggle.sh
 ```
 
-If you want to try Shijima-Qt anyway, its per-character imports expect the same
-`conf/actions.xml` + `conf/behaviors.xml` layout this repo ships, so the folders
-in `AVA Shimejis/` are what you would import.
+Shimeji-ee is still the recommended home for this pack — it is maintained, it
+has the behaviours that use the climbing/pinching art, and Hyprland has an
+official recipe for its windows.
 
 ### If you stay on GNOME/Wayland
 
@@ -254,6 +277,7 @@ tools/validate.py      frames, XML, references, behaviour balance report
 tools/repair_xml.py    one-time repair for XMLs damaged by the old patcher
 linux/install.sh       installer: image sets + toggle + autostart (+ Hyprland)
 linux/hyprland.sh      Hyprland: window rules (no boxes) + real autostart
+linux/shijima.sh       Shijima-Qt: .mascot repack + autostart, same pack
 linux/ava-toggle.sh    on/off toggle with desktop notification
 docs/                  the images used on this page
 ```

@@ -18,6 +18,10 @@ refuses to load the pack or renders it wrong):
   * every <Pose> anchor equals the spec anchor for that action's family
   * the generator's frame lists match the spec frame counts
   * no files ending in ~ (editor backups) anywhere in the pack
+  * every action type / embedded class the XML uses is one that libshijima
+    (Shijima-Qt) implements - Shijima-Qt refuses to load a mascot whole if an
+    action type is unknown, so linux/shijima.sh would silently produce
+    unloadable .mascot folders otherwise
 
 Advisory report (never fails): how often each character will do what, so a
 "the animations feel repetitive" complaint can be answered with numbers.
@@ -236,6 +240,44 @@ def check_generator(failures):
             failures.append(f"stickgen: {action} has {got} poses, spec wants {want}")
 
 
+# Action types libshijima implements (Shijima-Qt's parser).  Types not in this
+# set make Shijima-Qt fail to load the mascot, so they must never appear.
+SHIJIMA_TYPES = {
+    # instant
+    "Offset", "Look", "Mute",
+    # animation-like
+    "Jump", "Animate", "Broadcast", "Breed", "BreedJump", "BreedMove",
+    "Dragged", "Regist", "Stay", "BroadcastStay", "Move", "Turn",
+    "MoveWithTurn", "BroadcastMove", "BroadcastJump", "Fall", "ScanMove",
+    "Interact", "SelfDestruct", "Transform", "ScanInteract", "ScanJump",
+    "ComplexMove", "ComplexJump", "FallWithIE", "WalkWithIE", "ThrowIE",
+    # structural
+    "Sequence", "Select",
+}
+SHIJIMA_CLASS_PREFIX = "com.group_finity.mascot.action."
+
+
+def check_shijima(char, a_root, failures):
+    """Shijima-Qt must be able to parse this actions.xml too."""
+    for node in a_root.iter():
+        tag = local(node.tag)
+        if tag != "Action" and tag != "ActionReference":
+            continue
+        kind = node.get("Type")
+        if kind and kind not in SHIJIMA_TYPES:
+            if kind == "Embedded":
+                cls = (node.get("Class") or "")
+                if not cls.startswith(SHIJIMA_CLASS_PREFIX):
+                    failures.append(f"{char}: Embedded action {node.get('Name')!r} has "
+                                    f"class {cls!r} - libshijima rejects that")
+                elif cls[len(SHIJIMA_CLASS_PREFIX):] not in SHIJIMA_TYPES:
+                    failures.append(f"{char}: action {node.get('Name')!r} uses class "
+                                    f"{cls!r}, which Shijima-Qt does not implement")
+            else:
+                failures.append(f"{char}: action {node.get('Name')!r} has type {kind!r}, "
+                                f"which Shijima-Qt does not implement")
+
+
 def behaviour_report(ok, out=sys.stdout):
     """How often each character does what - the anti-repetition overview."""
     print("\nBehaviours per character (frequency at each decision point)", file=out)
@@ -270,6 +312,8 @@ def main():
     check_generator(failures)
     for char in SPEC.CHARS:
         a_root, b_root = check_xml(char, failures)
+        if a_root is not None:
+            check_shijima(char, a_root, failures)
         check_frames(char, a_root, failures, report, advisories)
         check_stale(char, failures)
     for dirpath, _dirnames, filenames in os.walk(os.path.join(ROOT, "AVA Shimejis")):
@@ -296,7 +340,7 @@ def main():
     total = sum(report.values())
     print(f"OK - {len(SPEC.CHARS)} characters, {total} pose references, "
           f"{len(SPEC.generated_actions())} generated actions, "
-          f"{len(SPEC.SEQUENCES)} sequences")
+          f"{len(SPEC.SEQUENCES)} sequences (Shimeji-ee and Shijima-Qt)")
     behaviour_report(report)
 
 

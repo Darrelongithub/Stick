@@ -1,4 +1,5 @@
 preview/
+build/
 __pycache__/
 *.pyc
 *~
