@@ -24,6 +24,9 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${SHIJIMA_BUILD_DIR:-$REPO/build/shijima}"
 HYPR_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 RULES_CONF="$HYPR_DIR/ava-shijima-qt.conf"
+XDG_AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/ava-shijima-qt.desktop"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ava-shimeji"
+SESSION_HELPER_PATH="$DATA_DIR/shijima-session.sh"
 SPAWN_URL="http://127.0.0.1:32456/shijima/api/v1/mascots"
 
 MODE="build"
@@ -243,7 +246,8 @@ launcher_cmd() {
 # (Shijima-Qt always opens with an empty screen).
 write_session_helper() {
   local launcher="$1"
-  SESSION_HELPER="$HYPR_DIR/ava-shijima-session.sh"
+  SESSION_HELPER="$SESSION_HELPER_PATH"
+  mkdir -p "$DATA_DIR" || die "cannot create $DATA_DIR"
   cat > "$SESSION_HELPER" <<EOF || die "cannot write $SESSION_HELPER"
 #!/usr/bin/env sh
 # Written by linux/shijima.sh - start Shijima-Qt with the Hyprland session and
@@ -288,7 +292,12 @@ lua_escape() {
 }
 
 write_rules() {
-  hypr_present || { note "no Hyprland config here - skipping window rules and autostart"; return 1; }
+  if ! hypr_present; then
+    note "not a Hyprland session - no window rules needed (other desktops do not"
+    note "tile the mascot windows).  Autostart goes through XDG instead, below."
+    RULES_FILE=""
+    return 0
+  fi
   local flavour; flavour="$(hypr_flavour)"
   case "$flavour" in
     lua)
@@ -340,7 +349,26 @@ add_autostart() {
     note "install it, then re-run: $0 --autostart"
     return 0
   fi
-  [ -n "${RULES_FILE:-}" ] || { note "no Hyprland rules file to autostart from - skipping"; return 0; }
+  if [ -z "${RULES_FILE:-}" ]; then
+    # no Hyprland: GNOME/KDE/XFCE *do* read ~/.config/autostart, so use it
+    if ! hypr_present; then
+      write_session_helper "$launcher"
+      mkdir -p "$(dirname "$XDG_AUTOSTART")" || die "cannot create $(dirname "$XDG_AUTOSTART")"
+      cat > "$XDG_AUTOSTART" <<EOF || die "cannot write $XDG_AUTOSTART"
+[Desktop Entry]
+Type=Application
+Name=AVA Shijima-Qt
+Comment=Start Shijima-Qt and its four mascots when the session starts
+Exec=$SESSION_HELPER
+Terminal=false
+X-GNOME-Autostart-enabled=true
+EOF
+      note "autostart: $XDG_AUTOSTART (read by GNOME, KDE, XFCE...)"
+    else
+      note "no Hyprland rules file to autostart from - skipping autostart"
+    fi
+    return 0
+  fi
 
   write_session_helper "$launcher"
   local quoted; quoted="$(quote_path "$SESSION_HELPER")"
@@ -401,8 +429,10 @@ PY
     fi
   fi
   note "hyprland config style     : $(hypr_flavour)"
-  note "session helper            : $([ -f "$HYPR_DIR/ava-shijima-session.sh" ] \
-                                    && echo "$HYPR_DIR/ava-shijima-session.sh" || echo 'not written')"
+  note "session helper            : $([ -f "$SESSION_HELPER_PATH" ] \
+                                    && echo "$SESSION_HELPER_PATH" || echo 'not written')"
+  note "XDG autostart entry       : $([ -f "$XDG_AUTOSTART" ] \
+                                    && echo "$XDG_AUTOSTART" || echo 'not written')"
   note "hyprland rules            : $([ -f "$RULES_CONF" ] && echo "$RULES_CONF" \
                                     || { [ -f "$RULES_LUA" ] && echo "$RULES_LUA" || echo 'not written'; })"
   if hypr_present && command -v hyprctl >/dev/null 2>&1; then
@@ -451,7 +481,11 @@ uninstall() {
       done
     done
   fi
-  rm -f "$HYPR_DIR/ava-shijima-session.sh" 2>/dev/null && note "removed the session helper"
+  for helper in "$SESSION_HELPER_PATH" "$HYPR_DIR/ava-shijima-session.sh"; do
+    [ -f "$helper" ] && rm -f "$helper" && note "removed $helper"
+  done
+  rmdir "$DATA_DIR" 2>/dev/null || true
+  [ -f "$XDG_AUTOSTART" ] && rm -f "$XDG_AUTOSTART" && note "removed $XDG_AUTOSTART"
   if [ -f "$RULES_LUA" ]; then
     if [ -f "$HYPR_DIR/hyprland.lua" ] && grep -qF 'require("ava-shijima")' "$HYPR_DIR/hyprland.lua"; then
       python3 - "$HYPR_DIR/hyprland.lua" <<'PY'

@@ -78,11 +78,15 @@ it never came back after a reboot. `linux/shijima.sh` fixes that:
 It repackages each character into the `<Name>.mascot` folder (and `.mascot.zip`
 archive) Shijima-Qt's import dialog expects, copies them into Shijima-Qt's
 mascots folder — keeping any previous import as `<Name>.mascot.old-<pid>` — and
-writes an `exec-once` line plus window rules so Shijima-Qt starts with your
-session and puts the four characters on screen through its
-[HTTP API](https://github.com/pixelomer/Shijima-Qt/blob/main/HTTP-API.md).
-`--check` reports what is installed and what Hyprland can see; `--uninstall`
-puts it all back.
+writes window rules for Shijima-Qt's own windows (all three Hyprland config
+flavours, including the 0.55+ Lua one), then a `~/.local/share/ava-shimeji/`
+helper script that starts the app with your session and puts the four
+characters on screen through its
+[HTTP API](https://github.com/pixelomer/Shijima-Qt/blob/main/HTTP-API.md) —
+wired up as `exec-once` on Hyprland, or as an ordinary
+`~/.config/autostart/ava-shijima-qt.desktop` where XDG autostart actually
+works (GNOME, KDE, XFCE). `--check` reports what is installed, whether the app
+is running and what your compositor can see; `--uninstall` puts it all back.
 
 Running both runners at once gives you eight mascots, so pick one:
 
