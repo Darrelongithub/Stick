@@ -8,8 +8,9 @@ class support for **Hyprland**.
 
 Recently rebuilt:
 
-* **18 new moves** and 7 re-drawn pack animations, and the whole personality
-  sheet rebalanced so the four stop replaying the same five animations at you
+* **11 new moves** (256 frames) and **7 pack animations re-drawn** because the
+  originals were clipped, plus the personality sheet rebalanced so the four
+  stop replaying the same five animations at you
   (see [Animation](#animation)).
 * **The frame generator can no longer produce a clipped frame.** Every
   generated frame is 160×160 with 16 px of clear space on every side, verified
@@ -131,12 +132,15 @@ you were swimming in them.
 
 ## Animation
 
-266 new frames across the four characters (plus 24 re-drawn ones), all wired
-into `conf/actions.xml` and `conf/behaviors.xml` — they happen automatically.
+654 generated frames across the four characters — 256 for the 11 brand-new
+moves, 132 re-drawn because the originals were clipped or mis-anchored, and the
+older batch re-rendered on the safer canvas. All of it is wired into
+`conf/actions.xml` and `conf/behaviors.xml`, so it happens automatically: 34
+actions per character.
 
 ![New and re-drawn moves](docs/new-moves.png)
 
-**New in this batch** (all four characters):
+**New in this batch** (all four characters — 256 frames):
 
 | Move | What it looks like |
 |---|---|
@@ -152,8 +156,8 @@ into `conf/actions.xml` and `conf/behaviors.xml` — they happen automatically.
 | Juggle | Three-ball cascade, balls passing behind the body |
 | Victory | Two fist pumps into a confetti burst |
 
-**Re-drawn pack animations** — these replaced frames that were genuinely
-broken. Yellow's fall frames were 161 px wide with the throwing arm sliced off
+**Re-drawn pack animations** (132 frames) — these replaced frames that were
+genuinely broken. Yellow's fall frames were 161 px wide with the throwing arm sliced off
 at the canvas edge; Green's hang frames dangled 211 px below the ceiling (2.3×
 everyone else's); Blue's `lay01` was cut on *both* sides; Orange's wall-climb
 legs sank up to 19 px under the anchor, so the feet were chopped off at the
@@ -163,6 +167,8 @@ bottom of the screen. All of them are regenerated inside their margins:
 
 **Reactive**: CursorSlash still leaps at your cursor when it is within 300 px
 (its leap no longer throws the sword off the top of the frame).
+
+![Everything, all four characters](docs/action-grid.png)
 
 ### Balancing
 

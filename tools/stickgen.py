@@ -68,9 +68,6 @@ def new_canvas(size=None):
         size = (size, size)
     return Image.new("RGBA", size or (W, H), (0, 0, 0, 0))
 
-def finish(im):
-    return im
-
 def _i(v):
     """Round a coordinate.  Points (tuples) are shifted by POSE_OFF so every
     drawing helper can keep working in plain pose coordinates."""
@@ -910,10 +907,8 @@ ANIMS["music"] = [
     F(EL=(68, 64), HL=(82, 58), ER=(62, 76), HR=(58, 88), fx=[("guitar",), ("notes", 1)]),
 ]
 
-COMMON = ["wave", "cheer", "fight_stance", "fight_punch", "fight_kick", "fight_block",
-          "sword", "mine", "sleep", "hurt", "cursorslash", "glitch",
-          "flip", "snack", "slide", "pushup", "sneeze", "plane"]
-SIG = {"Orange": ["draw"], "Yellow": ["tinker"], "Blue": ["potion"], "Green": ["music"]}
+# (which animation belongs to which action is declared in tools/ava_common.py;
+#  the lists above are only the pose data)
 
 # ---------------------------------------------------------------- fx render
 def render_fx(d, fxlist, joints):
