@@ -172,13 +172,15 @@ def run_desktop(args, chars):
     # One runner at a time, however it was started (systemd, Hyprland, by hand).
     lock = QLockFile(os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"),
                                   "ava-runner.lock"))
-    lock.setStaleLockTime(0)
     if not lock.tryLock(100):
         print("ava-runner: already running", file=sys.stderr)
-        return 0
+        return 75                       # EX_TEMPFAIL: systemd does not restart on it
 
     geo = QGuiApplication.primaryScreen().availableGeometry()
+    # Qt positions are global, and the primary screen need not start at x=0.
+    # Mascot coordinates are local to that screen; add the offset back when placing.
     floor_y = geo.bottom() - args.floor_margin
+    screen_left = geo.left()
     screen_w = geo.width()
 
     # Decode every frame once.  Frames are QImages; the Qt paint path only
@@ -239,7 +241,7 @@ def run_desktop(args, chars):
 
     def place(m, sprite):
         ax, ay = m.anchor_on_window()
-        sprite.move(int(m.x - ax), int(floor_y - ay))
+        sprite.move(int(screen_left + m.x - ax), int(floor_y - ay))
 
     def draw(m, sprite):
         pix, mask = frame_for(m.ch, m.pose, m.look_right)

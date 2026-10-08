@@ -11,7 +11,7 @@ Canvas 160x160, feet anchored at (80,144).  Drawn at NATIVE resolution with
 hard pixel edges to match the hand-drawn originals (no supersample blur).
 Body color varies per character; props keep fixed colors.
 """
-import glob, math, os, sys
+import glob, math, os, re, sys
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -1163,7 +1163,7 @@ def managed_prefixes():
         if a.get("regen"):
             pre.add(a["prefix"])
             for f in a.get("files", []):
-                pre.add(f.rstrip("0123456789.png"))
+                pre.add(re.sub(r"\d*\.png$", "", f))
     return {p for p in pre if p}
 
 def stale_files(char):

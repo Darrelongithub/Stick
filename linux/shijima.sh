@@ -85,8 +85,15 @@ first_existing_mascot_dir() {
 build() {
   command -v python3 >/dev/null || die "python3 is required"
   local chars="Blue Orange Yellow Green" char src dest
+  [ -n "$OUT" ] && [ "$OUT" != "/" ] || die "refusing an empty or root build folder"
+  # --out and SHIJIMA_BUILD_DIR can point anywhere, so only clear a folder that
+  # is empty or that a previous build marked as its own.
+  if [ -d "$OUT" ] && [ -n "$(ls -A "$OUT" 2>/dev/null)" ] && [ ! -f "$OUT/.ava-shijima-build" ]; then
+    die "refusing to clear $OUT: it is not a previous build folder. Pick an empty folder with --out."
+  fi
   rm -rf "$OUT"
   mkdir -p "$OUT" || die "cannot create $OUT"
+  : > "$OUT/.ava-shijima-build"
   for char in $chars; do
     src="$REPO/AVA Shimejis/$char"
     [ -d "$src" ] || die "missing image set $src"
@@ -425,6 +432,10 @@ EOF
 }
 # ---------------------------------------------------------------- check
 check() {
+  # unpredictable names: a fixed /tmp path could be a symlink planted by someone else
+  CHECK_JSON="$(mktemp)" || die "cannot create a temp file"
+  CLIENTS_JSON="$(mktemp)" || die "cannot create a temp file"
+  trap 'rm -f "$CHECK_JSON" "$CLIENTS_JSON"' EXIT
   local dir; dir="$(first_existing_mascot_dir || true)"
   note "Shijima-Qt mascots folder : ${dir:-(not found yet - has Shijima-Qt ever run?)}"
   note "build output              : $OUT $([ -d "$OUT" ] && echo "(present)" || echo "(not built)")"
@@ -439,9 +450,9 @@ check() {
     ls -d "$dir"/*.mascot 2>/dev/null | sed 's/^/      /' || true
   fi
   if command -v curl >/dev/null 2>&1; then
-    if curl -s -m 2 "http://127.0.0.1:32456/shijima/api/v1/loadedMascots" >/tmp/.ava-check.json 2>/dev/null && [ -s /tmp/.ava-check.json ]; then
+    if curl -s -m 2 "http://127.0.0.1:32456/shijima/api/v1/loadedMascots" >"$CHECK_JSON" 2>/dev/null && [ -s "$CHECK_JSON" ]; then
       note "Shijima-Qt is up; mascots it knows about:"
-      python3 - /tmp/.ava-check.json <<'PY'
+      python3 - "$CHECK_JSON" <<'PY'
 import json, sys
 try:
     data = json.load(open(sys.argv[1]))
@@ -451,10 +462,10 @@ except Exception as exc:
 for m in data.get("loaded_mascots", []):
     print("      id=%s name=%r" % (m.get("id"), m.get("name")))
 PY
-      rm -f /tmp/.ava-check.json
+      rm -f "$CHECK_JSON"
     else
       note "API                       : no response (Shijima-Qt is not running)"
-      rm -f /tmp/.ava-check.json
+      rm -f "$CHECK_JSON"
     fi
   fi
   note "hyprland config style     : $(hypr_flavour)"
@@ -466,8 +477,8 @@ PY
                                     || { [ -f "$RULES_LUA" ] && echo "$RULES_LUA" || echo 'not written'; })"
   if hypr_present && command -v hyprctl >/dev/null 2>&1; then
     note "windows Hyprland can see:"
-    hyprctl clients -j 2>/dev/null > /tmp/.ava-clients.json
-    python3 - /tmp/.ava-clients.json <<'PY'
+    hyprctl clients -j 2>/dev/null > "$CLIENTS_JSON"
+    python3 - "$CLIENTS_JSON" <<'PY'
 import json, sys
 try:
     windows = json.load(open(sys.argv[1]))
@@ -486,7 +497,7 @@ for w in windows:
 if not found:
     print("      (no shijima windows right now - start it first)")
 PY
-    rm -f /tmp/.ava-clients.json
+    rm -f "$CLIENTS_JSON"
   fi
   echo
   note "Spawn one by hand (Shijima-Qt must be running):"

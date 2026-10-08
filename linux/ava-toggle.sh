@@ -28,7 +28,7 @@ command -v pgrep >/dev/null && command -v pkill >/dev/null || die \
   "pgrep/pkill not found (install procps) - cannot tell whether the Shimejis are already running, so refusing to start more"
 ere_escape() { printf '%s' "$1" | sed -e 's/[][\^$.|?*+(){}\\]/\\&/g'; }
 JAR_RE="$(ere_escape "$JAR")"
-PATTERN="(^|/)java[[:space:]].*-jar[[:space:]]+${JAR_RE}([[:space:]]|\$)"
+PATTERN="(^|/)java[[:space:]].*-jar[[:space:]]+${JAR_RE}([[:space:]]|$)"
 
 if PIDS="$(pgrep -f -- "$PATTERN" 2>/dev/null)" && [ -n "$PIDS" ]; then
   COUNT="$(printf '%s\n' "$PIDS" | wc -l | tr -d ' ')"

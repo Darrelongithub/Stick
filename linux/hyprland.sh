@@ -433,7 +433,8 @@ if [ -f "$HOME/.config/autostart/ava-shimeji.desktop" ]; then
   if [ "$MODE" = "dry" ]; then
     note "would neutralise ~/.config/autostart/ava-shimeji.desktop (Hyprland ignores it)"
   else
-    pkill -f 'ava-toggle.sh' >/dev/null 2>&1 || true
+    # only a shell running the toggle script - not an editor that has it open
+    pkill -f '^(/[^ ]*/)?(ba|da|z)?sh .*ava-toggle[.]sh' >/dev/null 2>&1 || true
     if ! grep -q '^X-GNOME-Autostart-enabled=false' "$HOME/.config/autostart/ava-shimeji.desktop" 2>/dev/null; then
       sed -i 's/^X-GNOME-Autostart-enabled=.*/X-GNOME-Autostart-enabled=false/' \
         "$HOME/.config/autostart/ava-shimeji.desktop" 2>/dev/null || true

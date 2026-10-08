@@ -32,9 +32,11 @@ Description=AvA Shimejis desktop runner (the four characters)
 StartLimitIntervalSec=0
 
 [Service]
-ExecStart=$PY $REPO/runner/ava_runner.py
+ExecStart="$PY" "$REPO/runner/ava_runner.py"
 Restart=always
 RestartSec=3
+# 75 = already running (another copy holds the lock): do not loop on it
+RestartPreventExitStatus=75
 
 [Install]
 WantedBy=default.target
