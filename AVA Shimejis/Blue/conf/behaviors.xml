@@ -87,7 +87,6 @@
 			<Behavior Name="WalkRightAndSit" Frequency="100" Hidden="true" />
 			<Behavior Name="RunAndGrabBottomLeftWall" Frequency="100" />
 			<Behavior Name="RunAndGrabBottomRightWall" Frequency="100" />
-			<Behavior Name="PullUpShimeji" Frequency="0" Condition="#{mascot.totalCount &lt; 50}" />
 		</Condition>
 		
 		<!-- On Work Area Facing the Wall -->

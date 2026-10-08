@@ -63,17 +63,34 @@ P = {   # fixed prop palette (same for every character)
 }
 
 # ---------------------------------------------------------------- helpers (1x, hard edges)
+# Anti-aliasing: every drawing primitive is rendered on a canvas SS times the
+# pose size and box-filtered back down before it is composited.  Drawing 1x
+# with ImageDraw gives hard stair-stepped edges, which is what made the new
+# frames look jagged next to the anti-aliased stock art.  SS=1 gives the old
+# hard-edged output (useful as a geometry check).
+SS = int(os.environ.get("AVA_SS", "4"))
+
 def new_canvas(size=None):
     if isinstance(size, int):
         size = (size, size)
     return Image.new("RGBA", size or (W, H), (0, 0, 0, 0))
 
+def draw_canvas():
+    """Supersampled drawing canvas (SS x the pose size)."""
+    return Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
+
+def flatten(im):
+    """Box-filter a supersampled canvas back to 1x (anti-aliased edges)."""
+    if SS == 1:
+        return im
+    return im.resize((im.width // SS, im.height // SS), Image.BOX)
+
 def _i(v):
     """Round a coordinate.  Points (tuples) are shifted by POSE_OFF so every
     drawing helper can keep working in plain pose coordinates."""
     if isinstance(v, (tuple, list)):
-        return tuple(int(round(c)) + POSE_OFF for c in v)
-    return int(round(v))
+        return tuple(int(round((c + POSE_OFF) * SS)) for c in v)
+    return int(round(v * SS))
 
 def limb(d, pts, w, color):
     pts = [_i(p) for p in pts]
@@ -90,7 +107,7 @@ def poly(d, pts, color, alpha=255, outline=None):
     pts = [_i(p) for p in pts]
     d.polygon(pts, fill=color + (alpha,))
     if outline:
-        d.line(pts + [pts[0]], fill=outline + (255,), width=1)
+        d.line(pts + [pts[0]], fill=outline + (255,), width=_i(1))
 
 def seg(d, a, b, w, color, alpha=255):
     d.line([_i(a), _i(b)], fill=color + (alpha,), width=max(1, _i(w)))
@@ -161,9 +178,9 @@ def draw_figure(d, color, dy=0, dx=0, **j):
 
 def figure_layer(color, dy=0, dx=0, **j):
     "figure on its own layer (for rotation fx)"
-    im = new_canvas()
+    im = draw_canvas()
     draw_figure(ImageDraw.Draw(im), color, dy=dy, dx=dx, **j)
-    return im
+    return flatten(im)
 
 # ---------------------------------------------------------------- props
 def sword(d, hand, angle_deg):
@@ -272,7 +289,7 @@ def rings(d, center, phase, n=2):
     for i in range(n):
         r = 7 + 6 * ((phase + i) % 3)
         d.ellipse([_i((x - r, y - r * 0.45)), _i((x + r, y + r * 0.45))],
-                  outline=P["glass"] + (170 - 30 * i,), width=1)
+                  outline=P["glass"] + (170 - 30 * i,), width=_i(1))
 
 def phone_prop(d, pos, tap=False, glow=True):
     """Phone held in one hand: body, screen, and an optional tap spark."""
@@ -953,7 +970,7 @@ def render_fx(d, fxlist, joints):
                 poly(d, pts, P["spark"], outline=P["ink"])
             else:
                 n = max(2, int(len(pts) * prog))
-                d.line([_i(p) for p in pts[:n]], fill=(255, 240, 170, 255), width=2)
+                d.line([_i(p) for p in pts[:n]], fill=(255, 240, 170, 255), width=_i(2))
         elif k == "sparkles":
             for s in fx[1]:
                 sparkle(d, s, fx[2])
@@ -1088,7 +1105,7 @@ def render_frame(color_rgb, anim, frame_idx):
         S = (BIG - W) // 2
         big = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
         big.alpha_composite(flat, (S, S))
-        spun = big.rotate(angle, resample=Image.NEAREST,
+        spun = big.rotate(angle, resample=Image.BICUBIC,
                           center=(S + cx + POSE_OFF, S + cy + POSE_OFF))
         box = spun.getbbox() or (0, 0, 1, 1)
         mode, param = place
@@ -1107,11 +1124,13 @@ def render_frame(color_rgb, anim, frame_idx):
             ty = (H - 1) - box[3]
         im = new_canvas()
         im.alpha_composite(spun, (int(round(tx)), int(round(ty))))
-        render_fx(ImageDraw.Draw(im), fx, dict(STAND))
+        fx_layer = draw_canvas()
+        render_fx(ImageDraw.Draw(fx_layer), fx, dict(STAND))
+        im.alpha_composite(flatten(fx_layer))
         return pad_frame(im)
     fr.pop("cant_rotate", None)
     dy = fr.pop("dy", 0); dx = fr.pop("dx", 0)
-    im = new_canvas()
+    im = draw_canvas()
     d = ImageDraw.Draw(im)
     pre = [f for f in fx if f[0] in ("guitar", "balls")]
     post = [f for f in fx if f[0] not in ("guitar", "balls")]
@@ -1122,7 +1141,7 @@ def render_frame(color_rgb, anim, frame_idx):
         mv = lambda p: (p[0] + dx, p[1] + dy)
         limb(d, [mv(g["SH"]), mv(g["EL"]), mv(g["HL"])], LIMB_W, color_rgb)
     render_fx(d, post, joints)
-    out = pad_frame(im)
+    out = pad_frame(flatten(im))
     if anim == "glitch":
         out = glitch_post(out, 11 + frame_idx * 5)
     return out

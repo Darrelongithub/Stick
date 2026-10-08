@@ -27,7 +27,6 @@ Advisory report (never fails): how often each character will do what, so a
 "the animations feel repetitive" complaint can be answered with numbers.
 """
 import os
-import re
 import sys
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict

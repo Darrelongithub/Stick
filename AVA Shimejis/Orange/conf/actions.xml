@@ -364,13 +364,10 @@
 		<!-- AVA:generated:actions:start -->
 		<Action Name="Wave" Type="Animate" BorderType="Floor">
 			<Animation>
-				<Pose Image="/wave01.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
+				<Pose Image="/wave01.png" ImageAnchor="80,144" Velocity="0,0" Duration="11" />
 				<Pose Image="/wave02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/wave03.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/wave04.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/wave03.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/wave04.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/wave01.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
+				<Pose Image="/wave03.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
+				<Pose Image="/wave04.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
 			</Animation>
 		</Action>
 		<Action Name="Cheer" Type="Animate" BorderType="Floor">
@@ -385,36 +382,29 @@
 		</Action>
 		<Action Name="FightCombo" Type="Animate" BorderType="Floor">
 			<Animation>
-				<Pose Image="/fight_stance01.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/fight_stance02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/fight_stance01.png" ImageAnchor="80,144" Velocity="0,0" Duration="7" />
+				<Pose Image="/fight_stance02.png" ImageAnchor="80,144" Velocity="0,0" Duration="8" />
 				<Pose Image="/fight_punch01.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
 				<Pose Image="/fight_punch02.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/fight_stance01.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
 				<Pose Image="/fight_kick01.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
 				<Pose Image="/fight_block01.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/fight_stance02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
 			</Animation>
 		</Action>
 		<Action Name="SwordPractice" Type="Animate" BorderType="Floor">
 			<Animation>
 				<Pose Image="/sword01.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 				<Pose Image="/sword02.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/sword03.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/sword04.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/sword03.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/sword04.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
+				<Pose Image="/sword03.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/sword04.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
 				<Pose Image="/sword05.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
 			</Animation>
 		</Action>
 		<Action Name="Mine" Type="Animate" BorderType="Floor">
 			<Animation>
-				<Pose Image="/mine01.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/mine02.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/mine03.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/mine01.png" ImageAnchor="80,144" Velocity="0,0" Duration="7" />
+				<Pose Image="/mine02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/mine03.png" ImageAnchor="80,144" Velocity="0,0" Duration="10" />
 				<Pose Image="/mine04.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/mine01.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/mine02.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/mine03.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
 			</Animation>
 		</Action>
 		<Action Name="Sleep" Type="Animate" BorderType="Floor">
@@ -429,27 +419,23 @@
 		</Action>
 		<Action Name="Hurt" Type="Animate" BorderType="Floor">
 			<Animation>
-				<Pose Image="/hurt01.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
+				<Pose Image="/hurt01.png" ImageAnchor="80,144" Velocity="0,0" Duration="11" />
 				<Pose Image="/hurt02.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
-				<Pose Image="/hurt01.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 				<Pose Image="/hurt03.png" ImageAnchor="80,144" Velocity="0,0" Duration="10" />
 			</Animation>
 		</Action>
 		<Action Name="CursorSlash" Type="Animate" BorderType="Floor">
 			<Animation>
 				<Pose Image="/cursorslash01.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/cursorslash02.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
-				<Pose Image="/cursorslash02.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
+				<Pose Image="/cursorslash02.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 				<Pose Image="/cursorslash03.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 			</Animation>
 		</Action>
 		<Action Name="GlitchOut" Type="Animate" BorderType="Floor">
 			<Animation>
-				<Pose Image="/glitch01.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
+				<Pose Image="/glitch01.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
 				<Pose Image="/glitch02.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/glitch03.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/glitch01.png" ImageAnchor="80,144" Velocity="0,0" Duration="2" />
-				<Pose Image="/glitch03.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/glitch03.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
 			</Animation>
 		</Action>
 		<Action Name="Backflip" Type="Animate" BorderType="Floor">
@@ -466,8 +452,7 @@
 			<Animation>
 				<Pose Image="/snack01.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 				<Pose Image="/snack02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/snack03.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
-				<Pose Image="/snack03.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/snack03.png" ImageAnchor="80,144" Velocity="0,0" Duration="9" />
 				<Pose Image="/snack04.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 			</Animation>
 		</Action>
@@ -481,18 +466,16 @@
 		</Action>
 		<Action Name="PushUps" Type="Animate" BorderType="Floor">
 			<Animation>
-				<Pose Image="/pushup01.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
+				<Pose Image="/pushup01.png" ImageAnchor="80,144" Velocity="0,0" Duration="9" />
 				<Pose Image="/pushup02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
 				<Pose Image="/pushup03.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
 				<Pose Image="/pushup04.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/pushup01.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 			</Animation>
 		</Action>
 		<Action Name="Sneeze" Type="Animate" BorderType="Floor">
 			<Animation>
 				<Pose Image="/sneeze01.png" ImageAnchor="80,144" Velocity="0,0" Duration="6" />
-				<Pose Image="/sneeze02.png" ImageAnchor="80,144" Velocity="0,0" Duration="4" />
-				<Pose Image="/sneeze02.png" ImageAnchor="80,144" Velocity="0,0" Duration="3" />
+				<Pose Image="/sneeze02.png" ImageAnchor="80,144" Velocity="0,0" Duration="7" />
 				<Pose Image="/sneeze03.png" ImageAnchor="80,144" Velocity="0,0" Duration="5" />
 			</Animation>
 		</Action>
@@ -1023,52 +1006,6 @@
 			<ActionReference Name="Look" LookRight="${mascot.anchor.x &lt; mascot.environment.cursor.x}" />
 			<ActionReference Name="SitAndLookAtMouse" Duration="${10+Math.random()*10}" />
 			<ActionReference Name="Look" LookRight="${mascot.anchor.x &lt; mascot.environment.cursor.x}" />
-		</Action>
-
-		<Action Name="PullUpShimeji1" Type="Embedded" Class="com.group_finity.mascot.action.Breed"
-			BornX="-32" BornY="96" BornBehavior="PullUp">
-			<Animation>
-				<Pose Image="/stand01.png" ImageAnchor="64,128" Velocity="0,0" Duration="16" />
-				<Pose Image="/pull_up01.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up02.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up03.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up04.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up05.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up06.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up07.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up08.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up09.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up10.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up11.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up12.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up13.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up14.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up15.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up16.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up17.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up18.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up19.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up20.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up21.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up22.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up23.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up24.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up25.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up26.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up27.png" ImageAnchor="64,128" Velocity="0,0" Duration="1" />
-				<Pose Image="/pull_up28.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up29.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up30.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up31.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up32.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up33.png" ImageAnchor="64,128" Velocity="0,0" Duration="2" />
-				<Pose Image="/pull_up34.png" ImageAnchor="64,128" Velocity="0,0" Duration="16" />
-			</Animation>
-		</Action>
-
-		<Action Name="PullUpShimeji" Type="Sequence">
-			<ActionReference Name="PullUpShimeji1" />
-			<ActionReference Name="Stand" Duration="40" />
 		</Action>
 
 		<Action Name="PullUp" Type="Sequence">

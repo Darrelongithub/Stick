@@ -248,31 +248,60 @@ write_session_helper() {
   local launcher="$1"
   SESSION_HELPER="$SESSION_HELPER_PATH"
   mkdir -p "$DATA_DIR" || die "cannot create $DATA_DIR"
-  cat > "$SESSION_HELPER" <<EOF || die "cannot write $SESSION_HELPER"
+  # Quoted heredoc: nothing below is expanded by the shell at write time.
+  # @LAUNCHER@ is filled in with sed afterwards.
+  cat > "$SESSION_HELPER" <<'EOF' || die "cannot write $SESSION_HELPER"
 #!/usr/bin/env sh
 # Written by linux/shijima.sh - start Shijima-Qt with the Hyprland session and
-# put the four characters on screen.  Hyprland never reads ~/.config/autostart,
-# so this is what makes Shijima-Qt come back after a reboot.
+# put the four characters on screen, once each.
+#
+# Safe to run any number of times: a lock stops overlapping runs, and it only
+# spawns the characters that are not already on screen (GET /mascots), so a
+# second start can never add a second copy.
 set -u
-if ! pgrep -f 'shijima-qt|Shijima-Qt' >/dev/null 2>&1; then
-  nohup $launcher >/dev/null 2>&1 &
+LOCK="${XDG_RUNTIME_DIR:-/tmp}/ava-shijima-session.lock"
+exec 9>"$LOCK" 2>/dev/null || true
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || exit 0
 fi
-sleep 8
-for m in Blue Orange Yellow Green; do
-  python3 - "\$m" <<'PY'
-import json, sys, urllib.request
-name = sys.argv[1]
-req = urllib.request.Request(
-    "http://127.0.0.1:32456/shijima/api/v1/mascots",
-    data=json.dumps({"name": name}).encode(),
-    headers={"Content-Type": "application/json"}, method="POST")
-try:
-    urllib.request.urlopen(req, timeout=5)
-except Exception as exc:                 # app not up yet / name not loaded
-    sys.stderr.write(f"ava-shijima: could not spawn {name}: {exc}\n")
+if ! pgrep -x shijima-qt >/dev/null 2>&1 && ! pgrep -f 'com.pixelomer.ShijimaQt' >/dev/null 2>&1; then
+  nohup @LAUNCHER@ >/dev/null 2>&1 &
+fi
+exec python3 - <<'PY'
+import json, sys, time, urllib.request
+
+API = "http://127.0.0.1:32456/shijima/api/v1"
+WANT = ["Blue", "Orange", "Yellow", "Green"]
+
+def call(method, path, body=None):
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(API + path, data=data, method=method,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=4) as resp:
+        return json.loads(resp.read().decode() or "{}")
+
+# The app takes a few seconds to open its API after launch; wait for it.
+deadline = time.time() + 90
+while True:
+    try:
+        on_screen = [m.get("name") for m in call("GET", "/mascots").get("mascots", [])]
+        break
+    except Exception as exc:
+        if time.time() > deadline:
+            sys.stderr.write("ava-shijima: Shijima-Qt API never answered: %s\n" % exc)
+            sys.exit(1)
+        time.sleep(2)
+
+for name in WANT:
+    if name in on_screen:
+        continue                        # already there - do not add a second one
+    try:
+        call("POST", "/mascots", {"name": name})
+    except Exception as exc:
+        sys.stderr.write("ava-shijima: could not spawn %s: %s\n" % (name, exc))
 PY
-done
 EOF
+  sed -i "s|@LAUNCHER@|$launcher|" "$SESSION_HELPER" || die "cannot fill in the launcher"
   chmod +x "$SESSION_HELPER" || die "cannot make $SESSION_HELPER executable"
   note "wrote $SESSION_HELPER"
 }

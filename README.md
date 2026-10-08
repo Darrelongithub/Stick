@@ -269,6 +269,25 @@ If you ever meet XMLs patched by the very first buggy patcher,
 | `HeadlessException` on startup | Headless JRE (e.g. Fedora's `java-NN-openjdk-headless`). Install a full JRE: Fedora `sudo dnf install java-<version>-openjdk` (not `-headless`), Debian/Ubuntu `default-jre`. |
 | Black boxes instead of sprites (GNOME/Wayland) | Java runs through XWayland there; see the Wayland note above. |
 
+## Run it 24/7 without Shimeji or Shijima-Qt (`runner/`)
+
+`runner/ava_runner.py` drives the four characters from the pack in **one small
+Python/Qt process**: one timer for all four, frames decoded once, click masks
+rebuilt only when a frame changes. It is the option to pick if the Java and
+Shijima-Qt versions feel laggy.
+
+```bash
+python3 runner/ava_runner.py --simulate 900   # schedule 36 s, no window needed
+python3 runner/ava_runner.py                  # run on the desktop (needs PySide6)
+PYTHON=~/venvs/ava/bin/python ./runner/install-service.sh   # start at login, restart if it dies
+./runner/install-service.sh --uninstall
+```
+
+The desktop part needs PySide6 and the system OpenGL/xkb libraries (the script
+prints the package names if they are missing). Status: the scheduler is tested
+headless; the on-screen part has **not yet been run on a real Hyprland
+session**, so treat it as the next thing to try, not a finished product.
+
 ## Layout
 
 ```

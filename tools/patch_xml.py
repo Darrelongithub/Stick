@@ -113,6 +113,7 @@ def strip_elements(raw, tag, names):
 def fix_dance(raw):
     """Stock Dance behaviour: drop an ActionReference Shimeji-ee cannot use and
     any duplicated Dance behaviours, keeping exactly one Frequency=10 entry."""
+    eol = eol_of(raw)
     raw = re.sub(r'[ \t]*<ActionReference Name="Dancing"\s*/>\r?\n?', "", raw)
     pat = re.compile(r'[ \t]*<Behavior Name="Dance"[^>]*?/>\r?\n?')
     first = True
@@ -127,14 +128,20 @@ def fix_dance(raw):
     return pat.sub(keep, raw)
 
 
+# Everything that can make a copy of a character.  Shimeji-ee breeds through an
+# Embedded `Breed` action (PullUpShimeji1) reached only from the PullUpShimeji
+# behaviour.  Pinning that behaviour's frequency to 0 was not enough: libshijima
+# still picks a zero-weight entry when it is the only candidate left, so the
+# behaviour, every reference to it and the Breed action itself are removed.
+BREED_ACTIONS = {"PullUpShimeji", "PullUpShimeji1", "PullUpShimeji2"}
+
+
 def disable_breeding(raw):
-    """Pin PullUpShimeji (and anything else on the disabled list) to 0."""
     for name in SPEC.DISABLED_BEHAVIORS:
-        raw = re.sub(r'(<Behavior Name="' + re.escape(name) + r'"[^>]*?Frequency=")\d+(")',
-                     r'\g<1>0\g<2>', raw)
-        # <NextBehavior> references to it would still be picked with weight 0
-        raw = re.sub(r'[ \t]*<BehaviorReference Name="' + re.escape(name)
-                     + r'"[^>]*/>\r?\n?', "", raw)
+        raw = strip_elements(raw, "Behavior", {name})
+        raw = strip_elements(raw, "BehaviorReference", {name})
+    raw = strip_elements(raw, "Action", BREED_ACTIONS)
+    raw = strip_elements(raw, "ActionReference", BREED_ACTIONS)
     return raw
 
 
@@ -144,13 +151,37 @@ def pose_line(eol, image, anchor, velocity, duration):
             f'Velocity="{velocity}" Duration="{duration}" />')
 
 
+# Actions whose frames are meant to go back and forth (the sleep breath).
+REVISIT_BY_DESIGN = {"Sleep"}
+
+
+def single_pass(name, poses):
+    """Stop an action re-playing its own frames.
+
+    Several generated actions bounce between the same two or three frames
+    (Wave: 1,2,3,4,3,4,1), which reads as the same move repeated several
+    times inside one action.  A revisit is folded into the frame's first
+    visit - its ticks are added to that visit - so the action keeps its total
+    length but each frame appears once.  Moving actions are left alone:
+    folding would change how far the character travels.
+    """
+    if name in REVISIT_BY_DESIGN or any(vel != "0,0" for _, _, vel, _ in poses):
+        return list(poses)
+    out, first = [], {}
+    for img, anc, vel, dur in poses:
+        if img in first:
+            i = first[img]
+            o_img, o_anc, o_vel, o_dur = out[i]
+            out[i] = (o_img, o_anc, o_vel, o_dur + dur)
+        else:
+            first[img] = len(out)
+            out.append((img, anc, vel, dur))
+    return out
+
+
 def action_xml(name, eol):
     """The <Action> element for a generated action."""
     spec = SPEC.ACTIONS[name]
-    if spec.get("family") == "wall":
-        anchor = SPEC.anchor(name)
-    else:
-        anchor = SPEC.anchor(name)
     attrs = [f'Name="{name}"', f'Type="{spec["type"]}"']
     if spec.get("border"):
         attrs.append(f'BorderType="{spec["border"]}"')
@@ -160,7 +191,7 @@ def action_xml(name, eol):
         attrs.append(f'{k}="{v}"')
     head = "\t\t<Action " + " ".join(attrs) + ">"
     body = [pose_line(eol, img, anc, vel, dur)
-            for img, anc, vel, dur in SPEC.poses(name)]
+            for img, anc, vel, dur in single_pass(name, SPEC.poses(name))]
     lines = [head, "\t\t\t<Animation>"] + body + ["\t\t\t</Animation>", "\t\t</Action>"]
     if spec.get("two_animations"):
         # ClimbWall is direction-dependent upstream: emit the same animation
@@ -210,6 +241,7 @@ def behavior_names(char):
 def patch_actions(path, char):
     raw = read(path)
     eol = eol_of(raw)
+    raw = disable_breeding(raw)
     raw = strip_block(raw, A_START, A_END)
     # sequences are ours too - strip them, or re-running duplicates them
     raw = strip_elements(raw, "Action", REMOVABLE_ACTIONS)
