@@ -1,273 +1,297 @@
 #!/usr/bin/env python3
-"""Append new AvA actions + behaviors to each character's Shimeji-ee XML.
+"""Wire the AvA pack into each character's Shimeji-ee conf XML.
 
-Per-name idempotent: only inserts actions/behaviors not already present.
-Preserves UTF-8 BOM and CRLF line endings exactly. Validates XML after
-patching.
+Everything (frame counts, anchors, durations, behaviours, frequencies) comes
+from tools/ava_common.py, so the XML can never drift from the generator again.
+The script is *idempotent by construction*: it deletes everything it owns
+(between its own marker comments, plus any older unmarked copy of the same
+elements) and writes it back fresh.  Running it twice changes nothing.
 
-Shimeji-ee rules this script must respect:
+It also does two repairs that matter for people who have the pack installed:
 
-* Each actions.xml has TWO <ActionList> sections; generated actions are
-  inserted before the FIRST </ActionList> ONLY (str.replace with count=1).
-  Inserting before every close duplicated every action and Shimeji-ee
-  aborted with "duplicate action found: wave".
-* A Behavior resolves its action by the Behavior's OWN Name - an
-  <ActionReference> child is not valid inside <Behavior>. So generated
-  behaviors are emitted as <Behavior Name="<action name>" ... /> with the
-  action's name, no child elements.
-* "Is this already present?" must be asked per ELEMENT. A bare
-  `Name="Wave" in raw` substring test is also satisfied by
-  <ActionReference Name="Wave"/> inside a Sequence action, which silently
-  suppressed inserting the real <Action Name="Wave"> - Shimeji-ee then
-  failed to load with "no corresponding action Wave".
+* switches ``PullUpShimeji`` off.  That behaviour is Shimeji-ee's breeding
+  action: with the stock ``Frequency="50"`` every character clones itself while
+  walking, and the only limit is ``totalCount < 50``.  The pack is a four-man
+  crew, so the behaviour is pinned to Frequency="0" and the app-level
+  ``Breeding`` flag is turned off as well.
+* removes the stock ``<ActionReference Name="Dancing"/>`` inside ``<Behavior
+  Name="Dance">`` and the duplicated Dance behaviours, which Shimeji-ee cannot
+  resolve (it looks a behaviour's action up by the behaviour's own Name and
+  logs "no corresponding action Dancing").
+
+Usage:
+    python3 tools/patch_xml.py            # patch every character
+    python3 tools/patch_xml.py Blue       # just one
 """
-import os, re, sys, xml.etree.ElementTree as ET
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ava_common as SPEC
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CHARS = ["Blue", "Orange", "Yellow", "Green"]
 
-# An XML start tag (self-closing or not). Comments, PIs and CDATA never match:
-# they do not begin with a name character. Well-formed XML cannot contain a
-# raw ">" inside an attribute value (it must be &gt;), so [^>]* stays in-tag.
-START_TAG_RE = re.compile(r'<([A-Za-z_][\w:.-]*)\b([^>]*?)/?>', re.S)
+A_START = "\t\t<!-- AVA:generated:actions:start -->"
+A_END = "\t\t<!-- AVA:generated:actions:end -->"
+B_START = "\t\t<!-- AVA:generated:behaviors:start -->"
+B_END = "\t\t<!-- AVA:generated:behaviors:end -->"
 
-
-def attr_value(attrs, name):
-    """Value of attribute `name` inside a tag's attribute text, in any
-    position, double- or single-quoted. None when absent."""
-    m = re.search(r'(?:^|\s)' + re.escape(name) + r'\s*=\s*'
-                  r'("([^"]*)"|\'([^\']*)\')', attrs)
-    if not m:
-        return None
-    return m.group(2) if m.group(2) is not None else m.group(3)
+# Elements this script owns: anything a previous *unmarked* run of the tool
+# (or the original handwritten patch) left behind.
+REMOVABLE_ACTIONS = set(SPEC.ACTIONS) | set(SPEC.SEQUENCES)
+REMOVABLE_BEHAVIORS = set(SPEC.ACTIONS) | set(SPEC.SEQUENCES) | {"Dance", "Trip"}
 
 
-def element_present(raw, tag, name):
-    """True iff `<tag ... Name="name" ...>` exists as an ELEMENT in `raw`.
-    Attribute order is irrelevant; a differently named element (e.g.
-    <ActionReference Name="Wave"/>) never counts as <Action Name="Wave">."""
-    return any(m.group(1) == tag and attr_value(m.group(2), "Name") == name
-               for m in START_TAG_RE.finditer(raw))
+def read(path):
+    with open(path, "rb") as fh:
+        raw = fh.read().decode("utf-8")
+    return raw
 
 
-def element_start_re(tag, name):
-    """Compiled matcher for a `<tag ... Name="name"` opening, any attribute
-    order - used to locate an insertion anchor."""
-    return re.compile(r'<' + re.escape(tag) + r'\b[^>]*?\bName="'
-                      + re.escape(name) + r'"')
+def write(path, raw):
+    with open(path, "wb") as fh:
+        fh.write(raw.encode("utf-8"))
 
-def pose(img, dur, vx=0, vy=0, anchor="64,128"):
-    return (f'\t\t\t\t<Pose Image="/{img}" ImageAnchor="{anchor}" '
-            f'Velocity="{vx},{vy}" Duration="{dur}" />')
 
-def action(name, type_, border, poses):
-    lines = [f'\t\t<Action Name="{name}" Type="{type_}" BorderType="{border}">',
-             '\t\t\t<Animation>'] + [pose(*p) for p in poses] + \
-            ['\t\t\t</Animation>', '\t\t</Action>', '']
-    return (name, lines)
+def eol_of(raw):
+    return "\r\n" if "\r\n" in raw else "\n"
 
-def seq_action(name, refs):
+
+def insert_before_line(raw, needle, text, eol):
+    """Insert `text` on its own line(s) immediately before the line holding
+    `needle`.  Anchoring on the line start (instead of on the needle itself)
+    is what makes repeated patches byte-identical: the result no longer
+    depends on whatever indentation used to sit before the needle."""
+    idx = raw.index(needle)
+    line_start = raw.rfind("\n", 0, idx) + 1
+    return raw[:line_start] + text + eol + raw[line_start:]
+
+
+def esc(text):
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+# ---------------------------------------------------------------- removal
+def strip_block(raw, start, end):
+    """Drop a generated block together with the blank lines that held it, so
+    re-patching is byte-identical instead of growing a blank line per run."""
+    pat = re.compile(r"[ \t]*" + re.escape(start) + r".*?" + re.escape(end)
+                     + r"[ \t]*\r?\n", re.S)
+    return pat.sub("", raw)
+
+
+def strip_elements(raw, tag, names):
+    """Drop every `<tag ... Name="name" ...>` element for the given names.
+
+    Element-scoped, so `<ActionReference Name="Wave"/>` inside some sequence is
+    never touched.  Elements have no nested same-tag children in these files,
+    so "start tag .. first close tag" is exact here.
+    """
+    for name in sorted(names, key=len, reverse=True):
+        start_re = re.compile(
+            r'[ \t]*<' + tag + r'\b[^>]*?\bName="' + re.escape(name) + r'"[^>]*?/?>')
+        while True:
+            m = start_re.search(raw)
+            if not m:
+                break
+            tag_end = raw.find(">", m.start()) + 1
+            if raw[m.start():tag_end].rstrip().endswith("/>"):
+                end = tag_end
+            else:
+                close = raw.find("</" + tag + ">", tag_end)
+                if close == -1:
+                    break
+                end = close + len(tag) + 3
+            # swallow the newline(s) the element occupied
+            while end < len(raw) and raw[end] in "\r\n":
+                end += 1
+            raw = raw[:m.start()] + raw[end:]
+    return raw
+
+
+def fix_dance(raw):
+    """Stock Dance behaviour: drop an ActionReference Shimeji-ee cannot use and
+    any duplicated Dance behaviours, keeping exactly one Frequency=10 entry."""
+    eol = eol_of(raw)
+    raw = re.sub(r'[ \t]*<ActionReference Name="Dancing"\s*/>\r?\n?', "", raw)
+    pat = re.compile(r'[ \t]*<Behavior Name="Dance"[^>]*?/>\r?\n?')
+    first = True
+
+    def keep(m):
+        nonlocal first
+        if first:
+            first = False
+            return f'\t\t<Behavior Name="Dance" Frequency="10" />{eol}'
+        return ""
+
+    return pat.sub(keep, raw)
+
+
+# Everything that can make a copy of a character.  Shimeji-ee breeds through an
+# Embedded `Breed` action (PullUpShimeji1) reached only from the PullUpShimeji
+# behaviour.  Pinning that behaviour's frequency to 0 was not enough: libshijima
+# still picks a zero-weight entry when it is the only candidate left, so the
+# behaviour, every reference to it and the Breed action itself are removed.
+BREED_ACTIONS = {"PullUpShimeji", "PullUpShimeji1", "PullUpShimeji2"}
+
+
+def disable_breeding(raw):
+    for name in SPEC.DISABLED_BEHAVIORS:
+        raw = strip_elements(raw, "Behavior", {name})
+        raw = strip_elements(raw, "BehaviorReference", {name})
+    raw = strip_elements(raw, "Action", BREED_ACTIONS)
+    raw = strip_elements(raw, "ActionReference", BREED_ACTIONS)
+    return raw
+
+
+# ---------------------------------------------------------------- emitting
+def pose_line(eol, image, anchor, velocity, duration):
+    return (f'\t\t\t\t<Pose Image="/{image}" ImageAnchor="{anchor}" '
+            f'Velocity="{velocity}" Duration="{duration}" />')
+
+
+# Actions whose frames are meant to go back and forth (the sleep breath).
+REVISIT_BY_DESIGN = {"Sleep"}
+
+
+def single_pass(name, poses):
+    """Stop an action re-playing its own frames.
+
+    Several generated actions bounce between the same two or three frames
+    (Wave: 1,2,3,4,3,4,1), which reads as the same move repeated several
+    times inside one action.  A revisit is folded into the frame's first
+    visit - its ticks are added to that visit - so the action keeps its total
+    length but each frame appears once.  Moving actions are left alone:
+    folding would change how far the character travels.
+    """
+    if name in REVISIT_BY_DESIGN or any(vel != "0,0" for _, _, vel, _ in poses):
+        return list(poses)
+    out, first = [], {}
+    for img, anc, vel, dur in poses:
+        if img in first:
+            i = first[img]
+            o_img, o_anc, o_vel, o_dur = out[i]
+            out[i] = (o_img, o_anc, o_vel, o_dur + dur)
+        else:
+            first[img] = len(out)
+            out.append((img, anc, vel, dur))
+    return out
+
+
+def action_xml(name, eol):
+    """The <Action> element for a generated action."""
+    spec = SPEC.ACTIONS[name]
+    attrs = [f'Name="{name}"', f'Type="{spec["type"]}"']
+    if spec.get("border"):
+        attrs.append(f'BorderType="{spec["border"]}"')
+    if spec.get("loop"):
+        attrs.append(f'Loop="{spec["loop"]}"')
+    for k, v in (spec.get("embed") or {}).items():
+        attrs.append(f'{k}="{v}"')
+    head = "\t\t<Action " + " ".join(attrs) + ">"
+    body = [pose_line(eol, img, anc, vel, dur)
+            for img, anc, vel, dur in single_pass(name, SPEC.poses(name))]
+    lines = [head, "\t\t\t<Animation>"] + body + ["\t\t\t</Animation>", "\t\t</Action>"]
+    if spec.get("two_animations"):
+        # ClimbWall is direction-dependent upstream: emit the same animation
+        # twice with the stock conditions, so up- and down-climbing both work.
+        cond_up = '#{TargetY &lt; mascot.anchor.y}'
+        cond_dn = '#{TargetY &gt;= mascot.anchor.y}'
+        inner = "\n".join(body)
+        anims = [f"\t\t\t<Animation Condition=\"{cond_up}\">",
+                 inner, "\t\t\t</Animation>",
+                 f"\t\t\t<Animation Condition=\"{cond_dn}\">",
+                 inner, "\t\t\t</Animation>"]
+        lines = [head] + anims + ["\t\t</Action>"]
+    return eol.join(lines)
+
+
+def sequence_xml(name, eol):
+    refs = SPEC.SEQUENCES[name]
     lines = [f'\t\t<Action Name="{name}" Type="Sequence" Loop="false">']
-    for r in refs:
-        lines.append(f'\t\t\t<ActionReference Name="{r}" />')
-    return (name, lines + ['\t\t</Action>', ''])
+    lines += [f'\t\t\t<ActionReference Name="{r}" />' for r in refs]
+    lines.append("\t\t</Action>")
+    return eol.join(lines)
 
-def behavior(action_name, freq, cond=None):
-    # The Behavior's Name IS the action it runs (Shimeji-ee looks the action
-    # up by the Behavior's own Name; no ActionReference child allowed).
-    c = f' Condition="{cond}"' if cond else ''
-    return (action_name, [f'\t\t<Behavior Name="{action_name}" Frequency="{freq}"{c} />'])
 
-CURSOR_NEAR = ("${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 "
-               "&amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}")
+def behavior_xml(name, char, eol):
+    freq = SPEC.freq(name, char)
+    if name == SPEC.SIG_BEHAVIORS[char][0]:
+        freq = SPEC.freq(name, char) or SPEC.SIG_BEHAVIORS[char][1]
+    cond = SPEC.condition(name) or SPEC.gate(name)
+    cond_attr = f' Condition="{esc(cond)}"' if cond else ""
+    return f'\t\t<Behavior Name="{name}" Frequency="{freq}"{cond_attr} />'
 
-# ---------------- actions ----------------
-COMMON_ACTIONS = [
-    action("Wave", "Animate", "Floor", [
-        ("wave01.png", 6), ("wave02.png", 4), ("wave03.png", 3), ("wave04.png", 3),
-        ("wave03.png", 3), ("wave04.png", 3), ("wave01.png", 5)]),
-    action("Cheer", "Animate", "Floor", [
-        ("cheer01.png", 3), ("cheer02.png", 2), ("cheer03.png", 3),
-        ("cheer04.png", 3), ("cheer05.png", 3), ("cheer06.png", 5)]),
-    action("FightCombo", "Animate", "Floor", [
-        ("fight_stance01.png", 4), ("fight_stance02.png", 4), ("fight_punch01.png", 2),
-        ("fight_punch02.png", 2), ("fight_stance01.png", 3), ("fight_kick01.png", 4),
-        ("fight_block01.png", 4), ("fight_stance02.png", 4)]),
-    action("SwordPractice", "Animate", "Floor", [
-        ("sword01.png", 5), ("sword02.png", 3), ("sword03.png", 2),
-        ("sword04.png", 2), ("sword03.png", 2), ("sword04.png", 2), ("sword05.png", 5)]),
-    action("Mine", "Animate", "Floor", [
-        ("mine01.png", 4), ("mine02.png", 2), ("mine03.png", 4), ("mine04.png", 3),
-        ("mine01.png", 3), ("mine02.png", 2), ("mine03.png", 5)]),
-    action("Sleep", "Stay", "Floor", [
-        ("sleep01.png", 10), ("sleep02.png", 10), ("sleep03.png", 25)]),
-    action("Hurt", "Animate", "Floor", [
-        ("hurt01.png", 6), ("hurt02.png", 6), ("hurt01.png", 5), ("hurt03.png", 10)]),
-    action("CursorSlash", "Animate", "Floor", [
-        ("cursorslash01.png", 3), ("cursorslash02.png", 3), ("cursorslash02.png", 2),
-        ("cursorslash03.png", 5)]),
-    action("GlitchOut", "Animate", "Floor", [
-        ("glitch01.png", 2), ("glitch02.png", 2), ("glitch03.png", 2),
-        ("glitch01.png", 2), ("glitch03.png", 4)]),
-    seq_action("BattleRage", ["FightCombo", "SwordPractice", "CursorSlash"]),
-    seq_action("Bonk", ["Hurt", "Stand"]),
-    # --- batch 2 ---
-    action("Backflip", "Animate", "Floor", [
-        ("flip01.png", 3), ("flip02.png", 2), ("flip03.png", 2),
-        ("flip04.png", 2), ("flip05.png", 2), ("flip06.png", 4)]),
-    action("SnackTime", "Animate", "Floor", [
-        ("snack01.png", 5), ("snack02.png", 4), ("snack03.png", 5),
-        ("snack03.png", 4), ("snack04.png", 5)]),
-    action("PowerSlide", "Animate", "Floor", [
-        ("slide01.png", 3), ("slide02.png", 3), ("slide03.png", 4), ("slide04.png", 5)]),
-    action("PushUps", "Animate", "Floor", [
-        ("pushup01.png", 4), ("pushup02.png", 4), ("pushup01.png", 4),
-        ("pushup02.png", 4), ("pushup01.png", 5)]),
-    action("Sneeze", "Animate", "Floor", [
-        ("sneeze01.png", 6), ("sneeze02.png", 4), ("sneeze02.png", 3), ("sneeze03.png", 5)]),
-    action("PaperPlane", "Animate", "Floor", [
-        ("plane01.png", 5), ("plane02.png", 3), ("plane03.png", 5), ("plane04.png", 5)]),
-]
 
-SIG_ACTIONS = {
-    "Orange": [action("DrawAlive", "Animate", "Floor", [
-        ("draw01.png", 4), ("draw02.png", 4), ("draw03.png", 4),
-        ("draw04.png", 4), ("draw05.png", 5), ("draw06.png", 7)])],
-    "Yellow": [action("Tinker", "Animate", "Floor", [
-        ("tinker01.png", 4), ("tinker02.png", 4), ("tinker03.png", 3),
-        ("tinker02.png", 3), ("tinker04.png", 5)])],
-    "Blue": [action("BrewPotion", "Animate", "Floor", [
-        ("potion01.png", 5), ("potion02.png", 4), ("potion03.png", 4), ("potion04.png", 6)])],
-    "Green": [action("PlayGuitar", "Stay", "Floor", [
-        ("music01.png", 4), ("music02.png", 4), ("music03.png", 4), ("music04.png", 4)])],
-}
+def generated_names(char):
+    """Every action/behaviour this character gets, in emit order."""
+    return SPEC.generated_actions_for(char) + list(SPEC.SEQUENCES)
 
-# Behavior names are the action names (see behavior()); Shimeji-ee resolves
-# a Behavior's action by the Behavior's own Name.
-COMMON_BEHAVIORS = [
-    behavior("Wave", 40),
-    behavior("Cheer", 30),
-    behavior("BattleRage", 25),
-    behavior("SwordPractice", 25),
-    behavior("Mine", 30),
-    behavior("Sleep", 18),
-    behavior("CursorSlash", 40, CURSOR_NEAR),
-    behavior("GlitchOut", 12),
-    behavior("Bonk", 10),
-    # --- batch 2 ---
-    behavior("Backflip", 20),
-    behavior("SnackTime", 25),
-    behavior("PowerSlide", 22),
-    behavior("PushUps", 20),
-    behavior("Sneeze", 15),
-    behavior("PaperPlane", 20),
-]
 
-SIG_BEHAVIORS = {
-    "Orange": [behavior("DrawAlive", 30)],
-    "Yellow": [behavior("Tinker", 30)],
-    "Blue": [behavior("BrewPotion", 30)],
-    "Green": [behavior("PlayGuitar", 30)],
-}
+def behavior_names(char):
+    names = [n for n, _f, _g, _c in SPEC.BEHAVIORS if SPEC.freq(n, char) > 0]
+    sig = SPEC.SIG_BEHAVIORS[char][0]
+    if sig not in names:
+        names.append(sig)
+    return names
 
-def patch_actions(path, wanted):
-    with open(path, "rb") as f:
-        raw = f.read().decode("utf-8")
-    eol = "\r\n" if "\r\n" in raw else "\n"
-    # Element-scoped test: only a real <Action Name="X"> counts as present.
-    missing = [(n, l) for n, l in wanted
-               if not element_present(raw, "Action", n)]
-    if not missing:
-        print(f"  {path}: actions up to date")
-        return
-    block = eol.join(['\t\t<!-- AvA custom animations (Stick pack generator) -->'] +
-                     [ln for _, l in missing for ln in l])
+
+# ---------------------------------------------------------------- drivers
+def patch_actions(path, char):
+    raw = read(path)
+    eol = eol_of(raw)
+    raw = disable_breeding(raw)
+    raw = strip_block(raw, A_START, A_END)
+    # sequences are ours too - strip them, or re-running duplicates them
+    raw = strip_elements(raw, "Action", REMOVABLE_ACTIONS)
+    # only this character's actions (signature moves belong to one character)
+    block = [A_START] + [action_xml(n, eol) for n in SPEC.generated_actions_for(char)]
+    block += [sequence_xml(n, eol) for n in SPEC.SEQUENCES]
+    block += [A_END]
     if "</ActionList>" not in raw:
-        raise SystemExit(f"REFUSING to patch {path}: no </ActionList> to insert into")
-    # Insert into the FIRST </ActionList> only: each actions.xml has two
-    # <ActionList> sections and Shimeji-ee rejects duplicate action names
-    # ("duplicate action found: ...").
-    raw = raw.replace("</ActionList>", block + eol + "\t</ActionList>", 1)
-    with open(path, "wb") as f:
-        f.write(raw.encode("utf-8"))
-    print(f"  {path}: +{len(missing)} actions {[n for n, _ in missing]}")
-
-def behavior_element_end(raw, start):
-    """Index just past the Behavior element that opens at raw[start]:
-    end of its line if self-closing, else just past its </Behavior>."""
-    nl = raw.find("\n", start)
-    if nl == -1:
-        return len(raw)
-    if raw[start:nl].rstrip().endswith("/>"):
-        return nl + 1
-    close = raw.find("</Behavior>", start)
-    if close == -1:
-        raise SystemExit(f"unterminated <Behavior> at offset {start}")
-    return close + len("</Behavior>")
+        raise SystemExit(f"REFUSING to patch {path}: no </ActionList>")
+    # generated actions go into the FIRST <ActionList> (the files have two,
+    # and Shimeji-ee rejects duplicate action names).
+    raw = insert_before_line(raw, "</ActionList>", eol.join(block), eol)
+    write(path, raw)
+    print(f"  {path}: {len(SPEC.generated_actions_for(char))} actions, "
+          f"{len(SPEC.SEQUENCES)} sequences")
 
 
-def last_element_start(raw, tag, name):
-    """Offset of the last `<tag ... Name="name"` opening in raw, any
-    attribute order, or -1 when there is none."""
-    pos = -1
-    for m in element_start_re(tag, name).finditer(raw):
-        pos = m.start()
-    return pos
+def patch_behaviors(path, char):
+    raw = read(path)
+    eol = eol_of(raw)
+    raw = strip_block(raw, B_START, B_END)
+    raw = strip_elements(raw, "Behavior", {n for n in REMOVABLE_BEHAVIORS
+                                           if n not in ("Dance", "Trip")})
+    raw = fix_dance(raw)
+    raw = disable_breeding(raw)
+    block = ([B_START]
+             + [behavior_xml(n, char, eol) for n in behavior_names(char)]
+             + [B_END])
+    if "</BehaviorList>" not in raw:
+        raise SystemExit(f"REFUSING to patch {path}: no </BehaviorList>")
+    raw = insert_before_line(raw, "</BehaviorList>", eol.join(block), eol)
+    write(path, raw)
+    print(f"  {path}: {len(behavior_names(char))} behaviours "
+          f"(breeding off)")
 
 
-def patch_behaviors(path, wanted):
-    with open(path, "rb") as f:
-        raw = f.read().decode("utf-8")
-    eol = "\r\n" if "\r\n" in raw else "\n"
-    # Element-scoped test: a <BehaviorReference Name="X"/> child of some other
-    # behavior does not mean behavior X already exists.
-    missing = [(n, l) for n, l in wanted
-               if not element_present(raw, "Behavior", n)]
-    if not missing:
-        print(f"  {path}: behaviors up to date")
-        return
-    block = eol.join(['\t\t<!-- AvA custom behaviors (Stick pack generator) -->'] +
-                     [ln for _, l in missing for ln in l])
-    # insert after the last already-present wanted behavior if any, else
-    # after the stock Dance behavior, else before </BehaviorList>
-    anchor = -1
-    for n, _ in wanted:
-        i = last_element_start(raw, "Behavior", n)
-        if i > anchor:
-            anchor = i
-    if anchor == -1:
-        anchor = last_element_start(raw, "Behavior", "Dance")
-    if anchor != -1:
-        end = behavior_element_end(raw, anchor)
-        raw = raw[:end] + eol + block + raw[end:]
-    else:
-        if "</BehaviorList>" not in raw:
-            raise SystemExit(f"REFUSING to patch {path}: no </BehaviorList> to insert into")
-        raw = raw.replace("</BehaviorList>", block + eol + "\t</BehaviorList>", 1)
-    with open(path, "wb") as f:
-        f.write(raw.encode("utf-8"))
-    print(f"  {path}: +{len(missing)} behaviors {[n for n, _ in missing]}")
+def patch_char(char):
+    print(char)
+    patch_actions(os.path.join(ROOT, "AVA Shimejis", char, "conf", "actions.xml"), char)
+    patch_behaviors(os.path.join(ROOT, "AVA Shimejis", char, "conf", "behaviors.xml"), char)
+
 
 def main():
-    prefixes = ("wave", "cheer", "fight_", "sword", "mine", "sleep", "hurt",
-                "cursorslash", "glitch", "draw", "tinker", "potion", "music",
-                "flip", "snack", "slide", "pushup", "sneeze", "plane")
-    for char in CHARS:
-        print(char)
-        a_path = os.path.join(ROOT, "AVA Shimejis", char, "conf", "actions.xml")
-        b_path = os.path.join(ROOT, "AVA Shimejis", char, "conf", "behaviors.xml")
-        patch_actions(a_path, COMMON_ACTIONS + SIG_ACTIONS[char])
-        patch_behaviors(b_path, COMMON_BEHAVIORS + SIG_BEHAVIORS[char])
-        tree = ET.parse(a_path)
-        ET.parse(b_path)
-        names = {p.get("Image").lstrip("/") for p in tree.getroot().iter()
-                 if p.tag.endswith("Pose") and p.get("Image")}
-        missing = [n for n in sorted(names) if n.startswith(prefixes)
-                   and not os.path.exists(os.path.join(ROOT, "AVA Shimejis", char, n))]
-        if missing:
-            print(f"  MISSING IMAGES in {char}: {missing}")
-            sys.exit(1)
-        print(f"  {char}: XML valid, all new images present")
+    SPEC.self_check()
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    for char in (args or SPEC.CHARS):
+        if char not in SPEC.CHARS:
+            raise SystemExit(f"unknown character {char!r}")
+        patch_char(char)
+
 
 if __name__ == "__main__":
     main()
