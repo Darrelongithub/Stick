@@ -10,6 +10,7 @@ set -u
 RUN_TIMEOUT=10   # seconds; a wedged JRE must never hang the installer
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO/linux/hyprland-common.sh"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -39,25 +40,6 @@ path_is_printable() {
   [ "$(printf '%s' "$1" | LC_ALL=C tr -cd '\000-\037\177' | wc -c | tr -d ' ')" -eq 0 ]
 }
 
-# Escape one path for the autostart entry
-#   Exec=bash -c 'cd "<TARGET>" && java -jar "<JAR>"'
-# Three parsers read that line, so three layers have to be satisfied:
-#   1. bash, inside a double-quoted string : \  "  $  `
-#   2. the .desktop Exec single-quote wrapper : \  '
-#   3. the .desktop field-code expander        : %  ->  %%
-# Layer 1 runs first, then layer 2 re-doubles every backslash it introduced.
-esc_desktop_arg() {
-  local s=$1
-  s=${s//\\/\\\\}      # \  -> \\      (bash)
-  s=${s//\"/\\\"}      # "  -> \"      (bash)
-  s=${s//\$/\\\$}      # $  -> \$      (bash: no command/variable expansion)
-  s=${s//\`/\\\`}      # `  -> \`      (bash: no command substitution)
-  s=${s//\\/\\\\}      # \  -> \\      (.desktop quoting)
-  s=${s//\'/\\\'}      # '  -> \'      (.desktop quoting: keep the wrapper closed)
-  s=${s//%/%%}         # %  -> %%      (.desktop field codes)
-  printf '%s' "$s"
-}
-
 # ---------------- arguments ----------------
 TARGET=""
 REPLACE=false
@@ -84,10 +66,14 @@ if [ -z "$TARGET" ] || [ ! -d "$TARGET" ]; then
 fi
 path_is_printable "$TARGET" || die \
   "the Shimeji folder path contains control characters (newline, tab, ...); it cannot be put in an autostart entry safely - move the folder and retry"
+TARGET="$(cd "$TARGET" && pwd -P)"
 echo "Shimeji folder: $TARGET"
 
-command -v java >/dev/null || { echo "Java not found - install a JRE first (e.g. sudo apt install default-jre)"; exit 1; }
-JAR="$(ls "$TARGET"/Shimeji-ee.jar "$TARGET"/Shimeji.jar "$TARGET"/*himeji*.jar 2>/dev/null | head -n 1)"
+command -v java >/dev/null || { echo "Java not found - install a JRE first (Fedora: sudo dnf install java-latest-openjdk)"; exit 1; }
+JAR=""
+for candidate in "$TARGET/Shimeji-ee.jar" "$TARGET/Shimeji.jar" "$TARGET"/*himeji*.jar; do
+  if [ -f "$candidate" ]; then JAR="$candidate"; break; fi
+done
 [ -n "${JAR:-}" ] || { echo "No Shimeji jar found in $TARGET"; exit 1; }
 path_is_printable "$JAR" || die \
   "the jar path contains control characters; it cannot be put in an autostart entry safely - rename the jar and retry"
@@ -131,6 +117,13 @@ if ! run_capped find "$JAVA_HOME_DIR" -name libawt_xawt.so -print -quit 2>/dev/n
   echo "         Debian/Ubuntu: install default-jre                     (not -headless)" >&2
 fi
 
+# Stop before changing files: a running JVM can save stale settings on exit.
+# Install the new controller first so even instances started with a relative
+# jar path are found, and concurrent autostarts are serialized.
+cp "$REPO/linux/ava-toggle.sh" "$TARGET/ava-toggle.sh" || die "cannot install the launcher"
+chmod +x "$TARGET/ava-toggle.sh" || die "cannot make the launcher executable"
+"$TARGET/ava-toggle.sh" --stop || die "could not stop Shimeji-ee before installing"
+
 # 1. image sets (each folder carries its own conf/actions.xml + behaviors.xml)
 mkdir -p "$TARGET/img/unused" || die "cannot create $TARGET/img/unused (is $TARGET writable?)"
 for c in Blue Orange Yellow Green; do
@@ -150,45 +143,26 @@ if $REPLACE; then
   done
 fi
 
-# 1b. Shimeji-ee clones itself while walking (the PullUpShimeji behaviour, cap
-# 50 mascots) unless Breeding is off.  The pack's own behaviours.xml disables
-# it, and so does this, for good measure - a four-man crew, not a crowd.
-SETTINGS="$TARGET/conf/settings.properties"
-if [ -d "$TARGET/conf" ]; then
-  [ -f "$SETTINGS" ] || : > "$SETTINGS"
-  [ -f "$SETTINGS.ava-bak" ] || cp -p "$SETTINGS" "$SETTINGS.ava-bak" 2>/dev/null || true
-  if grep -q '^[[:space:]]*Breeding=' "$SETTINGS"; then
-    sed -i 's/^[[:space:]]*Breeding=.*/Breeding=false/' "$SETTINGS"
-  else
-    printf 'Breeding=false\n' >> "$SETTINGS"
-  fi
-  if grep -q '^[[:space:]]*ActiveShimeji=' "$SETTINGS"; then
-    sed -i 's|^[[:space:]]*ActiveShimeji=.*|ActiveShimeji=Blue/Orange/Yellow/Green|' "$SETTINGS"
-  else
-    printf 'ActiveShimeji=Blue/Orange/Yellow/Green\n' >> "$SETTINGS"
-  fi
-  echo "Cloning off, four characters active (conf/settings.properties)"
-fi
-
-# 2. toggle script lives next to the jar (auto-detects its own location)
-cp "$REPO/linux/ava-toggle.sh" "$TARGET/ava-toggle.sh" || die "cannot install the toggle script into $TARGET"
-chmod +x "$TARGET/ava-toggle.sh" || die "cannot make $TARGET/ava-toggle.sh executable"
-echo "Installed toggle: $TARGET/ava-toggle.sh"
+# 2. Apply the same repair as the standalone Hyprland script, including
+# duplicate property keys and a missing conf/ folder.
+python3 "$REPO/linux/configure-mascots.py" shimeji "$TARGET" || die "cannot disable multiplication"
+echo "Installed guarded launcher: $TARGET/ava-toggle.sh"
 
 # 3. autostart on boot/login - ALWAYS starts them, even if toggled off earlier
-mkdir -p "$HOME/.config/autostart" || die "cannot create $HOME/.config/autostart"
-DESKTOP="$HOME/.config/autostart/ava-shimeji.desktop"
-EXEC_TARGET="$(esc_desktop_arg "$TARGET")"
-EXEC_JAR="$(esc_desktop_arg "$JAR")"
+AUTOSTART_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
+mkdir -p "$AUTOSTART_DIR" || die "cannot create $AUTOSTART_DIR"
+DESKTOP="$AUTOSTART_DIR/ava-shimeji.desktop"
+EXEC_LAUNCHER="$(desktop_quote "$TARGET/ava-toggle.sh")" || die "cannot quote the launcher path"
 # printf '%s' (not a here-doc): an unquoted here-doc would eat the backslashes
-# that esc_desktop_arg just added.
+# that desktop_quote just added.
 printf '%s\n' \
   "[Desktop Entry]" \
   "Type=Application" \
   "Name=AvA Shimejis" \
   "Comment=Start the Animation vs Animator desktop buddies" \
-  "Exec=bash -c 'cd \"$EXEC_TARGET\" && java -jar \"$EXEC_JAR\"'" \
+  "Exec=$EXEC_LAUNCHER --start" \
   "Terminal=false" \
+  "NotShowIn=Hyprland;" \
   "X-GNOME-Autostart-enabled=true" > "$DESKTOP" || die "cannot write $DESKTOP"
 [ -s "$DESKTOP" ] || die "wrote an empty $DESKTOP"
 echo "Installed autostart: ~/.config/autostart/ava-shimeji.desktop"
@@ -204,7 +178,7 @@ if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
   IS_HYPR=true
 elif [ -n "${XDG_CURRENT_DESKTOP:-}" ]; then
   case "$XDG_CURRENT_DESKTOP" in *[Hh]yprland*) IS_HYPR=true ;; esac
-elif [ -f "$HOME/.config/hypr/hyprland.conf" ] || [ -f "$HOME/.config/hypr/hyprland.lua" ]; then
+elif [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf" ] || [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua" ]; then
   IS_HYPR=true
 fi
 if ! $SKIP_HYPRLAND && $IS_HYPR; then
@@ -213,14 +187,14 @@ if ! $SKIP_HYPRLAND && $IS_HYPR; then
   if bash "$REPO/linux/hyprland.sh" "$TARGET" --no-start; then
     :
   else
-    echo "WARNING: the Hyprland step failed; run it by hand:"
-    echo "  $REPO/linux/hyprland.sh \"$TARGET\""
+    die "the Hyprland step failed; fix the reported errors and re-run: $REPO/linux/hyprland.sh \"$TARGET\""
   fi
 fi
 
 echo
-echo "Done! Restart Shimeji-ee to meet the crew:"
-echo "  \"$TARGET/ava-toggle.sh\"   # stop/start any time"
+echo "Done! Start the repaired crew (the old instances have been stopped):"
+echo "  \"$TARGET/ava-toggle.sh\" --start"
+echo "Use --stop to clear the screen, --restart to reset to four, or no option to toggle."
 echo "They will also auto-start on every boot."
 echo "Tip: bind ava-toggle.sh to a hotkey in your desktop's Keyboard settings."
 echo

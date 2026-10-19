@@ -21,13 +21,14 @@
 #   ./linux/hyprland.sh                 # install rules + autostart, then start
 #   ./linux/hyprland.sh --check         # report only, change nothing
 #   ./linux/hyprland.sh --dry-run       # show what would change
-#   ./linux/hyprland.sh --no-start      # don't launch them at the end
+#   ./linux/hyprland.sh --no-start      # apply repairs, leave them stopped
 #   ./linux/hyprland.sh --uninstall     # remove everything it added
 #   ./linux/hyprland.sh --syntax v2     # force: auto|v1|v2|v3|lua|x11
 #   ./linux/hyprland.sh /path/to/shimeji-ee
 set -u
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO/linux/hyprland-common.sh"
 CLASS_REGEX="com-group_finity-mascot-Main"
 HYPR_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 RULES_CONF="$HYPR_DIR/ava-shimeji.conf"
@@ -40,7 +41,6 @@ LUA_MARKER='-- ---- AvA Shimejis (added by linux/hyprland.sh) ----'
 
 TARGET=""
 SYNTAX="auto"
-FORCED_SYNTAX=""
 DO_START=true
 MODE="install"
 
@@ -55,9 +55,9 @@ while [ $# -gt 0 ]; do
     --uninstall) MODE="uninstall" ;;
     --no-start)  DO_START=false ;;
     --start)     DO_START=true ;;
-    --syntax)    shift; [ $# -gt 0 ] || die "--syntax needs a value"; SYNTAX="$1"; FORCED_SYNTAX="$1" ;;
-    --syntax=*)  SYNTAX="${1#*=}"; FORCED_SYNTAX="${1#*=}" ;;
-    -h|--help)   sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --syntax)    shift; [ $# -gt 0 ] || die "--syntax needs a value"; SYNTAX="$1" ;;
+    --syntax=*)  SYNTAX="${1#*=}" ;;
+    -h|--help)   sed -n '2,/^set -u$/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
     -*)          die "unknown option: $1" ;;
     *)           [ -z "$TARGET" ] || die "unexpected argument: $1"; TARGET="$1" ;;
   esac
@@ -74,7 +74,11 @@ if [ -z "$TARGET" ]; then
 fi
 [ -n "$TARGET" ] && [ -d "$TARGET" ] || die \
   "could not find your Shimeji-ee folder - run: $0 /path/to/shimeji-ee"
-JAR="$(ls "$TARGET"/Shimeji-ee.jar "$TARGET"/Shimeji.jar "$TARGET"/*himeji*.jar 2>/dev/null | head -n 1)"
+TARGET="$(cd "$TARGET" && pwd -P)"
+JAR=""
+for candidate in "$TARGET/Shimeji-ee.jar" "$TARGET/Shimeji.jar" "$TARGET"/*himeji*.jar; do
+  if [ -f "$candidate" ]; then JAR="$candidate"; break; fi
+done
 [ -n "${JAR:-}" ] || die "no Shimeji jar found in $TARGET"
 
 # ---------------------------------------------------------------- desktop
@@ -87,129 +91,42 @@ onsession() {
   return 1
 }
 if onsession; then
-  if [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    note "session: Hyprland on Wayland (shimejis run through XWayland)"
-  else
-    note "session: Hyprland on X11"
-  fi
+  note "session: Hyprland (shimejis run through XWayland)"
 else
-  note "session: not Hyprland (${XDG_CURRENT_DESKTOP:-unknown}) - writing X11-friendly setup only"
+  note "session: not Hyprland (${XDG_CURRENT_DESKTOP:-unknown}) - only configuring any existing Hyprland files"
 fi
 
-hypr_version() {
-  command -v hyprctl >/dev/null 2>&1 || return 1
-  local out tag
-  out="$(hyprctl version -j 2>/dev/null)" || true
-  tag="$(printf '%s' "$out" | sed -n 's/.*"tag"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-  if [ -z "$tag" ]; then
-    out="$(hyprctl version 2>/dev/null)" || true
-    tag="$(printf '%s' "$out" | sed -n 's/.*tags\?\/v\{0,1\}\([0-9][0-9.]*\).*/v\1/p' | head -n 1)"
-  fi
-  printf '%s' "$tag"
-}
-
 pick_syntax() {
-  [ "$SYNTAX" != "auto" ] && { printf '%s' "$SYNTAX"; return; }
-  if [ -f "$MAIN_LUA" ]; then printf 'lua'; return; fi
-  if [ ! -f "$MAIN_CONF" ]; then printf 'snippet'; return; fi
-  local tag major minor
-  tag="$(hypr_version)"
-  major="$(printf '%s' "$tag" | sed -n 's/^v\{0,1\}\([0-9]\+\)\..*/\1/p')"
-  minor="$(printf '%s' "$tag" | sed -n 's/^v\{0,1\}[0-9]\+\.\([0-9]\+\).*/\1/p')"
-  if [ -n "${major:-}" ] && [ -n "${minor:-}" ]; then
-    if [ "$major" -gt 0 ] || [ "$minor" -ge 55 ]; then printf 'v3'
-    elif [ "$minor" -ge 30 ]; then printf 'v2'
-    else printf 'v1'; fi
-    return
-  fi
-  # version unknown: 0.53+ accepts the unified `windowrule` form, older builds
-  # accept windowrulev2. Emit the v2 form (supported for years) - see --syntax.
-  printf 'v2'
-}
-
-# ---------------------------------------------------------------- rule text
-rules_text() {
-  local syn="$1"
-  case "$syn" in
-    v1)
-      cat <<EOF
-# Legacy windowrule syntax (Hyprland up to ~0.29)
-windowrule = float,    class:^($CLASS_REGEX)\$
-windowrule = nofocus,  class:^($CLASS_REGEX)\$
-windowrule = noborder, class:^($CLASS_REGEX)\$
-windowrule = noshadow, class:^($CLASS_REGEX)\$
-windowrule = noblur,   class:^($CLASS_REGEX)\$
-windowrule = noanim,   class:^($CLASS_REGEX)\$
-EOF
-      ;;
-    v2)
-      cat <<EOF
-# windowrulev2 syntax (Hyprland ~0.30 - 0.52)
-windowrulev2 = float,     class:^($CLASS_REGEX)\$
-windowrulev2 = nofocus,   class:^($CLASS_REGEX)\$
-windowrulev2 = noborder,  class:^($CLASS_REGEX)\$
-windowrulev2 = noshadow,  class:^($CLASS_REGEX)\$
-windowrulev2 = noblur,    class:^($CLASS_REGEX)\$
-windowrulev2 = noanim,    class:^($CLASS_REGEX)\$
-windowrulev2 = rounding 0, class:^($CLASS_REGEX)\$
-windowrulev2 = bordersize 0, class:^($CLASS_REGEX)\$
-EOF
-      ;;
-    v3)
-      cat <<EOF
-# Unified windowrule syntax (Hyprland 0.53+, hyprlang)
-windowrule = float, match :class ^($CLASS_REGEX)\$
-windowrule = nofocus, match :class ^($CLASS_REGEX)\$
-windowrule = noborder, match :class ^($CLASS_REGEX)\$
-windowrule = noshadow, match :class ^($CLASS_REGEX)\$
-windowrule = noblur, match :class ^($CLASS_REGEX)\$
-windowrule = noanim, match :class ^($CLASS_REGEX)\$
-windowrule = rounding 0, match :class ^($CLASS_REGEX)\$
-windowrule = bordersize 0, match :class ^($CLASS_REGEX)\$
-EOF
-      ;;
-    x11)
-      cat <<EOF
-# Running under a non-Hyprland session: the shimeji windows are plain
-# override-redirect X11 windows with no decorations, so there is nothing to
-# configure here.  (GNOME/X11 will not draw frames around them; GNOME/Wayland
-# needs the window to be marked as a dock - see the README.)
-EOF
-      ;;
+  if [ "$SYNTAX" = x11 ]; then printf 'x11'; return; fi
+  if [ "$SYNTAX" = lua ] && [ ! -f "$MAIN_LUA" ]; then printf 'snippet'; return; fi
+  case "$SYNTAX" in
+    v1|v2|v3) if [ ! -f "$MAIN_CONF" ]; then printf 'snippet'; return; fi ;;
   esac
+  if ! onsession && [ "$SYNTAX" = auto ] && [ ! -f "$MAIN_CONF" ] && [ ! -f "$MAIN_LUA" ]; then printf 'x11'; return; fi
+  if [ ! -f "$MAIN_CONF" ] && [ ! -f "$MAIN_LUA" ]; then printf 'snippet'; return; fi
+  [ "$SYNTAX" != auto ] && { printf '%s' "$SYNTAX"; return; }
+  hypr_syntax "$HYPR_DIR"
 }
 
-lua_text() {
-  cat <<EOF
--- Window rules for the AvA Shimejis (Hyprland 0.55+, Lua config).
--- Shimeji-ee puts every character in its own X11 window; without these rules
--- Hyprland tiles it and paints a border/shadow/blur around it ("the box").
-hl.window_rule({
-  name  = "ava-shimeji",
-  match = { class = "$CLASS_REGEX" },
-  float = true, no_focus = true, no_border = true,
-  no_shadow = true, no_blur = true, no_anim = true,
-  rounding = 0, border_size = 0,
-})
-EOF
-}
+rules_text() { hypr_rules "$1" "$CLASS_REGEX" ava-shimeji; }
+lua_text() { rules_text lua; }
 
 # ---------------------------------------------------------------- exec line
 exec_cmd() {
   if [ "$MODE" = "uninstall" ]; then printf '%s' ""; return; fi
-  printf 'java -jar %s' "$(printf '%q' "$JAR")"
+  printf '%s --start' "$(shell_quote "$TARGET/ava-toggle.sh")"
 }
 
 # ---------------------------------------------------------------- install bits
 ensure_conf_source() {
   [ -f "$MAIN_CONF" ] || return 0
-  if grep -qF "source = $RULES_CONF" "$MAIN_CONF" 2>/dev/null; then
+  if grep -qxF "source = $RULES_CONF" "$MAIN_CONF" 2>/dev/null; then
     note "hyprland.conf already sources $RULES_CONF"
   else
     if [ "$MODE" = "dry" ]; then
       note "would add: source = $RULES_CONF   -> $MAIN_CONF"
     else
-      cp -p "$MAIN_CONF" "$MAIN_CONF.ava-bak" 2>/dev/null || true
+      [ -f "$MAIN_CONF.ava-bak" ] || cp -p "$MAIN_CONF" "$MAIN_CONF.ava-bak" || die "cannot back up $MAIN_CONF"
       { printf '\n%s\n' "$MARKER_BEGIN";
         printf 'source = %s\n' "$RULES_CONF";
         printf '%s\n' "$MARKER_END"; } >> "$MAIN_CONF"
@@ -219,7 +136,7 @@ ensure_conf_source() {
 }
 
 ensure_exec_once() {
-  local cmd="$1" name="ava-shimeji-exec"
+  local cmd="$1"
   [ -f "$RULES_CONF" ] || return 0
   if grep -qF "exec-once" "$RULES_CONF" 2>/dev/null; then
     note "exec-once already present in $RULES_CONF"
@@ -237,7 +154,7 @@ ensure_exec_once() {
 
 ensure_lua_require() {
   [ -f "$MAIN_LUA" ] || return 0
-  if grep -qF 'require("ava-shimeji")' "$MAIN_LUA"; then
+  if grep -qxF 'require("ava-shimeji")' "$MAIN_LUA"; then
     note "hyprland.lua already requires ava-shimeji"
     return 0
   fi
@@ -245,44 +162,22 @@ ensure_lua_require() {
     note "would add: require(\"ava-shimeji\") -> $MAIN_LUA"
     return 0
   fi
-  cp -p "$MAIN_LUA" "$MAIN_LUA.ava-bak" 2>/dev/null || true
+  [ -f "$MAIN_LUA.ava-bak" ] || cp -p "$MAIN_LUA" "$MAIN_LUA.ava-bak" || die "cannot back up $MAIN_LUA"
   printf '\n%s\nrequire("ava-shimeji")\n' "$LUA_MARKER" >> "$MAIN_LUA"
   note "added require(\"ava-shimeji\") to hyprland.lua (backup: hyprland.lua.ava-bak)"
 }
 
 settings_fix() {
-  local file="$TARGET/conf/settings.properties"
-  [ -d "$TARGET/conf" ] || return 0
   if [ "$MODE" = "dry" ]; then
-    note "would set Breeding=false and ActiveShimeji=Blue/Orange/Yellow/Green in $file"
+    note "would stop Shimeji-ee, disable breeding in its installed XML/settings and install the guarded launcher"
     return 0
   fi
-  [ -f "$file" ] || : > "$file"
-  # keep the *first* backup: re-running must not overwrite the pristine copy
-  # with an already-patched one (that is what --uninstall restores from).
-  [ -f "$file.ava-bak" ] || cp -p "$file" "$file.ava-bak" 2>/dev/null || true
-  python3 - "$file" <<'PY'
-import re, sys
-path = sys.argv[1]
-raw = open(path, "rb").read().decode("utf-8", errors="surrogateescape")
-eol = "\r\n" if "\r\n" in raw else "\n"   # Shimeji-ee writes CRLF; keep it
-head = "#Shimeji-ee Configuration Options" + eol
-def put(text, key, value):
-    pat = re.compile(r'(?m)^[ \t]*' + re.escape(key) + r'[ \t]*=.*$')
-    line = f"{key}={value}"
-    if pat.search(text):
-        return pat.sub(lambda m: line, text, count=1)
-    if text and not text.endswith("\n"):
-        text += eol
-    return text + line + eol
-raw = put(raw, "Breeding", "false")           # no more cloning mid-walk
-raw = put(raw, "ActiveShimeji", "Blue/Orange/Yellow/Green")   # exactly four
-if not raw.startswith("#"):
-    raw = head + raw
-raw = re.sub(r"\r?\n", eol, raw)          # don't mix LF into a CRLF file
-open(path, "wb").write(raw.encode("utf-8", errors="surrogateescape"))
-print("  settings.properties: Breeding=false, ActiveShimeji=Blue/Orange/Yellow/Green")
-PY
+  cp "$REPO/linux/ava-toggle.sh" "$TARGET/ava-toggle.sh" || die "cannot install the launcher"
+  chmod +x "$TARGET/ava-toggle.sh" || die "cannot make the launcher executable"
+  # Java saves settings on exit; stop BEFORE changing them. --no-start leaves
+  # it stopped, while the default restarts once after the config is accepted.
+  "$TARGET/ava-toggle.sh" --stop || die "could not stop the old Shimeji-ee instance"
+  python3 "$REPO/linux/configure-mascots.py" shimeji "$TARGET" || die "could not repair installed settings/XML"
 }
 
 uninstall() {
@@ -290,16 +185,11 @@ uninstall() {
   for f in "$RULES_CONF" "$RULES_LUA"; do
     [ -f "$f" ] && rm -f "$f" && note "removed $f"
   done
-  for pair in "$MAIN_CONF.ava-bak:$MAIN_CONF" "$MAIN_LUA.ava-bak:$MAIN_LUA"; do
-    bak="${pair%%:*}"; orig="${pair##*:}"
-    if [ -f "$bak" ]; then
-      cp -p "$bak" "$orig" && rm -f "$bak" && note "restored $orig from its backup"
-    else
-      # drop the blocks this script appends, in case there was no backup
-      if [ -f "$orig" ]; then
-        python3 - "$orig" "$MARKER_BEGIN" "$MARKER_END" "$LUA_MARKER" <<'PY'
+  for orig in "$MAIN_CONF" "$MAIN_LUA"; do
+    if [ -f "$orig" ]; then
+      python3 - "$orig" "$MARKER_BEGIN" "$MARKER_END" "$LUA_MARKER" "$RULES_CONF" <<'PY_CLEAN'
 import sys
-path, mb, me, lm = sys.argv[1:5]
+path, mb, me, lm, rules = sys.argv[1:6]
 lines = open(path, encoding="utf-8", errors="surrogateescape").read().splitlines(True)
 out, skip = [], False
 for ln in lines:
@@ -309,13 +199,11 @@ for ln in lines:
     if skip and (me in ln or 'require("ava-shimeji")' in ln):
         skip = False
         continue
-    if skip:
-        continue
-    out.append(ln)
+    if not skip and ln.strip() not in ("source = " + rules, 'require("ava-shimeji")'):
+        out.append(ln)
 open(path, "w", encoding="utf-8", errors="surrogateescape").writelines(out)
-print(f"  cleaned {path}")
-PY
-      fi
+print(f"  cleaned {path} (unrelated edits kept)")
+PY_CLEAN
     fi
   done
   if [ -f "$TARGET/conf/settings.properties.ava-bak" ]; then
@@ -340,28 +228,27 @@ check_report() {
     note "autostart      : $(grep -c '^exec-once' "$RULES_CONF" 2>/dev/null || echo 0) exec-once line(s)"
   fi
   if command -v hyprctl >/dev/null 2>&1; then
-    local count
-    count="$(hyprctl clients -j 2>/dev/null | grep -c "$CLASS_REGEX" || true)"
-    note "live shimeji windows: ${count:-0}"
-    if [ "${count:-0}" != "0" ]; then
-      note "window geometry as Hyprland sees it:"
-      hyprctl clients -j 2>/dev/null | python3 -c '
-import json,sys
-try: data=json.load(sys.stdin)
-except Exception: data=[]
-for w in data:
-    if "com-group_finity-mascot" in (w.get("class") or ""):
-        g=w.get("at") or [0,0]; s=w.get("size") or [0,0]
-        print(f"      id={w.get(\"address\")} at={g} size={s} floating={w.get(\"floating\")} "
-              f"border={w.get(\"borderSize\")} title={w.get(\"title\")!r}")
-' || true
-    fi
+    hyprctl clients -j 2>/dev/null | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except ValueError:
+    sys.exit("  could not read Hyprland clients")
+windows = [w for w in data if "com-group_finity-mascot" in
+           ((w.get("class") or "") + (w.get("initialClass") or ""))]
+print("  live shimeji windows:", len(windows))
+for w in windows:
+    print("      id={address} at={at} size={size} floating={floating} title={title!r}".format(
+        **{k: w.get(k) for k in ("address", "at", "size", "floating", "title")}))
+'
+    note "Hyprland config errors (empty means none):"
+    hyprctl configerrors 2>/dev/null || true
   fi
   say ""
   say "Host app check:"
-  if pgrep -af 'shijima|Shijima' >/dev/null 2>&1; then
+  if pgrep -u "$(id -u)" -x 'shijima-qt|Shijima-Qt' >/dev/null 2>&1; then
     note "Shijima-Qt looks like it is running - two runners means two sets of"
-    note "shimejis. Stop it first:  pkill -f shijima"
+    note "shimejis. Quit Shijima-Qt from its menu before starting Shimeji-ee."
   else
     note "no Shijima-Qt process found (good - Shimeji-ee will be the runner)"
   fi
@@ -383,6 +270,7 @@ fi
 
 syn="$(pick_syntax)"
 note "rules syntax: $syn"
+[ "$syn" != unknown ] || die "cannot detect Hyprland version; run in your desktop session or pass --syntax v2 (0.30-0.52), v3 (0.53+) or lua"
 case "$syn" in
   snippet)
     say ""
@@ -390,11 +278,19 @@ case "$syn" in
     say "hyprland.lua), so there is nothing to edit yet.  Paste this into your"
     say "Hyprland config once it exists - it is the whole fix for the boxes:"
     say ""
-    rules_text "${FORCED_SYNTAX:-v2}" | sed 's/^/  /'
+    DO_START=false
+    snippet_syntax="$SYNTAX"
+    [ "$snippet_syntax" != auto ] || snippet_syntax="$(hypr_syntax "$HYPR_DIR")"
+    [ "$snippet_syntax" != unknown ] || die "cannot detect Hyprland version; pass --syntax v2 or v3"
+    rules_text "$snippet_syntax" | sed 's/^/  /'
     say ""
     say "  # ...and to start them with the session (Hyprland ignores"
     say "  # ~/.config/autostart, which is why they never came back on login):"
-    say "  exec-once = $(exec_cmd)"
+    if [ "$snippet_syntax" = lua ]; then
+      say "  hl.on(\"hyprland.start\", function() hl.exec_cmd($(lua_quote "$(exec_cmd)")) end)"
+    else
+      say "  exec-once = $(exec_cmd)"
+    fi
     say ""
     ;;
   x11)
@@ -404,10 +300,13 @@ case "$syn" in
     if [ "$MODE" = "dry" ]; then
       note "would write $RULES_LUA"; lua_text | sed 's/^/      /'
     else
-      lua_text > "$RULES_LUA"
+      mkdir -p "$HYPR_DIR" || die "cannot create $HYPR_DIR"
+      {
+        lua_text
+        printf '\nhl.on("hyprland.start", function()\n  hl.exec_cmd(%s)\nend)\n' "$(lua_quote "$(exec_cmd)")"
+      } > "$RULES_LUA" || die "cannot write $RULES_LUA"
       note "wrote $RULES_LUA"
       ensure_lua_require
-      ensure_exec_once "$(exec_cmd)"
     fi
     ;;
   *)
@@ -415,10 +314,11 @@ case "$syn" in
       note "would write $RULES_CONF"; rules_text "$syn" | sed 's/^/      /'
       note "would run: exec-once = $(exec_cmd)"
     else
+      mkdir -p "$HYPR_DIR" || die "cannot create $HYPR_DIR"
       {
         printf '# Managed by linux/hyprland.sh - re-run it after moving Shimeji-ee.\n'
         rules_text "$syn"
-      } > "$RULES_CONF"
+      } > "$RULES_CONF" || die "cannot write $RULES_CONF"
       note "wrote $RULES_CONF"
       ensure_conf_source
       ensure_exec_once "$(exec_cmd)"
@@ -428,18 +328,32 @@ esac
 
 settings_fix
 
-# the XDG autostart entry install.sh writes is dead weight on Hyprland
-if [ -f "$HOME/.config/autostart/ava-shimeji.desktop" ]; then
-  if [ "$MODE" = "dry" ]; then
-    note "would neutralise ~/.config/autostart/ava-shimeji.desktop (Hyprland ignores it)"
+# Desktop sessions using UWSM/systemd may ALSO run XDG autostart. Keep the
+# GNOME/KDE entry, but exclude Hyprland using the standard desktop key.
+DESKTOP="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/ava-shimeji.desktop"
+if [ "$syn" != x11 ] && [ -f "$DESKTOP" ]; then
+  if [ "$MODE" = dry ]; then
+    note "would exclude Hyprland from $DESKTOP (NotShowIn=Hyprland;)"
   else
-    # only a shell running the toggle script - not an editor that has it open
-    pkill -f '^(/[^ ]*/)?(ba|da|z)?sh .*ava-toggle[.]sh' >/dev/null 2>&1 || true
-    if ! grep -q '^X-GNOME-Autostart-enabled=false' "$HOME/.config/autostart/ava-shimeji.desktop" 2>/dev/null; then
-      sed -i 's/^X-GNOME-Autostart-enabled=.*/X-GNOME-Autostart-enabled=false/' \
-        "$HOME/.config/autostart/ava-shimeji.desktop" 2>/dev/null || true
-      note "left the .desktop for GNOME/KDE users, disabled for XDG autostart"
-    fi
+    desktop_exec="$(desktop_quote "$TARGET/ava-toggle.sh") --start" || die "cannot quote the launcher path"
+    python3 - "$DESKTOP" "$desktop_exec" <<'PY_DESKTOP'
+import shutil, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+backup = path.with_name(path.name + ".ava-bak")
+if not backup.exists():
+    shutil.copy2(path, backup)
+text = path.read_text()
+lines = text.splitlines()
+excluded = {"Hyprland"}
+for line in lines:
+    if line.startswith("NotShowIn="):
+        excluded.update(filter(None, line.split("=", 1)[1].split(";")))
+lines = [line for line in lines if not line.startswith(("NotShowIn=", "Exec=", "X-GNOME-Autostart-enabled="))]
+lines.extend(["NotShowIn=" + ";".join(sorted(excluded)) + ";",
+              "Exec=" + sys.argv[2], "X-GNOME-Autostart-enabled=true"])
+path.write_text("\n".join(lines) + "\n")
+PY_DESKTOP
   fi
 fi
 
@@ -449,8 +363,8 @@ if [ "$MODE" = "dry" ]; then
   exit 0
 fi
 
-if command -v hyprctl >/dev/null 2>&1; then
-  hyprctl reload >/dev/null 2>&1 && note "Hyprland reloaded" || note "hyprctl reload failed (reload manually with: hyprctl reload)"
+if [ "$syn" != x11 ] && onsession; then
+  hypr_reload || exit 1
 fi
 
 say ""
@@ -458,15 +372,17 @@ if [ "$syn" = "snippet" ]; then
   say "Nothing was written to a Hyprland config (none found).  Settings in the"
   say "Shimeji-ee folder were updated, so once you paste the snippet above you"
   say "are done."
+elif [ "$syn" = x11 ]; then
+  say "Done. Installed settings repaired; no Hyprland rules were changed."
 else
-  say "Done. Window rules + autostart are in place."
+  say "Done. Window rules + guarded autostart are in place."
 fi
 if $DO_START; then
   if [ -x "$TARGET/ava-toggle.sh" ]; then
     say "Starting the shimejis..."
-    "$TARGET/ava-toggle.sh" || true
+    "$TARGET/ava-toggle.sh" --start || exit 1
   else
-    say "Start them with:  java -jar \"$JAR\" &"
+    say "Start them with:  $TARGET/ava-toggle.sh --start"
   fi
 fi
 say "Check the result any time:  $0 --check"

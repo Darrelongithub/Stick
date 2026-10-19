@@ -16,21 +16,26 @@
 #   ./linux/shijima.sh                 # build + package (nothing is installed)
 #   ./linux/shijima.sh --install       # also copy into Shijima-Qt's mascots/
 #   ./linux/shijima.sh --autostart     # start it with the session (Hyprland/sway)
+#   ./linux/shijima.sh --install --autostart --restart  # repair a running crew
+#   ./linux/shijima.sh --syntax v2     # override detection: auto|v1|v2|v3|lua
 #   ./linux/shijima.sh --check         # report what is where
 #   ./linux/shijima.sh --uninstall     # remove what --install/--autostart added
 set -u
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+source "$REPO/linux/hyprland-common.sh"
 OUT="${SHIJIMA_BUILD_DIR:-$REPO/build/shijima}"
 HYPR_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 RULES_CONF="$HYPR_DIR/ava-shijima-qt.conf"
 XDG_AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/ava-shijima-qt.desktop"
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ava-shimeji"
 SESSION_HELPER_PATH="$DATA_DIR/shijima-session.sh"
-SPAWN_URL="http://127.0.0.1:32456/shijima/api/v1/mascots"
+MASCOTS_URL="http://127.0.0.1:32456/shijima/api/v1/mascots"
 
 MODE="build"
 DO_AUTOSTART=false
+DO_RESTART=false
+SYNTAX=auto
 RULES_FILE=""
 SESSION_HELPER=""
 
@@ -41,6 +46,9 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --install)   MODE="install" ;;
     --autostart) DO_AUTOSTART=true ;;
+    --restart)   DO_RESTART=true; MODE=install ;;
+    --syntax)    shift; [ $# -gt 0 ] || die "--syntax needs a value"; SYNTAX="$1" ;;
+    --syntax=*)  SYNTAX="${1#*=}" ;;
     --check)     MODE="check" ;;
     --uninstall) MODE="uninstall" ;;
     --out)       shift; [ $# -gt 0 ] || die "--out needs a path"; OUT="$1" ;;
@@ -50,9 +58,12 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+case "$SYNTAX" in auto|v1|v2|v3|lua) ;; *) die "--syntax must be auto, v1, v2, v3 or lua" ;; esac
 
 # ---------------------------------------------------------------- locations
 is_flatpak_install() {
+  # Match the launcher we will actually use when both installs exist.
+  command -v shijima-qt >/dev/null 2>&1 && return 1
   [ -d "$HOME/.var/app/com.pixelomer.ShijimaQt" ] \
     || [ -d "$HOME/.var/app/com.pixelomer.ShijimaQt.Qt" ] \
     || { command -v flatpak >/dev/null 2>&1 \
@@ -65,6 +76,14 @@ mascot_dirs() {
   local native="${XDG_DATA_HOME:-$HOME/.local/share}/Shijima-Qt/mascots"
   local flat="$HOME/.var/app/com.pixelomer.ShijimaQt/data/Shijima-Qt/mascots"
   local flat2="$HOME/.var/app/com.pixelomer.ShijimaQt.Qt/data/Shijima-Qt/mascots"
+  # If a launcher is installed, do not accidentally update the stale data of
+  # the *other* install type (native vs Flatpak).
+  local launcher; launcher="$(launcher_cmd)"
+  case "$launcher" in
+    shijima-qt) printf '%s\n' "$native"; return ;;
+    *' com.pixelomer.ShijimaQt.Qt') printf '%s\n' "$flat2"; return ;;
+    *' com.pixelomer.ShijimaQt') printf '%s\n' "$flat"; return ;;
+  esac
   if is_flatpak_install; then
     printf '%s\n' "$flat" "$flat2" "$native" "$HOME/.local/share/shijima-qt/mascots"
   else
@@ -103,7 +122,7 @@ build() {
     cp "$src/conf/actions.xml" "$dest/actions.xml" || die "cannot copy actions.xml"
     cp "$src/conf/behaviors.xml" "$dest/behaviors.xml" || die "cannot copy behaviors.xml"
     cp "$src"/*.png "$dest/img/" 2>/dev/null || die "no frames found in $src"
-    note "$char.mascot  ($(ls "$dest/img" | wc -l | tr -d ' ') frames)"
+    note "$char.mascot  ($(find "$dest/img" -name '*.png' -printf . | wc -c | tr -d ' ') frames)"
     # Shijima-Qt resolves every <Pose Image="..."> against <mascot>/img, and it
     # lowercases the name before it looks it up - catch a broken folder here
     # instead of with an invisible mascot.
@@ -139,7 +158,7 @@ PY
 install_mascots() {
   local dir; dir="$(first_existing_mascot_dir || true)"
   if [ -z "${dir:-}" ]; then
-    dir="${XDG_DATA_HOME:-$HOME/.local/share}/Shijima-Qt/mascots"
+    dir="$(mascot_dirs | head -n 1)"
     note "Shijima-Qt has not created its mascots folder here yet, so it is being"
     note "created now: $dir"
     note "(run Shijima-Qt once and re-run with --check if it disagrees; Flatpak"
@@ -160,6 +179,43 @@ install_mascots() {
   note " drop $OUT/*.mascot.zip onto the app instead if you have trouble.)"
 }
 
+# QSettings uses the organization/application names, not the mascots path.
+settings_file() {
+  local dir; dir="$(first_existing_mascot_dir || mascot_dirs | head -n 1)"
+  case "$dir" in
+    "$HOME/.var/app/"*) printf '%s/config/pixelomer/Shijima-Qt.conf' "${dir%%/data/*}" ;;
+    *) printf '%s/pixelomer/Shijima-Qt.conf' "${XDG_CONFIG_HOME:-$HOME/.config}" ;;
+  esac
+}
+
+shijima_running() {
+  pgrep -u "$(id -u)" -x 'shijima-qt|Shijima-Qt' >/dev/null 2>&1 && return 0
+  # AppImage / other executable names: don't overwrite a running app's data.
+  python3 - <<'PY_RUNNING'
+import socket, sys
+try:
+    with socket.create_connection(("127.0.0.1", 32456), timeout=0.3):
+        pass
+except OSError:
+    sys.exit(1)
+PY_RUNNING
+}
+
+prepare_install() {
+  if shijima_running; then
+    $DO_RESTART || die "quit Shijima-Qt first, or use --install --autostart --restart; running apps keep the OLD breeding XML in memory"
+    # Exact process names and our UID only, never a broad pkill -f shijima.
+    pkill -u "$(id -u)" -x 'shijima-qt|Shijima-Qt' 2>/dev/null || true
+    local i
+    for ((i=0; i<50; i++)); do
+      shijima_running || break
+      sleep 0.2
+    done
+    shijima_running && die "Shijima-Qt is still running; quit it from its menu and retry"
+  fi
+  return 0
+}
+
 # ---------------------------------------------------------------- hyprland
 # Same detection logic as linux/hyprland.sh, but for Shijima-Qt's own windows
 # (class/title contains "shijima") instead of Shimeji-ee's java windows.
@@ -173,158 +229,42 @@ hypr_present() {
 }
 
 hypr_flavour() {
-  # lua | v1 | v2 | v3 | unknown
-  if [ -f "$HYPR_DIR/hyprland.lua" ] && [ ! -f "$HYPR_DIR/hyprland.conf" ]; then
-    printf 'lua'; return
-  fi
-  command -v hyprctl >/dev/null 2>&1 || { printf 'unknown'; return; }
-  local tag major minor
-  tag="$(hyprctl version -j 2>/dev/null | sed -n 's/.*"tag"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-  major="$(printf '%s' "$tag" | sed -n 's/^v\{0,1\}\([0-9]\+\)\..*/\1/p')"
-  minor="$(printf '%s' "$tag" | sed -n 's/^v\{0,1\}[0-9]\+\.\([0-9]\+\).*/\1/p')"
-  if [ -n "${major:-}" ] && [ -n "${minor:-}" ]; then
-    if [ "$major" -gt 0 ] || [ "$minor" -ge 53 ]; then printf 'v3'
-    elif [ "$minor" -ge 44 ]; then printf 'v2'
-    else printf 'v1'; fi
-  else
-    printf 'unknown'
-  fi
+  if [ "$SYNTAX" != auto ]; then printf '%s' "$SYNTAX"; return; fi
+  hypr_syntax "$HYPR_DIR"
 }
 
-rules_text() {
-  case "$1" in
-    va) cat <<EOF
-# Managed by linux/shijima.sh.  Shijima-Qt draws each mascot in its own X11
-# window; without these rules Hyprland tiles it and paints a border, shadow and
-# blur around it - the "box".
-windowrulev2 = float,     class:^($CLASS_REGEX)\$
-windowrulev2 = nofocus,   class:^($CLASS_REGEX)\$
-windowrulev2 = noborder,  class:^($CLASS_REGEX)\$
-windowrulev2 = noshadow,  class:^($CLASS_REGEX)\$
-windowrulev2 = noblur,    class:^($CLASS_REGEX)\$
-windowrulev2 = noanim,    class:^($CLASS_REGEX)\$
-windowrulev2 = rounding 0, class:^($CLASS_REGEX)\$
-windowrulev2 = bordersize 0, class:^($CLASS_REGEX)\$
-EOF
-      ;;
-    v3) cat <<EOF
-# Managed by linux/shijima.sh.  Shijima-Qt draws each mascot in its own X11
-# window; without these rules Hyprland tiles it and paints a border, shadow and
-# blur around it - the "box".
-windowrule = float,        match :class ^($CLASS_REGEX)\$
-windowrule = nofocus,      match :class ^($CLASS_REGEX)\$
-windowrule = noborder,     match :class ^($CLASS_REGEX)\$
-windowrule = noshadow,     match :class ^($CLASS_REGEX)\$
-windowrule = noblur,       match :class ^($CLASS_REGEX)\$
-windowrule = noanim,       match :class ^($CLASS_REGEX)\$
-windowrule = rounding 0,   match :class ^($CLASS_REGEX)\$
-windowrule = bordersize 0, match :class ^($CLASS_REGEX)\$
-EOF
-      ;;
-  esac
-}
-
-lua_rules_text() {
-  cat <<EOF
--- Managed by linux/shijima.sh (Hyprland 0.55+ / hyprland.lua).
--- Shijima-Qt draws each mascot in its own window; without these rules
--- Hyprland tiles it and paints a border and shadow around it - the "box".
-hl.window_rule({
-  name  = "ava-shijima-qt",
-  match = { class = "$CLASS_REGEX" },
-  float = true, no_focus = true, no_border = true,
-  no_shadow = true, no_blur = true, no_anim = true,
-  rounding = 0, border_size = 0,
-})
-EOF
-}
+rules_text() { hypr_rules "$1" "$CLASS_REGEX" ava-shijima-qt false; }
+lua_rules_text() { rules_text lua; }
 
 launcher_cmd() {
   if command -v shijima-qt >/dev/null 2>&1; then printf 'shijima-qt'; return; fi
-  if command -v flatpak >/dev/null 2>&1 \
-     && flatpak list --app 2>/dev/null | grep -qi 'com.pixelomer.ShijimaQt'; then
-    printf 'flatpak run com.pixelomer.ShijimaQt'; return
+  if command -v flatpak >/dev/null 2>&1; then
+    local id installed
+    installed="$(flatpak list --app --columns=application 2>/dev/null)"
+    for id in com.pixelomer.ShijimaQt com.pixelomer.ShijimaQt.Qt; do
+      if printf '%s\n' "$installed" | grep -qxF "$id"; then
+        printf 'flatpak run --env=QT_QPA_PLATFORM=xcb %s' "$id"
+        return
+      fi
+    done
   fi
   printf ''
 }
 
-# One tiny script instead of an un-quotable one-liner: it starts Shijima-Qt if
-# it is not already up, waits for its HTTP API, then asks for the four mascots
-# (Shijima-Qt always opens with an empty screen).
+# Keep the session logic in a testable Python module; the wrapper contains
+# only the installed path and launcher. It uses the live API, not pgrep, to
+# avoid duplicate starts/spawns, and removes only excess AvA mascots.
 write_session_helper() {
   local launcher="$1"
   SESSION_HELPER="$SESSION_HELPER_PATH"
   mkdir -p "$DATA_DIR" || die "cannot create $DATA_DIR"
-  # Quoted heredoc: nothing below is expanded by the shell at write time.
-  # @LAUNCHER@ is filled in with sed afterwards.
-  cat > "$SESSION_HELPER" <<'EOF' || die "cannot write $SESSION_HELPER"
-#!/usr/bin/env sh
-# Written by linux/shijima.sh - start Shijima-Qt with the Hyprland session and
-# put the four characters on screen, once each.
-#
-# Safe to run any number of times: a lock stops overlapping runs, and it only
-# spawns the characters that are not already on screen (GET /mascots), so a
-# second start can never add a second copy.
-set -u
-LOCK="${XDG_RUNTIME_DIR:-/tmp}/ava-shijima-session.lock"
-exec 9>"$LOCK" 2>/dev/null || true
-if command -v flock >/dev/null 2>&1; then
-  flock -n 9 || exit 0
-fi
-if ! pgrep -x shijima-qt >/dev/null 2>&1 && ! pgrep -f 'com.pixelomer.ShijimaQt' >/dev/null 2>&1; then
-  nohup @LAUNCHER@ >/dev/null 2>&1 &
-fi
-exec python3 - <<'PY'
-import json, sys, time, urllib.request
-
-API = "http://127.0.0.1:32456/shijima/api/v1"
-WANT = ["Blue", "Orange", "Yellow", "Green"]
-
-def call(method, path, body=None):
-    data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(API + path, data=data, method=method,
-                                 headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=4) as resp:
-        return json.loads(resp.read().decode() or "{}")
-
-# The app takes a few seconds to open its API after launch; wait for it.
-deadline = time.time() + 90
-while True:
-    try:
-        on_screen = [m.get("name") for m in call("GET", "/mascots").get("mascots", [])]
-        break
-    except Exception as exc:
-        if time.time() > deadline:
-            sys.stderr.write("ava-shijima: Shijima-Qt API never answered: %s\n" % exc)
-            sys.exit(1)
-        time.sleep(2)
-
-for name in WANT:
-    if name in on_screen:
-        continue                        # already there - do not add a second one
-    try:
-        call("POST", "/mascots", {"name": name})
-    except Exception as exc:
-        sys.stderr.write("ava-shijima: could not spawn %s: %s\n" % (name, exc))
-PY
-EOF
-  sed -i "s|@LAUNCHER@|$launcher|" "$SESSION_HELPER" || die "cannot fill in the launcher"
+  cp "$REPO/linux/shijima-session.py" "$DATA_DIR/shijima-session.py" || die "cannot install the session helper"
+  {
+    printf '#!/usr/bin/env sh\n# Managed by linux/shijima.sh\n'
+    printf 'exec python3 %s -- %s\n' "$(shell_quote "$DATA_DIR/shijima-session.py")" "$launcher"
+  } > "$SESSION_HELPER" || die "cannot write $SESSION_HELPER"
   chmod +x "$SESSION_HELPER" || die "cannot make $SESSION_HELPER executable"
   note "wrote $SESSION_HELPER"
-}
-
-# shell-quote a path for hyprlang / Lua
-quote_path() {
-  # a plain path is fine for hyprlang; only whitespace needs quoting, and
-  # then it has to survive /bin/sh too, so single-quote it
-  case "$1" in
-    *" "*) printf "'%s'" "$1" ;;
-    *)     printf %s "$1" ;;
-  esac
-}
-
-lua_escape() {
-  printf '%s' "$1" | sed -e 's/\\\\/\\\\\\\\/g' -e 's/"/\\\\"/g'
 }
 
 write_rules() {
@@ -334,27 +274,30 @@ write_rules() {
     RULES_FILE=""
     return 0
   fi
+  if grep -qF "$SESSION_HELPER_PATH" "$RULES_CONF" "$RULES_LUA" 2>/dev/null; then
+    DO_AUTOSTART=true
+  fi
   local flavour; flavour="$(hypr_flavour)"
+  [ "$flavour" != unknown ] || die "cannot detect Hyprland version; run in your desktop session or pass --syntax v2 (0.30-0.52), v3 (0.53+) or lua"
+  mkdir -p "$HYPR_DIR" || die "cannot create $HYPR_DIR"
+  if [ "$flavour" = lua ]; then
+    [ -f "$HYPR_DIR/hyprland.lua" ] || die "no $HYPR_DIR/hyprland.lua to include the rules from"
+  else
+    [ -f "$HYPR_DIR/hyprland.conf" ] || die "no $HYPR_DIR/hyprland.conf; add a source for $RULES_CONF to your custom config"
+  fi
   case "$flavour" in
     lua)
       printf '%s\n' "$(lua_rules_text)" > "$RULES_LUA" || die "cannot write $RULES_LUA"
       note "wrote $RULES_LUA"
-      if grep -qF 'require("ava-shijima")' "$HYPR_DIR/hyprland.lua" 2>/dev/null; then
+      if grep -qxF 'require("ava-shijima")' "$HYPR_DIR/hyprland.lua" 2>/dev/null; then
         note "hyprland.lua already requires ava-shijima"
       else
-        cp -p "$HYPR_DIR/hyprland.lua" "$HYPR_DIR/hyprland.lua.ava-bak" 2>/dev/null || true
+        [ -f "$HYPR_DIR/hyprland.lua.ava-bak" ] || cp -p "$HYPR_DIR/hyprland.lua" "$HYPR_DIR/hyprland.lua.ava-bak" || die "cannot back up hyprland.lua"
         printf '\n-- AvA Shimejis / Shijima-Qt window rules\nrequire("ava-shijima")\n' \
           >> "$HYPR_DIR/hyprland.lua"
         note "added require(\"ava-shijima\") to hyprland.lua (backup: hyprland.lua.ava-bak)"
       fi
       RULES_FILE="$RULES_LUA"
-      ;;
-    unknown)
-      note "could not tell which Hyprland config style is in use - writing the modern"
-      note "(0.53+) rules; if they are not picked up, run this again after hyprctl exists."
-      printf '%s\n' "$(rules_text v3)" > "$RULES_CONF"
-      RULES_FILE="$RULES_CONF"
-      source_rules_conf
       ;;
     *)
       printf '%s\n' "$(rules_text "$flavour")" > "$RULES_CONF" || die "cannot write $RULES_CONF"
@@ -368,11 +311,11 @@ write_rules() {
 
 source_rules_conf() {
   [ -f "$HYPR_DIR/hyprland.conf" ] || return 0
-  if grep -qF "source = $RULES_CONF" "$HYPR_DIR/hyprland.conf" 2>/dev/null; then
+  if grep -qxF "source = $RULES_CONF" "$HYPR_DIR/hyprland.conf" 2>/dev/null; then
     note "hyprland.conf already sources $RULES_CONF"
     return 0
   fi
-  cp -p "$HYPR_DIR/hyprland.conf" "$HYPR_DIR/hyprland.conf.ava-bak" 2>/dev/null || true
+  [ -f "$HYPR_DIR/hyprland.conf.ava-bak" ] || cp -p "$HYPR_DIR/hyprland.conf" "$HYPR_DIR/hyprland.conf.ava-bak" || die "cannot back up hyprland.conf"
   { printf '\n# AvA Shimejis / Shijima-Qt window rules\n'
     printf 'source = %s\n' "$RULES_CONF"; } >> "$HYPR_DIR/hyprland.conf"
   note "added 'source = $RULES_CONF' to hyprland.conf (backup: hyprland.conf.ava-bak)"
@@ -390,14 +333,16 @@ add_autostart() {
     if ! hypr_present; then
       write_session_helper "$launcher"
       mkdir -p "$(dirname "$XDG_AUTOSTART")" || die "cannot create $(dirname "$XDG_AUTOSTART")"
+      local desktop_exec; desktop_exec="$(desktop_quote "$SESSION_HELPER")" || die "cannot quote the session helper path"
       cat > "$XDG_AUTOSTART" <<EOF || die "cannot write $XDG_AUTOSTART"
 [Desktop Entry]
 Type=Application
 Name=AVA Shijima-Qt
 Comment=Start Shijima-Qt and its four mascots when the session starts
-Exec=$SESSION_HELPER
+Exec=$desktop_exec
 Terminal=false
 X-GNOME-Autostart-enabled=true
+NotShowIn=Hyprland;
 EOF
       note "autostart: $XDG_AUTOSTART (read by GNOME, KDE, XFCE...)"
     else
@@ -407,7 +352,7 @@ EOF
   fi
 
   write_session_helper "$launcher"
-  local quoted; quoted="$(quote_path "$SESSION_HELPER")"
+  local quoted; quoted="$(shell_quote "$SESSION_HELPER")"
 
   if grep -qF "$SESSION_HELPER" "$RULES_FILE" 2>/dev/null; then
     note "autostart already present in $RULES_FILE"
@@ -417,7 +362,7 @@ EOF
     *.lua)
       { printf '\n-- Start Shijima-Qt with the session and put the four on screen.\n'
         printf 'hl.on("hyprland.start", function()\n'
-        printf '  hl.exec_cmd("%s")\n' "$(lua_escape "$SESSION_HELPER")"
+        printf '  hl.exec_cmd(%s)\n' "$(lua_quote "$quoted")"
         printf 'end)\n'; } >> "$RULES_FILE"
       note "autostart: hl.on(\"hyprland.start\", ...) -> $RULES_FILE"
       ;;
@@ -445,12 +390,12 @@ check() {
   [ -z "$run" ] && run="$(pgrep -af 'com.pixelomer.ShijimaQt' 2>/dev/null | head -1)"
   note "running                   : ${run:-no}"
   if [ -n "${dir:-}" ] && [ -d "$dir" ]; then
-    local n; n="$(ls -d "$dir"/*.mascot 2>/dev/null | wc -l | tr -d ' ')"
+    local n; n="$(find "$dir" -mindepth 1 -maxdepth 1 -type d -name '*.mascot' -printf . | wc -c | tr -d ' ')"
     note "installed mascots         : $n"
-    ls -d "$dir"/*.mascot 2>/dev/null | sed 's/^/      /' || true
+    find "$dir" -mindepth 1 -maxdepth 1 -type d -name '*.mascot' -printf '      %p\n'
   fi
   if command -v curl >/dev/null 2>&1; then
-    if curl -s -m 2 "http://127.0.0.1:32456/shijima/api/v1/loadedMascots" >"$CHECK_JSON" 2>/dev/null && [ -s "$CHECK_JSON" ]; then
+    if curl --noproxy '*' -fsS -m 2 "http://127.0.0.1:32456/shijima/api/v1/loadedMascots" >"$CHECK_JSON" 2>/dev/null && [ -s "$CHECK_JSON" ]; then
       note "Shijima-Qt is up; mascots it knows about:"
       python3 - "$CHECK_JSON" <<'PY'
 import json, sys
@@ -462,19 +407,40 @@ except Exception as exc:
 for m in data.get("loaded_mascots", []):
     print("      id=%s name=%r" % (m.get("id"), m.get("name")))
 PY
-      rm -f "$CHECK_JSON"
     else
-      note "API                       : no response (Shijima-Qt is not running)"
-      rm -f "$CHECK_JSON"
+      note "API                       : unreachable (app stopped, or API unavailable)"
     fi
+    if curl --noproxy '*' -fsS -m 2 "$MASCOTS_URL" >"$CHECK_JSON" 2>/dev/null && [ -s "$CHECK_JSON" ]; then
+      python3 - "$CHECK_JSON" <<'PY_LIVE'
+from collections import Counter
+import json, sys
+try:
+    data = json.load(open(sys.argv[1]))
+    mascots = data["mascots"]
+    if not isinstance(mascots, list) or any(
+            not isinstance(m, dict) or not isinstance(m.get("name"), str) for m in mascots):
+        raise ValueError("expected a list of named mascots")
+    counts = Counter(m["name"] for m in mascots)
+except (OSError, ValueError, KeyError, TypeError) as exc:
+    print("  live mascot count         : unknown (invalid API response: %s)" % exc)
+else:
+    print("  live mascot count         : %d (not the number of installed packs)" % len(mascots))
+    for name, count in sorted(counts.items()):
+        print("      %s: %d%s" % (name, count, " (extra copies)" if count > 1 else ""))
+PY_LIVE
+    else
+      note "live mascot count         : unavailable (GET /mascots did not answer)"
+    fi
+  else
+    note "API diagnostics           : install curl to report live mascot counts"
   fi
   note "hyprland config style     : $(hypr_flavour)"
   note "session helper            : $([ -f "$SESSION_HELPER_PATH" ] \
                                     && echo "$SESSION_HELPER_PATH" || echo 'not written')"
   note "XDG autostart entry       : $([ -f "$XDG_AUTOSTART" ] \
                                     && echo "$XDG_AUTOSTART" || echo 'not written')"
-  note "hyprland rules            : $([ -f "$RULES_CONF" ] && echo "$RULES_CONF" \
-                                    || { [ -f "$RULES_LUA" ] && echo "$RULES_LUA" || echo 'not written'; })"
+  note "hyprland rules            : $(if [ -f "$RULES_CONF" ]; then echo "$RULES_CONF";
+                                    elif [ -f "$RULES_LUA" ]; then echo "$RULES_LUA"; else echo 'not written'; fi)"
   if hypr_present && command -v hyprctl >/dev/null 2>&1; then
     note "windows Hyprland can see:"
     hyprctl clients -j 2>/dev/null > "$CLIENTS_JSON"
@@ -500,9 +466,14 @@ PY
     rm -f "$CLIENTS_JSON"
   fi
   echo
-  note "Spawn one by hand (Shijima-Qt must be running):"
-  local example='{"name":"Blue"}'  # shown to the user, not executed here
-  note "  curl -X POST $SPAWN_URL -H 'Content-Type: application/json' -d '$example'"
+  note "Several moving stickmen inside ONE shared box? Check Shijima's Windowed mode."
+  note "  Right-click a stickman -> Show manager -> Settings:"
+  note "    uncheck Enable multiplication, then uncheck Windowed mode."
+  note "  Right-click -> Dismiss all clears the current crowd without deleting imports."
+  note "  In the manager, double-click Blue, Orange, Yellow and Green once each."
+  note "Windowed mode is a live app setting, not a Hyprland border rule."
+  note "Shijima's API does not report or change this mode; verify the checkbox in the app."
+  note "This check only reads state; it never spawns additional mascots."
 }
 
 uninstall() {
@@ -521,26 +492,28 @@ uninstall() {
       done
     done
   fi
-  for helper in "$SESSION_HELPER_PATH" "$HYPR_DIR/ava-shijima-session.sh"; do
+  local settings; settings="$(settings_file)"
+  if [ -f "$settings.ava-bak" ]; then
+    cp -p "$settings.ava-bak" "$settings" || die "cannot restore $settings"
+    rm -f "$settings.ava-bak"
+    note "restored $settings"
+  fi
+  for helper in "$SESSION_HELPER_PATH" "$DATA_DIR/shijima-session.py" "$HYPR_DIR/ava-shijima-session.sh"; do
     [ -f "$helper" ] && rm -f "$helper" && note "removed $helper"
   done
   rmdir "$DATA_DIR" 2>/dev/null || true
   [ -f "$XDG_AUTOSTART" ] && rm -f "$XDG_AUTOSTART" && note "removed $XDG_AUTOSTART"
   if [ -f "$RULES_LUA" ]; then
-    if [ -f "$HYPR_DIR/hyprland.lua" ] && grep -qF 'require("ava-shijima")' "$HYPR_DIR/hyprland.lua"; then
+    if [ -f "$HYPR_DIR/hyprland.lua" ] && grep -qxF 'require("ava-shijima")' "$HYPR_DIR/hyprland.lua"; then
       python3 - "$HYPR_DIR/hyprland.lua" <<'PY'
 import sys
 path = sys.argv[1]
 lines = open(path, encoding="utf-8", errors="surrogateescape").read().splitlines(True)
-out, skip = [], 0
+out = []
 for l in lines:
-    if skip:                      # also drop the comment line above it
-        skip = 0
-        continue
     if 'require("ava-shijima")' in l:
         if out and out[-1].lstrip().startswith("-- AvA Shimejis"):
             out.pop()
-        skip = 1
         continue
     out.append(l)
 open(path, "w", encoding="utf-8", errors="surrogateescape").writelines(out)
@@ -562,7 +535,7 @@ PY
   done
   if [ -f "$RULES_CONF" ]; then
     local main="$HYPR_DIR/hyprland.conf"
-    if [ -f "$main" ] && grep -qF "source = $RULES_CONF" "$main"; then
+    if [ -f "$main" ] && grep -qxF "source = $RULES_CONF" "$main"; then
       python3 - "$main" "$RULES_CONF" <<'PY'
 import sys
 path, needle = sys.argv[1], f"source = {sys.argv[2]}"
@@ -593,19 +566,42 @@ PY
 case "$MODE" in
   check)     echo "Shijima-Qt pack status:"; check ;;
   uninstall) echo "Undoing the Shijima-Qt setup:"; uninstall ;;
-  *)         echo "Building Shijima-Qt mascots:"; build
-             [ "$MODE" = "install" ] && install_mascots
-             if $DO_AUTOSTART; then write_rules && add_autostart; fi ;;
+  *)
+    echo "Building Shijima-Qt mascots:"
+    build
+    if [ "$MODE" = install ]; then
+      prepare_install
+      install_mascots
+      python3 "$REPO/linux/configure-mascots.py" shijima "$(settings_file)" || die "cannot disable multiplication"
+    fi
+    # Window rules are needed even if the user does not want autostart.
+    if [ "$MODE" = install ] || $DO_AUTOSTART; then
+      write_rules || exit 1
+      if $DO_AUTOSTART; then add_autostart || exit 1; fi
+      if [ -n "$RULES_FILE" ] && command -v hyprctl >/dev/null 2>&1; then
+        hypr_reload || exit 1
+      fi
+    fi
+    if $DO_RESTART; then
+      launcher="$(launcher_cmd)"
+      [ -n "$launcher" ] || die "cannot find shijima-qt or its Flatpak"
+      write_session_helper "$launcher"
+      "$SESSION_HELPER" || die "could not restart the repaired crew"
+    fi
+    ;;
 esac
 
-if [ "$MODE" != "check" ] && [ "$MODE" != "uninstall" ]; then
+if [ "$MODE" != check ] && [ "$MODE" != uninstall ]; then
   echo
   echo "Next:"
-  if [ "$MODE" = "build" ]; then
+  if [ "$MODE" = build ]; then
     echo "  * import $OUT/<Character>.mascot.zip in Shijima-Qt (File -> Import), or"
     echo "    re-run with --install to copy the .mascot folders in directly."
+  elif ! $DO_RESTART; then
+    echo "  * launch Shijima-Qt again to load the repaired pack, or use --install --autostart --restart."
   fi
-  echo "  * they are still one of each: Shijima-Qt loads a mascot per spawn,"
-  echo "    and this pack has breeding switched off, so it stays at four."
+  echo "  * if all mascots share one box, turn off Settings -> Windowed mode in Shijima."
+  echo "  * multiplication is disabled in the installed pack and host settings."
+  echo "  * do not also run Shimeji-ee or ava-runner; each host adds its own crew."
   echo "  * status any time: $0 --check"
 fi

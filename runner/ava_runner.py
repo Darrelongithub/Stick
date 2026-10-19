@@ -152,7 +152,26 @@ def simulate(args, chars):
     return 0 if out_of_bounds == 0 else 1
 
 
+def prepare_desktop():
+    # Native Wayland does not allow QWidget.move() or X11 shape masks. Fedora
+    # commonly defaults Qt to Wayland, even though these are desktop sprites,
+    # not ordinary application windows. Use XWayland for this runner only.
+    if sys.platform.startswith("linux") and (
+            os.environ.get("WAYLAND_DISPLAY") or
+            os.environ.get("XDG_SESSION_TYPE") == "wayland" or
+            os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")):
+        if not os.environ.get("DISPLAY"):
+            raise RuntimeError("XWayland is required (DISPLAY is unset). On Fedora install "
+                               "xorg-x11-server-Xwayland and enable XWayland in Hyprland.")
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
+
+
 def run_desktop(args, chars):
+    try:
+        prepare_desktop()
+    except RuntimeError as exc:
+        print(f"ava-runner: {exc}", file=sys.stderr)
+        return 2
     try:
         from PySide6.QtCore import QLockFile, Qt, QTimer
         from PySide6.QtGui import QBitmap, QGuiApplication, QImage, QPainter, QPixmap, QRegion
@@ -162,6 +181,7 @@ def run_desktop(args, chars):
                          "  needs PySide6 plus the system OpenGL/xkb libraries:\n"
                          "    pip install PySide6-Essentials\n"
                          "    Debian/Ubuntu: libgl1 libegl1 libxkbcommon0 libfontconfig1\n"
+                         "    Fedora: mesa-libGL mesa-libEGL libxkbcommon libxcb xcb-util-cursor\n"
                          "    Arch: mesa libxkbcommon fontconfig\n"
                          "  (--simulate needs none of this)\n")
         return 2
@@ -170,8 +190,11 @@ def run_desktop(args, chars):
     app.setQuitOnLastWindowClosed(False)
 
     # One runner at a time, however it was started (systemd, Hyprland, by hand).
-    lock = QLockFile(os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"),
-                                  "ava-runner.lock"))
+    cache = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+    # Preserve the existing per-session lock path when upgrading a live runner.
+    lock_dir = os.environ.get("XDG_RUNTIME_DIR") or os.path.join(cache, "ava-shimeji")
+    os.makedirs(lock_dir, mode=0o700, exist_ok=True)
+    lock = QLockFile(os.path.join(lock_dir, "ava-runner.lock"))
     if not lock.tryLock(100):
         print("ava-runner: already running", file=sys.stderr)
         return 75                       # EX_TEMPFAIL: systemd does not restart on it
@@ -211,9 +234,14 @@ def run_desktop(args, chars):
 
     class Sprite(QWidget):
         def __init__(self):
-            super().__init__(None, Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
-                             | Qt.Tool | Qt.WindowDoesNotAcceptFocus
-                             | Qt.NoDropShadowWindowHint)
+            flags = (Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+                     | Qt.Tool | Qt.WindowDoesNotAcceptFocus | Qt.NoDropShadowWindowHint)
+            if QGuiApplication.platformName() == "xcb":
+                # override-redirect: Hyprland must not tile, border or animate
+                # these tiny moving windows. This affects sprites only, not a
+                # global "python" window rule that could break unrelated apps.
+                flags |= Qt.X11BypassWindowManagerHint
+            super().__init__(None, flags)
             self.setAttribute(Qt.WA_TranslucentBackground)
             self.setAttribute(Qt.WA_ShowWithoutActivating)
             self.setFixedSize(win_w, win_h)
@@ -228,6 +256,8 @@ def run_desktop(args, chars):
             if self.pix is None:
                 return
             painter = QPainter(self)
+            painter.setCompositionMode(QPainter.CompositionMode_Source)
+            painter.fillRect(self.rect(), Qt.transparent)  # no trails from the last pose
             painter.drawPixmap(0, 0, self.pix)
 
     mascots, sprites = [], []

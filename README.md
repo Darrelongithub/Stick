@@ -25,15 +25,89 @@ Recently rebuilt:
 
 ---
 
+## Fedora + Hyprland: fix an existing installation
+
+Run these **inside your Hyprland session, as your normal user (not sudo)**,
+using the updated scripts. **Pick the runner you actually use — not both.**
+
+**Shimeji-ee (Java):**
+
+```bash
+./linux/hyprland.sh ~/Shimeji-ee   # use your actual Shimeji-ee folder
+```
+
+This stops the old Java instances, repairs the **installed** no-cloning XML
+and settings, installs/reloads the correct rules, and starts one fresh crew.
+`--no-start` applies the repair but leaves them stopped. To install/update the
+art as well, run `./linux/install.sh ~/Shimeji-ee`, then
+`~/Shimeji-ee/ava-toggle.sh --start`.
+
+**Shijima-Qt (native, Flatpak or AppImage): one box containing several moving stickmen**
+
+First check **Shijima's own settings**, not Hyprland's rules:
+
+1. Right-click a moving stickman → **Show manager**.
+2. Under **Settings**, uncheck **Enable multiplication**. This changes the
+   running app immediately; it does not remove copies already on screen.
+3. Also uncheck **Windowed mode**. This mode puts all mascots inside a shared
+   sandbox window. Removing a compositor border does **not** turn it into
+   desktop mode.
+4. Right-click a stickman → **Dismiss all** to clear the crowd. Use **Dismiss**,
+   not **Edit → Delete shimeji** (which deletes an imported character).
+5. In the manager, double-click **Blue**, **Orange**, **Yellow** and **Green**
+   once each. Each double-click spawns another copy.
+
+These steps work in the running app without installing updated scripts.
+Windowed mode is a live checkbox in upstream Shijima-Qt: its HTTP API cannot
+read or change it, and an invented `windowedMode=false` config key will not
+fix it. If it is already unchecked and the shared box remains, capture a
+screenshot and run `hyprctl configerrors` rather than reinstalling blindly.
+
+For the pack/rules/autostart repair (native binary on PATH or Flatpak):
+
+```bash
+./linux/shijima.sh --install --autostart --restart
+```
+
+This restarts the host to discard old XML held in memory, replaces the four
+installed mascots, turns off **Settings → Enable multiplication**, and puts
+one of each on screen. Restarting the host clears its current screen; other
+on-screen mascots are not automatically restored. Later runs of the session
+helper remove only excess Blue/Orange/Yellow/Green copies, leaving other
+mascots alone. Without `--restart`, quit Shijima-Qt before installing.
+
+**The built-in Python runner (`runner/ava_runner.py`):** restart it after
+updating (`systemctl --user restart ava-runner.service` if you installed its
+service). It now uses XWayland and unmanaged sprite windows, rather than
+Wayland application windows that Hyprland can frame/tile. Do not leave its
+service running while using one of the other hosts.
+
+Check for rejected rules after applying the fix:
+
+```bash
+hyprctl configerrors              # should be empty
+./linux/hyprland.sh --check        # Java host diagnostics
+# or: ./linux/shijima.sh --check
+```
+
+A reload alone cannot repair already-tiled windows or replace a host's cached
+XML — the restart matters. Remove any old **hand-written** `exec`/`exec-once`
+commands that launch another host or launch raw `java -jar`; use the guarded
+`ava-toggle.sh --start` instead. The scripts update their own managed rules,
+not unrelated entries in your config. If version detection is unavailable,
+pass `--syntax v2` for Hyprland 0.30–0.52, `--syntax v3` for 0.53+ hyprlang,
+or `--syntax lua` for a Lua config; they no longer silently guess.
+
 ## If you use Hyprland (or Wayland at all)
 
-Three separate things go wrong on Hyprland, and they need three different fixes:
+These symptoms have different causes; a border rule cannot fix all of them:
 
 | What you see | What is actually happening | Fix |
 |---|---|---|
-| Every shimeji sits in a highlighted box, and they get resized/rearranged | Shimeji-ee draws each character in its own borderless X11 window (`com-group_finity-mascot-Main`). Hyprland **tiles** every new window and paints its border, shadow and blur around it. Hyprland's wiki has a [Shimeji section](https://wiki.hypr.land/Configuring/Uncommon-tips--tricks/#shimeji) for exactly this. | Window rules: `float`, `noborder`, `noshadow`, `noblur`, `nofocus`, `noanim` |
-| They come back as a crowd, or the wrong ones come back | Two things: (a) Shimeji-ee's `Breeding` lets every character clone itself while walking, up to 50; (b) `ActiveShimeji=Shimeji` loads whatever image sets happen to be in `img/`. | Breeding off in all three places + `ActiveShimeji=Blue/Orange/Yellow/Green` |
-| They never autostart, no matter what you install | **Hyprland does not implement XDG autostart.** It never reads `~/.config/autostart/*.desktop` — that is also why Shijima-Qt never came back after a reboot ([Hyprland #5169](https://github.com/hyprwm/Hyprland/issues/5169), closed as not planned). | Hyprland `exec-once` instead |
+| Several moving shimejis share one boxed area | Shijima-Qt may be in **Windowed mode**, which parents the mascots to a sandbox window. | Right-click → **Show manager** → **Settings** → uncheck **Windowed mode**. Disable **Enable multiplication** separately and dismiss the existing crowd. |
+| Every shimeji sits in a highlighted box, and they get resized/rearranged | The sprite's X11 window is being managed like a normal application window. Invalid rules have the same effect as missing ones. | Version-correct floating, undecorated, no-shadow/no-blur/no-animation rules, followed by a host restart. |
+| They come back as a crowd, or the wrong ones come back | Old breeding XML/settings, duplicate launches, or two different hosts running the pack. | Remove cloning actions/references in the installed pack, disable the host's multiplication setting, use a locked/idempotent launcher and only one host. |
+| They never autostart, or start twice | Hyprland itself does not process XDG autostart, but a session manager such as UWSM can. Using both mechanisms with an unguarded launcher can duplicate the crew. | Hyprland `exec-once` (Lua: `hyprland.start`) with a guarded launcher; `NotShowIn=Hyprland;` on the XDG entry. |
 
 ```bash
 ./linux/install.sh          # installs the pack (runs the Hyprland step itself
@@ -45,18 +119,26 @@ Three separate things go wrong on Hyprland, and they need three different fixes:
 `hyprland.sh` detects your config and writes the right flavour of rules:
 
 * `~/.config/hypr/hyprland.conf` — `windowrulev2` (≈0.30–0.52), the unified
-  `windowrule ... match :class` form (0.53+, hyprlang), or the legacy
+  `windowrule = match:class ..., float on` form (0.53+, hyprlang), or the legacy
   `windowrule` form on very old builds. Auto-detected from `hyprctl version`,
   overridable with `--syntax v1|v2|v3`.
 * `~/.config/hypr/hyprland.lua` — a Lua `hl.window_rule({...})` (0.55+).
-* no config found — it prints the snippet to paste.
-* Not Hyprland at all — it says so, updates the Shimeji-ee settings and stops.
+* no config found — it prints a snippet to paste and leaves the mascots stopped.
+* no Hyprland session/config — it repairs the installed Shimeji-ee settings
+  without changing compositor rules.
 
-Everything it writes is idempotent, it backs up any file it edits
-(`*.ava-bak`), it leaves other image sets alone, and `--uninstall` puts things
-back. It also adds `exec-once = java -jar …/Shimeji-ee.jar` so the crew starts
-with your session, and disables the dead `~/.config/autostart` entry (kept for
-GNOME/KDE users) so you never get two runners.
+Rule generation and settings repairs are idempotent; the first backups of
+edited main configs and host settings are kept as `*.ava-bak`. Other image
+sets are left alone. `--uninstall` removes the managed compositor includes
+without discarding unrelated edits made since installation, and restores
+backed-up host settings. The repaired pack itself stays installed.
+
+Autostart uses `ava-toggle.sh --start`, not raw Java or a toggle. A lock
+serializes concurrent start/stop requests, and process matching handles both
+absolute and relative jar paths (including spaces). The XDG entry is excluded
+from Hyprland but retained for GNOME/KDE. Both installers check
+`hyprctl configerrors` after reload and refuse to start new sprites if the
+configuration was rejected.
 
 ### Already running Shijima-Qt?
 
@@ -72,7 +154,7 @@ What it cannot do by itself is autostart: Hyprland never reads
 it never came back after a reboot. `linux/shijima.sh` fixes that:
 
 ```bash
-./linux/shijima.sh --install --autostart
+./linux/shijima.sh --install --autostart --restart
 ```
 
 It repackages each character into the `<Name>.mascot` folder (and `.mascot.zip`
@@ -86,13 +168,16 @@ characters on screen through its
 wired up as `exec-once` on Hyprland, or as an ordinary
 `~/.config/autostart/ava-shijima-qt.desktop` where XDG autostart actually
 works (GNOME, KDE, XFCE). `--check` reports what is installed, whether the app
-is running and what your compositor can see; `--uninstall` puts it all back.
+is running, counts the **live** mascots by name (not just installed imports),
+and reports what your compositor can see. It never spawns mascots and cannot
+infer the Windowed mode checkbox from the HTTP API. `--uninstall` puts it all
+back.
 
 Running both runners at once gives you eight mascots, so pick one:
 
 ```bash
-pkill -f shijima          # switching to Shimeji-ee
-~/Shimeji-ee/ava-toggle.sh
+# Quit Shijima-Qt from its menu before switching to Shimeji-ee.
+~/Shimeji-ee/ava-toggle.sh --start
 ```
 
 Shimeji-ee is still the recommended home for this pack — it is maintained, it
@@ -120,18 +205,24 @@ git clone <this-repo> && cd Stick
 
 What it does:
 
-1. Copies `Blue/ Orange/ Yellow/ Green/` (images + their own `conf/`) into
-   Shimeji-ee's `img/` folder.
+1. Stops existing instances of this Shimeji-ee installation, then copies
+   `Blue/ Orange/ Yellow/ Green/` (images + their own `conf/`) into its `img/`
+   folder. Stopping first prevents a shutdown from saving stale settings over
+   the repair.
 2. Sets `Breeding=false` and `ActiveShimeji=Blue/Orange/Yellow/Green` in
    `conf/settings.properties` (backup: `settings.properties.ava-bak`).
-3. Installs `ava-toggle.sh` next to the jar for on/off control.
+3. Installs `ava-toggle.sh` next to the jar for locked start/stop/restart control.
 4. Installs a `~/.config/autostart/ava-shimeji.desktop` for GNOME/KDE/XFCE.
-5. On Hyprland: runs `linux/hyprland.sh` (window rules + `exec-once`).
+5. On Hyprland: runs `linux/hyprland.sh` (window rules + guarded `exec-once`).
+   Leaves the app stopped; run `ava-toggle.sh --start` after a successful install.
 
 ## On/off toggle
 
 ```bash
-~/Shimeji-ee/ava-toggle.sh     # stop if running, start if stopped (+ notification)
+~/Shimeji-ee/ava-toggle.sh             # toggle (+ notification)
+~/Shimeji-ee/ava-toggle.sh --start     # start only if stopped; safe for autostart
+~/Shimeji-ee/ava-toggle.sh --stop      # clear the screen
+~/Shimeji-ee/ava-toggle.sh --restart   # discard the current crowd and start fresh
 ```
 
 Tip: bind that script to a hotkey — on Hyprland:
@@ -150,10 +241,11 @@ The default is exactly one of each. To change the cast, edit
 `ActiveShimeji` in `~/Shimeji-ee/conf/settings.properties` (write the folder
 names separated by `/`, e.g. `Blue/Green`), or use the app's own menu.
 
-Cloning is disabled in `img/*/conf/behaviors.xml` (`PullUpShimeji`,
-`Frequency="0"`) and by `Breeding=false`. Re-enable it by setting
-`Breeding=true` and `Frequency="50"` back — but the cap of 50 mascots is why
-you were swimming in them.
+Cloning actions, behaviours and their references (`PullUpShimeji` and its
+`Breed` action) are **removed**, not merely set to `Frequency="0"` —
+libshijima can still select a zero-weight behaviour. `Breeding=false` in
+Shimeji-ee and `multiplicationEnabled=false` in Shijima-Qt back this up at the
+host level. Changing just the setting does not re-enable removed actions.
 
 ---
 
@@ -257,9 +349,9 @@ If you ever meet XMLs patched by the very first buggy patcher,
 
 | Error / symptom | Cause & fix |
 |---|---|
-| Shimejis sit in boxes / get tiled / get resized (Hyprland) | Window rules are missing. Run `./linux/hyprland.sh`, then `hyprctl reload`. |
-| They never start on login (any Wayland compositor) | XDG autostart is a GNOME/KDE thing. On Hyprland use the `exec-once` that `hyprland.sh` writes; on sway/river/hyprland put `exec java -jar …/Shimeji-ee.jar` in your compositor config. |
-| They keep multiplying | Breeding. `PullUpShimeji` must be `Frequency="0"` in each `img/*/conf/behaviors.xml` **and** `Breeding=false` in `conf/settings.properties`. Re-run `tools/patch_xml.py` on a copy of the pack to restore it. |
+| Shimejis sit in boxes / get tiled / get resized (Hyprland) | Missing or invalid window rules. Use the [repair commands above](#fedora--hyprland-fix-an-existing-installation) for your host, then check `hyprctl configerrors`. The host must restart to recreate the windows. |
+| They never start on login | On Hyprland use the guarded autostart that the installer writes. On another compositor, launch `ava-toggle.sh --start` with its startup mechanism; do not use raw Java or a toggle. |
+| They keep multiplying | Repair the **installed** XML/host settings and restart the host; patching only this repo does not change a running app. Use the guarded launcher and check that another host/service is not also running. |
 | Two sets of shimejis, or the wrong ones | `ActiveShimeji` in `conf/settings.properties`; and check nothing else runs one (`pgrep -af 'shijima\|Shimeji-ee'`). |
 | They stay asleep / stuck in a pose forever | A behaviour whose action is `Type="Stay"` never ends. The generated ones use `Animate`; if you add your own, don't use `Stay`. |
 | Everything renders but `hyprctl clients` shows a huge window | Shimeji-ee sizes its window to the largest frame in the set. That is another reason all generated frames are the same 160×160. |
@@ -283,10 +375,29 @@ PYTHON=~/venvs/ava/bin/python ./runner/install-service.sh   # start at login, re
 ./runner/install-service.sh --uninstall
 ```
 
-The desktop part needs PySide6 and the system OpenGL/xkb libraries (the script
-prints the package names if they are missing). Status: the scheduler is tested
-headless; the on-screen part has **not yet been run on a real Hyprland
-session**, so treat it as the next thing to try, not a finished product.
+The desktop part needs PySide6, XWayland on Wayland sessions, and the system
+OpenGL/xkb libraries (the script prints package names if they are missing).
+On Wayland it selects Qt's `xcb` backend so it can position and shape sprites;
+on X11/XWayland its sprite windows bypass the window manager, so no broad
+"python window" rule is needed. Frames are cleared before painting to avoid
+pose trails. The existing single-instance lock is kept.
+
+Status: the scheduler and Linux integration paths have headless regression
+tests. The on-screen part has **not yet been verified on a real Fedora
+Hyprland session**.
+
+## Regression checks
+
+```bash
+python3 -m unittest discover -s tests -v   # stdlib only; fake desktop commands
+python3 tools/validate.py                 # needs Pillow; includes anti-cloning checks
+python3 runner/ava_runner.py --simulate 10000 --seed 42
+```
+
+Tests cover Hyprland rule/version boundaries, Lua autostart, repeated
+installation, config error handling, simultaneous launches, relative jar
+paths, stop-before-settings-save ordering, and Shijima API duplicate cleanup.
+They do not modify your real HOME, run a real JVM, or require a desktop.
 
 ## Layout
 
@@ -301,7 +412,11 @@ tools/repair_xml.py    one-time repair for XMLs damaged by the old patcher
 linux/install.sh       installer: image sets + toggle + autostart (+ Hyprland)
 linux/hyprland.sh      Hyprland: window rules (no boxes) + real autostart
 linux/shijima.sh       Shijima-Qt: .mascot repack + autostart, same pack
-linux/ava-toggle.sh    on/off toggle with desktop notification
+linux/ava-toggle.sh    guarded start/stop/restart/toggle with notifications
+linux/hyprland-common.sh shared version-aware rule generation/reload checks
+linux/configure-mascots.py installed XML and host no-multiplication settings
+linux/shijima-session.py locked API-driven start and one-of-each reconciliation
+tests/                 headless Linux integration regressions
 docs/                  the images used on this page
 ```
 
