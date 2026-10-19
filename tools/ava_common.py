@@ -233,6 +233,8 @@ SIG_BEHAVIORS = {"Orange": ("DrawAlive", 18), "Yellow": ("Tinker", 18),
 # Behaviours from the original pack that this pack switches off.  Breeding is
 # the big one: PullUpShimeji let every character clone itself while walking
 # (capped only at 50 mascots), which is what buried the desktop in shimejis.
+# These behaviours and their cloning actions/references are removed, not just
+# given zero weight (libshijima can still select zero-weight behaviours).
 # ``Breeding=false`` in settings.properties backs this up at the app level.
 DISABLED_BEHAVIORS = ["PullUpShimeji"]
 

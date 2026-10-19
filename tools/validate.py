@@ -10,7 +10,7 @@ refuses to load the pack or renders it wrong):
 
   * both conf XMLs parse, no duplicate action/behaviour names (Shimeji-ee
     aborts on duplicates: "duplicate action found"), every reference resolves
-  * PullUpShimeji is disabled (breeding off -> the crew stays at four)
+  * breeding actions/behaviours are absent (zero frequency is not sufficient)
   * the stock Dance behaviour has no unresolvable <ActionReference>
   * every generated frame file exists, is exactly the spec canvas size, and
     has no ink touching the canvas edge - a frame whose art reaches the edge
@@ -91,11 +91,16 @@ def check_xml(char, failures):
                             f"action by the behaviour's Name, not its children")
         if name not in action_set:
             failures.append(f'{char}: behavior "{name}" has no matching action')
-        if int(b.get("Frequency") or 0) > 0 and name in SPEC.DISABLED_BEHAVIORS:
-            failures.append(f'{char}: behavior "{name}" is enabled again '
-                            f'(breeding clones the crew - it must stay off)')
+        if name in SPEC.DISABLED_BEHAVIORS:
+            failures.append(f'{char}: breeding behavior "{name}" must be removed, '
+                            f'not merely set to zero frequency')
 
     for ref in a_root.iter():
+        # libshijima can select a zero-weight behaviour. Fail on the cloning
+        # primitives themselves too, even if currently unreachable by name.
+        kind = (ref.get("Class") or ref.get("Type") or "").rsplit(".", 1)[-1]
+        if local(ref.tag) == "Action" and kind in {"Breed", "BreedJump", "BreedMove"}:
+            failures.append(f'{char}: cloning action {ref.get("Name")!r} must be removed')
         if local(ref.tag) == "ActionReference":
             n = ref.get("Name")
             if n and n not in action_set:

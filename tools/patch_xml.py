@@ -12,8 +12,8 @@ It also does two repairs that matter for people who have the pack installed:
 * switches ``PullUpShimeji`` off.  That behaviour is Shimeji-ee's breeding
   action: with the stock ``Frequency="50"`` every character clones itself while
   walking, and the only limit is ``totalCount < 50``.  The pack is a four-man
-  crew, so the behaviour is pinned to Frequency="0" and the app-level
-  ``Breeding`` flag is turned off as well.
+  crew, so cloning actions, behaviours and references are removed entirely.
+  The installers also turn off the host app's breeding setting.
 * removes the stock ``<ActionReference Name="Dancing"/>`` inside ``<Behavior
   Name="Dance">`` and the duplicated Dance behaviours, which Shimeji-ee cannot
   resolve (it looks a behaviour's action up by the behaviour's own Name and
