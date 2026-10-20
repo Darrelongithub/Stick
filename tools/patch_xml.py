@@ -14,16 +14,17 @@ It also does two repairs that matter for people who have the pack installed:
   walking, and the only limit is ``totalCount < 50``.  The pack is a four-man
   crew, so cloning actions, behaviours and references are removed entirely.
   The installers also turn off the host app's breeding setting.
-* removes the stock ``<ActionReference Name="Dancing"/>`` inside ``<Behavior
-  Name="Dance">`` and the duplicated Dance behaviours, which Shimeji-ee cannot
-  resolve (it looks a behaviour's action up by the behaviour's own Name and
-  logs "no corresponding action Dancing").
+* removes the stock, globally selectable Dance behavior and its invalid
+  ``<ActionReference Name="Dancing"/>``, then emits one per-character Dance
+  weight gated to the actual work-area floor. Dance poses get a stable,
+  character-specific beat accent without changing or inventing sprite frames.
 
 Usage:
     python3 tools/patch_xml.py            # patch every character
     python3 tools/patch_xml.py Blue       # just one
 """
 import os
+import random
 import re
 import sys
 
@@ -111,21 +112,70 @@ def strip_elements(raw, tag, names):
 
 
 def fix_dance(raw):
-    """Stock Dance behaviour: drop an ActionReference Shimeji-ee cannot use and
-    any duplicated Dance behaviours, keeping exactly one Frequency=10 entry."""
-    eol = eol_of(raw)
+    """Remove malformed/duplicate stock Dance entries.
+
+    The original Dance behavior was globally selectable (including while a
+    mascot was hanging or falling), despite its Floor-bounded action. The
+    correctly gated Dance behavior is emitted with the generated behavior pool.
+    """
     raw = re.sub(r'[ \t]*<ActionReference Name="Dancing"\s*/>\r?\n?', "", raw)
-    pat = re.compile(r'[ \t]*<Behavior Name="Dance"[^>]*?/>\r?\n?')
-    first = True
+    dance = re.compile(
+        r'[ \t]*<Behavior\b(?=[^>]*\bName="Dance")[^>]*/>\r?\n?'
+        r'|[ \t]*<Behavior\b(?=[^>]*\bName="Dance")[^>]*>.*?</Behavior>\r?\n?',
+        re.S)
+    return dance.sub("", raw)
 
-    def keep(m):
-        nonlocal first
-        if first:
-            first = False
-            return f'\t\t<Behavior Name="Dance" Frequency="10" />{eol}'
-        return ""
 
-    return pat.sub(keep, raw)
+def fix_crawl_sequence_expressions(raw):
+    """Correct the missing-call parentheses in ClimbAlongWall's target.
+
+    Shimeji-ee/ShimeLinux expose Math.random() as a function; subtracting the
+    function object itself is not a valid target expression. Keep this repair
+    scoped to the wall-crawl sequence rather than rewriting unrelated actions.
+    """
+    sequence = re.compile(
+        r'(<Action\b(?=[^>]*\bName="ClimbAlongWall")[^>]*>.*?</Action>)', re.S)
+    return sequence.sub(lambda m: m.group(1).replace("Math.random*100", "Math.random()*100"), raw)
+
+
+def retime_dance(raw, char):
+    """Apply one stable character-specific beat accent to Dance's existing
+    frames, leaving its poses and choreography intact. A marker makes patching
+    idempotent, and frame filenames remain untouched.
+    """
+    marker = f"<!-- AVA:dance-tempo:{char} -->"
+    already_timed = marker in raw
+    action = re.compile(
+        r'(<Action\b(?=[^>]*\bName="Dance")[^>]*>)(.*?)(</Action>)', re.S)
+    match = action.search(raw)
+    if not match:
+        return raw
+    accents = SPEC.DANCE_TEMPO_ACCENTS[char]
+    index = 0
+
+    def accent_pose(pose):
+        nonlocal index
+        accent = accents[index % len(accents)]
+        index += 1
+        return re.sub(r'Duration="(\d+)"',
+                      lambda m: f'Duration="{int(m.group(1)) + accent}"',
+                      pose.group(0), count=1)
+
+    body = (match.group(2) if already_timed else
+            re.sub(r'<Pose\b[^>]*/>', accent_pose, match.group(2)))
+    opening = match.group(1)
+    if "Condition=" not in opening:
+        opening = opening[:-1] + ' Condition="#{mascot.environment.floor.isOn(mascot.anchor)}">'
+    updated = (raw[:match.start(1)] + opening + body + match.group(3)
+               + raw[match.end(3):])
+    if already_timed:
+        return updated
+    # Put the marker on its own line above the action, preserving indentation.
+    start = match.start(1)
+    line_start = updated.rfind("\n", 0, start) + 1
+    indent = updated[line_start:start]
+    eol = eol_of(updated)
+    return updated[:line_start] + indent + marker + eol + updated[line_start:]
 
 
 # Everything that can make a copy of a character.  Shimeji-ee breeds through an
@@ -190,19 +240,22 @@ def action_xml(name, eol):
     for k, v in (spec.get("embed") or {}).items():
         attrs.append(f'{k}="{v}"')
     head = "\t\t<Action " + " ".join(attrs) + ">"
+    poses = single_pass(name, SPEC.poses(name))
     body = [pose_line(eol, img, anc, vel, dur)
-            for img, anc, vel, dur in single_pass(name, SPEC.poses(name))]
+            for img, anc, vel, dur in poses]
     lines = [head, "\t\t\t<Animation>"] + body + ["\t\t\t</Animation>", "\t\t</Action>"]
     if spec.get("two_animations"):
-        # ClimbWall is direction-dependent upstream: emit the same animation
-        # twice with the stock conditions, so up- and down-climbing both work.
+        # The wall sprite set has five existing poses. Climb up in authored
+        # order and descend in reverse with the matching positive velocity;
+        # reusing the up-cycle while moving down made the feet/arms snap back.
         cond_up = '#{TargetY &lt; mascot.anchor.y}'
         cond_dn = '#{TargetY &gt;= mascot.anchor.y}'
-        inner = "\n".join(body)
+        down = [pose_line(eol, img, anc, "0,3", dur)
+                for img, anc, _vel, dur in reversed(poses)]
         anims = [f"\t\t\t<Animation Condition=\"{cond_up}\">",
-                 inner, "\t\t\t</Animation>",
+                 eol.join(body), "\t\t\t</Animation>",
                  f"\t\t\t<Animation Condition=\"{cond_dn}\">",
-                 inner, "\t\t\t</Animation>"]
+                 eol.join(down), "\t\t\t</Animation>"]
         lines = [head] + anims + ["\t\t</Action>"]
     return eol.join(lines)
 
@@ -234,6 +287,10 @@ def behavior_names(char):
     sig = SPEC.SIG_BEHAVIORS[char][0]
     if sig not in names:
         names.append(sig)
+    # The selection pool is weighted, but order also maps the random chooser's
+    # cumulative intervals. A stable per-character shuffle avoids identical
+    # ordering while keeping generated XML reproducible.
+    random.Random("ava-behavior-pool-" + char).shuffle(names)
     return names
 
 
@@ -254,6 +311,8 @@ def patch_actions(path, char):
     # generated actions go into the FIRST <ActionList> (the files have two,
     # and Shimeji-ee rejects duplicate action names).
     raw = insert_before_line(raw, "</ActionList>", eol.join(block), eol)
+    raw = fix_crawl_sequence_expressions(raw)
+    raw = retime_dance(raw, char)
     write(path, raw)
     print(f"  {path}: {len(SPEC.generated_actions_for(char))} actions, "
           f"{len(SPEC.SEQUENCES)} sequences")

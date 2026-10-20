@@ -130,13 +130,18 @@ _add("Falling", prefix="fall", frames=3, family="air", type="Embedded", border=N
 _add("GrabCeiling", prefix="hang", frames=3, family="ceiling", type="Stay", border="Ceiling",
      durations=[12, 10, 14], regen=True)
 _add("ClimbCeiling", prefix="swing", frames=8, family="ceiling", type="Move", border="Ceiling",
-     durations=[2, 2, 2, 2, 2, 2, 2, 2],
-     velocity=[("-6,0"), ("-4,0"), ("-4,0"), ("-4,0"), ("-8,0"), ("-12,0"), ("-10,0"), ("-8,0")],
+     # These eight existing swing poses alternate support legs. Keep a steady
+     # 4 px/tick travel speed and let the stronger reaches land on slightly
+     # longer beats instead of changing speed sharply from pose to pose.
+     durations=[3, 3, 4, 3, 3, 4, 3, 3],
+     velocity=["-4,0"] * 8,
      regen=True)
 _add("GrabWall", prefix="wall_climb", frames=5, family="wall", type="Stay", border="Wall",
      durations=[250], plays=[1], regen=True)
 _add("ClimbWall", prefix="wall_climb", frames=5, family="wall", type="Move", border="Wall",
-     durations=[3, 3, 3, 4, 2], velocity=["0,-4", "0,-4", "0,-4", "0,-4", "0,-2"],
+     # The original five wall poses are visually very close together. A calm,
+     # even cadence and matching displacement keep them from stuttering.
+     durations=[4, 4, 4, 4, 4], velocity=["0,-3"] * 5,
      regen=True, two_animations=True)
 _add("Sprawl", prefix="lay", frames=3, family="floor", type="Stay", border="Floor",
      durations=[40, 12, 60], regen=True)
@@ -180,12 +185,21 @@ SEQUENCES = {
 #   None  -> anywhere (used by reactive/leaping moves)
 FLOOR_GATE = ("#{mascot.environment.floor.isOn(mascot.anchor) || "
               "mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}")
+# Dance is deliberately stricter than the general floor activity gate: a
+# window top is not a safe substitute for the actual desktop floor.
+FLOOR_ONLY_GATE = "#{mascot.environment.floor.isOn(mascot.anchor)}"
 CURSOR_NEAR = ("${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) < 300 "
                "&& Math.abs(mascot.anchor.y - mascot.environment.cursor.y) < 300}")
 
+# ShimeLinux 1.4.0's Shimeji-ee-compatible script context exposes the current
+# `mascot`/`action`, environment, Math helpers, and population counts. Its
+# manager does not expose a stable peer identity or shared animation state, so
+# do not invent a cross-mascot condition; desynchronize with independent pools,
+# weights, and tempo profiles instead.
 # name -> (base frequency, gate, condition)
 BEHAVIORS = [
     ("Idle",         25, "floor", None),        # breathing / weight shift
+    ("Dance",        10, "floor_only", None),    # only on the real work-area floor
     ("Wave",         20, "floor", None),
     ("Cheer",        14, "floor", None),
     ("Stretch",      12, "floor", None),
@@ -219,13 +233,26 @@ BEHAVIORS = [
 # supposed to feel like different people, not one animation reel.
 FLAVOR = {
     "Orange": {"FightCombo": 1.6, "SpinKick": 1.4, "DrawAlive": 1.4, "Victory": 1.3,
-               "Wave": 0.8, "Meditate": 0.6, "Coffee": 0.8, "Tinker": 0.0},
+               "Wave": 0.8, "Meditate": 0.6, "Coffee": 0.8, "Tinker": 0.0,
+               "Dance": 1.4, "Idle": 0.7, "Stretch": 0.8, "Cheer": 1.3},
     "Blue":   {"BrewPotion": 1.4, "Meditate": 1.6, "Sleep": 1.4, "Coffee": 1.3,
-               "FightCombo": 0.7, "Dizzy": 0.7, "Tinker": 0.0, "Idle": 1.2},
+               "FightCombo": 0.7, "Dizzy": 0.7, "Tinker": 0.0, "Idle": 1.2,
+               "Dance": 0.3, "Wave": 1.2, "Stretch": 1.3, "Cheer": 0.8},
     "Yellow": {"Tinker": 1.5, "Juggle": 1.5, "Mine": 1.3, "Phone": 1.3,
-               "Cry": 0.6, "Sleep": 0.8, "Taunt": 1.2},
+               "Cry": 0.6, "Sleep": 0.8, "Taunt": 1.2,
+               "Dance": 0.6, "Idle": 0.9, "Wave": 1.4, "Stretch": 0.8, "Cheer": 1.1},
     "Green":  {"PlayGuitar": 1.5, "Cheer": 1.3, "Coffee": 1.3, "PushUps": 1.3,
-               "Phone": 0.7, "Sleep": 0.9, "Stretch": 1.2},
+               "Phone": 0.7, "Sleep": 0.9, "Stretch": 1.2,
+               "Dance": 1.6, "Idle": 1.0, "Wave": 0.8, "Taunt": 1.1},
+}
+
+# Per-frame accent patterns (added to existing Dance durations) make the same
+# sprite choreography breathe at four distinctly recognizable tempos.
+DANCE_TEMPO_ACCENTS = {
+    "Blue":   (0, 0, 1, 0, 0, 1, 0, 0),  # gentle, measured sway
+    "Orange": (1, 0, 0, 0, 0, 0, 1, 0),  # punchy accents
+    "Yellow": (0, 1, 0, 0, 1, 0, 0, 0),  # playful skip
+    "Green":  (0, 0, 0, 1, 0, 0, 0, 1),  # relaxed long beats
 }
 SIG_BEHAVIORS = {"Orange": ("DrawAlive", 18), "Yellow": ("Tinker", 18),
                  "Blue": ("BrewPotion", 18), "Green": ("PlayGuitar", 18)}
@@ -253,6 +280,8 @@ def freq(action, char):
 def gate(action):
     for n, _f, g, _c in BEHAVIORS:
         if n == action:
+            if g == "floor_only":
+                return FLOOR_ONLY_GATE
             return FLOOR_GATE if g == "floor" else None
     return None
 
