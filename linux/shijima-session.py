@@ -18,6 +18,7 @@ import urllib.request
 
 API = "http://127.0.0.1:32456/shijima/api/v1"
 WANT = ("Blue", "Orange", "Yellow", "Green")
+SPAWN_STAGGER_SECONDS = 0.18      # do not seed all four on the same host tick
 
 
 def call(method, path, body=None):
@@ -49,12 +50,15 @@ def reconcile(mascots):
     for mascot in mascots:
         if mascot["name"] in WANT:
             seen[mascot["name"]].append(mascot["id"])
+    missing = [name for name in WANT if not seen[name]]
     for name in WANT:
         # Clean up an existing crowd, not just prevent another one next login.
         for mascot_id in seen[name][1:]:
             call("DELETE", f"/mascots/{mascot_id}")
-        if not seen[name]:
-            call("POST", "/mascots", {"name": name})
+    for index, name in enumerate(missing):
+        call("POST", "/mascots", {"name": name})
+        if index + 1 < len(missing):
+            time.sleep(SPAWN_STAGGER_SECONDS)
 
 
 def start(launcher):

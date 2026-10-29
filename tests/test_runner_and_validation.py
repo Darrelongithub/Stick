@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import random
 from pathlib import Path
 import tempfile
 import unittest
@@ -35,6 +36,42 @@ class RunnerTests(unittest.TestCase):
         with patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen"}, clear=True):
             runner.prepare_desktop()
             self.assertEqual(os.environ["QT_QPA_PLATFORM"], "offscreen")
+
+    def test_scheduler_never_selects_static_stand_or_duplicates_across_crew(self):
+        chars = [runner.pack.load_character(str(ROOT / "AVA Shimejis"), name)
+                 for name in runner.CHARS]
+        # Phase-shifted Crawl XML must still reserve one shared visual identity.
+        self.assertEqual(len({runner.visual_key(ch.actions["Crawl"])
+                              for ch in chars}), 1)
+        coordinator = runner.ActionCoordinator()
+        mascots = [runner.Mascot(ch, random.Random(i), 200 + i * 250, 1920,
+                                 coordinator=coordinator)
+                   for i, ch in enumerate(chars)]
+        for mascot in mascots:
+            names = {action.name for action in mascot.pool}
+            self.assertNotIn("Stand", names)
+            self.assertTrue(all(len(set(action.images)) >= 2 for action in mascot.pool))
+        for _ in range(5000):
+            for mascot in mascots:
+                mascot.step()
+            keys = [runner.visual_key(mascot.action) for mascot in mascots]
+            self.assertEqual(len(keys), len(set(keys)))
+
+    def test_fractional_updates_smooth_movement_between_host_ticks(self):
+        char = runner.pack.load_character(str(ROOT / "AVA Shimejis"), "Orange")
+        mascot = runner.Mascot(char, random.Random(4), 800, 1920)
+        # Force a known moving action and show that a 60 Hz update applies only
+        # its fraction of the 40ms XML velocity.
+        mascot.action = next(a for a in mascot.pool if a.name == "Run")
+        mascot.pose = mascot.action.poses[0]
+        mascot.index = 0
+        mascot.left = mascot.pose.duration
+        mascot.look_right = False
+        before = mascot.x
+        mascot.advance(runner.RENDER_MS / runner.TICK_MS)
+        moved = mascot.x - before
+        self.assertGreater(abs(moved), 0)
+        self.assertLess(abs(moved), abs(mascot.pose.velocity[0]))
 
     def test_validator_rejects_even_zero_frequency_cloning(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(validator, "ROOT", folder):

@@ -8,10 +8,10 @@ class support for **Hyprland**.
 
 Recently rebuilt:
 
-* **11 new moves** (256 frames) and **7 pack animations re-drawn** because the
-  originals were clipped, plus the personality sheet rebalanced so the four
-  stop replaying the same five animations at you
-  (see [Animation](#animation)).
+* **16 new moves** and rebuilt crawl/fall cycles: falling, wall crawling and
+  ceiling crawling now use 48-frame, 25 fps cycles, each character gets a different
+  phase/tempo, and four new personality-exclusive moves keep the crew from
+  replaying the same thing together (see [Animation](#animation)).
 * **The frame generator can no longer produce a clipped frame.** Every
   generated frame is 160×160 with 16 px of clear space on every side, verified
   pixel by pixel on every run — so nothing pokes out of its window, ever.
@@ -251,19 +251,23 @@ host level. Changing just the setting does not re-enable removed actions.
 
 ## Animation
 
-654 generated frames across the four characters — 256 for the 11 brand-new
-moves, 132 re-drawn because the originals were clipped or mis-anchored, and the
-older batch re-rendered on the safer canvas. All of it is wired into
-`conf/actions.xml` and `conf/behaviors.xml`, so it happens automatically: 34
-actions per character.
+1,562 unique generated frame files across the four characters. Falling, floor
+crawling, wall crawling and ceiling crawling now use continuous kinematic rigs
+and 48-frame cycles at the host's full 25 fps; the stock stand pose is replaced
+by an eight-frame breathing loop, while wall and ceiling holds use 16-frame
+weight-shift loops instead of freezing. All of it is wired into
+`conf/actions.xml` and `conf/behaviors.xml`, so it happens automatically: 36
+generated actions per character, including two
+moves exclusive to that character.
 
 ![New and re-drawn moves](docs/new-moves.png)
 
-**New in this batch** (all four characters — 256 frames):
+**Expanded repertoire:**
 
 | Move | What it looks like |
 |---|---|
-| Idle | A breath and a weight shift — the difference between a sprite and a statue |
+| Crawl | A 48-frame, planted-palm diagonal crawl that actually travels |
+| Idle | An eight-frame breath and weight shift — also used whenever stock XML asks them to stand |
 | Stretch | Big arms-up stretch with little puff clouds, then a sigh |
 | Taunt | "Come at me" hand curls, then a `!` bubble |
 | SpinKick | Wind-up, sweeping kick, landing kick with dust |
@@ -274,13 +278,21 @@ actions per character.
 | Dizzy | Staggering about the feet with stars over the head, ends with a `?` |
 | Juggle | Three-ball cascade, balls passing behind the body |
 | Victory | Two fist pumps into a confetti burst |
+| ReadBook (Blue) | Cross-legged reading with a visible page turn |
+| Cartwheel (Orange) | A full hand-planted 360° cartwheel and landing |
+| Inspect (Yellow) | A changing magnifying-glass inspection with lens glints |
+| JumpRope (Green) | A 24-frame rope revolution with a continuous take-off and landing |
 
-**Re-drawn pack animations** (132 frames) — these replaced frames that were
+**Re-drawn pack animations** — these replaced frames that were
 genuinely broken. Yellow's fall frames were 161 px wide with the throwing arm sliced off
 at the canvas edge; Green's hang frames dangled 211 px below the ceiling (2.3×
 everyone else's); Blue's `lay01` was cut on *both* sides; Orange's wall-climb
 legs sank up to 19 px under the anchor, so the feet were chopped off at the
-bottom of the screen. All of them are regenerated inside their margins:
+bottom of the screen. All of them are regenerated inside their margins. The
+latest pass also replaces the old three-frame, 40-tick fall (up to 1.6 seconds
+on one drawing) with a 48-frame rigid-limb tumble at one tick per frame, and
+replaces the nearly identical five-frame wall poses with a 48-frame planted-
+contact climb at one tick per frame:
 
 ![Before and after](docs/before-after.png)
 
@@ -292,10 +304,13 @@ bottom of the screen. All of them are regenerated inside their margins:
 ### Balancing
 
 Every character gets the same core repertoire, then a personality sheet scales
-it — Orange picks fights and pumps his fists more, Blue meditates, sleeps and
-drinks coffee, Yellow tinkers and juggles, Green plays guitar and cheers. Four
-characters, 37 actions, no two of them behaving alike. The full table is
-printed by the validator:
+it — Orange picks fights and cartwheels, Blue meditates and reads, Yellow
+crawls and inspects things, Green plays guitar and jumps rope. Shared cyclic
+moves begin at quarter-cycle offsets, long beats use different tempo accents,
+and Shijima spawns are staggered, so matching host seeds do not make a chorus
+line. The built-in runner additionally reserves each active animation globally,
+so two crew members never choose the same visual action at once. The full
+42-action table is printed by the validator:
 
 ```bash
 python3 tools/validate.py
@@ -364,9 +379,12 @@ If you ever meet XMLs patched by the very first buggy patcher,
 ## Run it 24/7 without Shimeji or Shijima-Qt (`runner/`)
 
 `runner/ava_runner.py` drives the four characters from the pack in **one small
-Python/Qt process**: one timer for all four, frames decoded once, click masks
-rebuilt only when a frame changes. It is the option to pick if the Java and
-Shijima-Qt versions feel laggy.
+Python/Qt process**: one 60 Hz render clock for all four, fractional movement
+between the pack's 40 ms logic ticks, frames decoded once, and click masks
+rebuilt only when a frame changes. Its shared scheduler excludes static Stand
+poses, applies per-character XML weights, remembers recent choices, and
+reserves active visuals so no two mascots play the same animation together. It
+is the option to pick if the Java and Shijima-Qt versions feel laggy.
 
 ```bash
 python3 runner/ava_runner.py --simulate 900   # schedule 36 s, no window needed

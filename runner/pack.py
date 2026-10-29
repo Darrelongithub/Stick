@@ -123,13 +123,29 @@ def parse_actions(path):
     return actions
 
 
-class Character:
-    """One image set: its actions, its art directory and its scheduling weights."""
+def parse_behavior_frequencies(path):
+    """Return the host-authored selection weight for each named behaviour."""
+    root = ET.parse(path).getroot()
+    frequencies = {}
+    for node in root.iter():
+        if node.tag.rsplit("}", 1)[-1] != "Behavior" or not node.get("Name"):
+            continue
+        try:
+            value = int(node.get("Frequency", "0"))
+        except ValueError:
+            value = 0
+        frequencies[node.get("Name")] = max(0, value)
+    return frequencies
 
-    def __init__(self, name, directory, actions):
+
+class Character:
+    """One image set: actions, art directory, and personality weights."""
+
+    def __init__(self, name, directory, actions, frequencies=None):
         self.name = name
         self.directory = directory
         self.actions = actions
+        self.frequencies = dict(frequencies or {})
 
     def locate(self, image):
         return os.path.join(self.directory, image)
@@ -146,4 +162,7 @@ def load_character(base, name):
     actions_path = os.path.join(directory, "conf", "actions.xml")
     if not os.path.isfile(actions_path):
         raise FileNotFoundError(f"{name}: {actions_path} is missing")
-    return Character(name, directory, parse_actions(actions_path))
+    behaviors_path = os.path.join(directory, "conf", "behaviors.xml")
+    frequencies = (parse_behavior_frequencies(behaviors_path)
+                   if os.path.isfile(behaviors_path) else {})
+    return Character(name, directory, parse_actions(actions_path), frequencies)

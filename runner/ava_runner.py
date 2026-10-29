@@ -33,42 +33,118 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import pack  # noqa: E402
 
-TICK_MS = 40                     # Shimeji-ee's tick; one pose "Duration" unit
+TICK_MS = 40                     # Shimeji-ee tick; one pose Duration unit
+RENDER_HZ = 60                   # position updates are interpolated at 60 Hz
+RENDER_MS = 1000.0 / RENDER_HZ
 CHARS = ["Blue", "Orange", "Yellow", "Green"]
 DEFAULT_PACK = os.path.join(ROOT, "AVA Shimejis")
 
-# Floor actions that are not something a free-roaming buddy should start by
-# itself (they are triggered by the environment in Shimeji-ee).
-EXCLUDE = {"Falling", "Fall", "Dragged", "Thrown", "Pinched", "Resisting", "Offset"}
-# Relative odds when a new action is picked.  Anything not listed weighs 1.
-WEIGHTS = {"Idle": 3, "Walk": 4, "Run": 2, "Sleep": 2, "Sit": 2, "Meditate": 2}
+# Internal/reactive actions and duplicate aliases are not autonomous activities.
+# Most importantly, Stand and all one-frame Stay poses are absent: Idle is the
+# animated breathing replacement, so the runner never chooses a ten-second
+# statue as entertainment.
+EXCLUDE = {
+    "Stand", "Sit", "SitAndLookUp", "SitAndLookAtMouse", "SitWithLegsUp",
+    "SitWithLegsDown", "Falling", "Fall", "Dragged", "Thrown", "Pinched",
+    "Resisting", "Offset", "Dash", "Tripping", "StandFromFloor",
+}
+LOCOMOTION = {"Walk", "Run"}
+FALLBACK_WEIGHTS = {"Idle": 8, "Walk": 18, "Run": 12, "Sleep": 8,
+                    "Meditate": 8, "Crawl": 14}
 
 
 def floor_actions(ch):
-    """Actions a character may start on its own, standing on the floor."""
+    """Animated floor actions a character may start on its own."""
     pool = []
     for name, act in ch.actions.items():
         if not act.poses or name in EXCLUDE:
             continue
-        if act.kind not in ("Animate", "Move", "Stay"):
+        if act.kind not in ("Animate", "Move"):
             continue
         if (act.border or "Floor") != "Floor":
+            continue
+        if len(set(act.images)) < 2:          # never schedule a static pose
+            continue
+        # Primitive actions such as Hurt's recovery helpers have no selectable
+        # behaviour. Walk/Run are the two intentional exceptions: stock host
+        # behaviours target them from movement sequences.
+        if ch.frequencies and name not in ch.frequencies and name not in LOCOMOTION:
             continue
         pool.append(act)
     return pool
 
 
+def action_weight(ch, action):
+    """Use the pack's per-character personality weight in the local runner."""
+    if action.name in ch.frequencies:
+        return max(1, ch.frequencies[action.name])
+    if action.name == "Walk":
+        return max(1, ch.frequencies.get("WalkAlongWorkAreaFloor", 18))
+    if action.name == "Run":
+        return max(1, ch.frequencies.get("RunAlongWorkAreaFloor", 12))
+    return FALLBACK_WEIGHTS.get(action.name, 1)
+
+
+def visual_key(action):
+    """Animation identity independent of colour, alias, or cycle phase."""
+    names = tuple(os.path.basename(name) for name in action.images)
+    # Cyclic XML is quarter-phase shifted per character. Canonicalize rotations
+    # so Crawl still reserves one shared visual even when Blue starts at 01 and
+    # Orange starts at 05.
+    return min(names[i:] + names[:i] for i in range(len(names)))
+
+
+class ActionCoordinator:
+    """Reserve visual actions across the crew and enforce short cooldowns."""
+
+    def __init__(self):
+        self.active = {}
+        self.global_recent = collections.deque(maxlen=4)
+
+    def choose(self, owner, pool, weights, rng, recent):
+        # The owner's old action no longer needs to reserve its slot.
+        self.active.pop(owner, None)
+        busy = set(self.active.values())
+        recent = set(recent)
+
+        def candidates(avoid_recent=True, avoid_global=True):
+            out = []
+            for action, weight in zip(pool, weights):
+                key = visual_key(action)
+                if key in busy or (avoid_recent and key in recent):
+                    continue
+                if avoid_global and key in self.global_recent:
+                    continue
+                out.append((action, weight))
+            return out
+
+        choices = (candidates() or candidates(avoid_global=False)
+                   or candidates(avoid_recent=False, avoid_global=False))
+        if not choices:
+            # Only possible for a tiny custom pack with fewer distinct actions
+            # than mascots; degrade gracefully rather than stopping the runner.
+            choices = list(zip(pool, weights))
+        action = rng.choices([a for a, _w in choices],
+                             [w for _a, w in choices])[0]
+        key = visual_key(action)
+        self.active[owner] = key
+        self.global_recent.append(key)
+        return action
+
+
 class Mascot:
     """Scheduling and position for one character.  No drawing in here."""
 
-    def __init__(self, ch, rng, x, screen_w, frame_w=None):
+    def __init__(self, ch, rng, x, screen_w, frame_w=None, coordinator=None):
         self.ch = ch
         self.name = ch.name
         self.rng = rng
         self.pool = floor_actions(ch)
         if not self.pool:
-            raise ValueError(f"{ch.name}: no floor actions to play")
-        self.weights = [WEIGHTS.get(a.name, 1) for a in self.pool]
+            raise ValueError(f"{ch.name}: no animated floor actions to play")
+        self.weights = [action_weight(ch, a) for a in self.pool]
+        self.coordinator = coordinator
+        self.recent = collections.deque(maxlen=4)
         self.screen_w = screen_w
         self.x = float(x)                      # anchor x on screen
         self.look_right = False
@@ -83,7 +159,17 @@ class Mascot:
 
     # -- scheduling -------------------------------------------------------
     def _start_next(self):
-        self.action = self.rng.choices(self.pool, self.weights)[0]
+        if self.action is not None:
+            self.recent.append(visual_key(self.action))
+        if self.coordinator:
+            self.action = self.coordinator.choose(
+                self, self.pool, self.weights, self.rng, self.recent)
+        else:
+            choices = [(a, w) for a, w in zip(self.pool, self.weights)
+                       if visual_key(a) not in self.recent]
+            choices = choices or list(zip(self.pool, self.weights))
+            self.action = self.rng.choices([a for a, _w in choices],
+                                           [w for _a, w in choices])[0]
         self.started[self.action.name] += 1
         self.index = 0
         self.pose = self.action.poses[0]
@@ -99,24 +185,38 @@ class Mascot:
                 self.look_right = self.rng.random() < 0.5
         self.dirty = True
 
+    def advance(self, ticks):
+        """Advance a fractional number of 40ms ticks.
+
+        Frame boundaries remain faithful to the XML, while velocity is applied
+        proportionally on each 60Hz render update.  A stock run therefore moves
+        in ~3px visual increments rather than 8-18px jumps.
+        """
+        ticks = max(0.0, float(ticks))
+        while ticks > 1e-9:
+            chunk = min(ticks, float(self.left))
+            dx = self.pose.velocity[0] * (-1 if self.look_right else 1) * chunk
+            if dx:
+                target = self.x + dx
+                new_x = min(max(target, 0.0), float(self.screen_w))
+                if abs(new_x - target) > 1e-9:  # hit edge: finish this action
+                    self.left = 0
+                self.x = new_x
+            self.left -= chunk
+            ticks -= chunk
+            if self.left > 1e-9:
+                continue
+            self.index += 1
+            if self.index >= len(self.action.poses):
+                self._start_next()
+            else:
+                self.pose = self.action.poses[self.index]
+                self.left = self.pose.duration
+                self.dirty = True
+
     def step(self):
-        """Advance one tick.  Sets ``dirty`` when the displayed frame changes."""
-        dx = self.pose.velocity[0] * (-1 if self.look_right else 1)
-        if dx:
-            new_x = min(max(self.x + dx, 0.0), float(self.screen_w))
-            if new_x != self.x + dx:           # hit a screen edge: end the move
-                self.left = 0
-            self.x = new_x
-        self.left -= 1
-        if self.left > 0:
-            return
-        self.index += 1
-        if self.index >= len(self.action.poses):
-            self._start_next()
-        else:
-            self.pose = self.action.poses[self.index]
-            self.left = self.pose.duration
-            self.dirty = True
+        """Advance one logical host tick (headless simulation compatibility)."""
+        self.advance(1.0)
 
     # -- drawing helpers --------------------------------------------------
     def anchor_on_window(self):
@@ -128,10 +228,15 @@ class Mascot:
 
 
 def simulate(args, chars):
-    rng = random.Random(args.seed)
-    mascots = [Mascot(c, rng, rng.uniform(0, args.screen_w), args.screen_w)
-               for c in chars]
+    master = random.Random(args.seed)
+    coordinator = ActionCoordinator()
+    mascots = []
+    for c in chars:
+        rng = random.Random(master.getrandbits(64))
+        mascots.append(Mascot(c, rng, master.uniform(0, args.screen_w),
+                              args.screen_w, coordinator=coordinator))
     out_of_bounds = 0
+    simultaneous_duplicates = 0
     frame_changes = [0] * len(mascots)
     for _ in range(args.simulate):
         for i, m in enumerate(mascots):
@@ -141,6 +246,8 @@ def simulate(args, chars):
                 frame_changes[i] += 1
             if not (0 <= m.x <= args.screen_w):
                 out_of_bounds += 1
+        keys = [visual_key(m.action) for m in mascots]
+        simultaneous_duplicates += len(keys) - len(set(keys))
     seconds = args.simulate * TICK_MS / 1000
     print(f"simulated {seconds:.0f}s of {len(mascots)} characters "
           f"({args.simulate} ticks x {TICK_MS} ms)")
@@ -149,7 +256,8 @@ def simulate(args, chars):
         print(f"  {m.name:7s} {changes / seconds:5.1f} frame changes/s "
               f"| {sum(m.started.values())} actions | {top}")
     print(f"out-of-bounds positions: {out_of_bounds}")
-    return 0 if out_of_bounds == 0 else 1
+    print(f"simultaneous duplicate animations: {simultaneous_duplicates}")
+    return 0 if out_of_bounds == 0 and simultaneous_duplicates == 0 else 1
 
 
 def prepare_desktop():
@@ -173,7 +281,7 @@ def run_desktop(args, chars):
         print(f"ava-runner: {exc}", file=sys.stderr)
         return 2
     try:
-        from PySide6.QtCore import QLockFile, Qt, QTimer
+        from PySide6.QtCore import QElapsedTimer, QLockFile, Qt, QTimer
         from PySide6.QtGui import QBitmap, QGuiApplication, QImage, QPainter, QPixmap, QRegion
         from PySide6.QtWidgets import QApplication, QWidget
     except ImportError as exc:
@@ -261,11 +369,14 @@ def run_desktop(args, chars):
             painter.drawPixmap(0, 0, self.pix)
 
     mascots, sprites = [], []
-    rng = random.Random(args.seed)
+    master = random.Random(args.seed)
+    coordinator = ActionCoordinator()
     for ch in chars:
         def frame_w(pose, _ch=ch):
             return images[_ch.locate(pose.image)].width()
-        m = Mascot(ch, rng, rng.uniform(0, screen_w), screen_w, frame_w)
+        rng = random.Random(master.getrandbits(64))
+        m = Mascot(ch, rng, master.uniform(0, screen_w), screen_w, frame_w,
+                   coordinator)
         mascots.append(m)
         sprites.append(Sprite())
 
@@ -282,10 +393,20 @@ def run_desktop(args, chars):
         place(m, s)
         s.show()
 
+    clock = QElapsedTimer()
+    clock.start()
+    last_ms = clock.elapsed()
+
     def tick():
+        nonlocal last_ms
+        now = clock.elapsed()
+        # Clamp a debugger/suspend gap: catching up thousands of actions in one
+        # paint event is not useful and would make every sprite teleport.
+        elapsed = min(100.0, max(1.0, float(now - last_ms)))
+        last_ms = now
         for m, s in zip(mascots, sprites):
             m.dirty = False
-            m.step()
+            m.advance(elapsed / TICK_MS)
             if m.dirty:
                 draw(m, s)
             place(m, s)
@@ -293,7 +414,7 @@ def run_desktop(args, chars):
     timer = QTimer()
     timer.setTimerType(Qt.PreciseTimer)
     timer.timeout.connect(tick)
-    timer.start(TICK_MS)
+    timer.start(round(RENDER_MS))
 
     if args.run_for:                       # test hook: stop after N seconds
         def finish():

@@ -1,0 +1,2 @@
+# Mascot source XML intentionally uses CRLF; do not flag the CR as whitespace.
+*.xml whitespace=cr-at-eol

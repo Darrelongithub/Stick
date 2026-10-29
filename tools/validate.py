@@ -286,7 +286,8 @@ def behaviour_report(ok, out=sys.stdout):
     """How often each character does what - the anti-repetition overview."""
     print("\nBehaviours per character (frequency at each decision point)", file=out)
     names = [n for n, _f, _g, _c in SPEC.BEHAVIORS]
-    names += [SPEC.SIG_BEHAVIORS[c][0] for c in SPEC.CHARS]
+    for char in SPEC.CHARS:
+        names.extend(n for n, _f in SPEC.signature_behaviors(char) if n not in names)
     width = max(len(n) for n in names)
     print("  " + " " * width + "  " + "".join(f"{c:>9s}" for c in SPEC.CHARS), file=out)
     for n in names:

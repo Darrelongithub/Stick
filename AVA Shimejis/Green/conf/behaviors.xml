@@ -11,7 +11,7 @@
 			</NextBehavior>
 		</Behavior>
 		
-		<Behavior Name="SitAndFaceMouse" Frequency="50">
+		<Behavior Name="SitAndFaceMouse" Frequency="8">
 			<NextBehavior Add="false">
 				<BehaviorReference Name="SitAndFaceMouse" Frequency="100" />
 				<BehaviorReference Name="SitWhileDanglingLegs" Frequency="1" />
@@ -40,21 +40,21 @@
 
 		<!-- On the Floor -->
 		<Condition Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}">
-			<Behavior Name="StandUp" Frequency="200" Hidden="true" />
-			<Behavior Name="SitDown" Frequency="200">
+			<Behavior Name="StandUp" Frequency="20" Hidden="true" />
+			<Behavior Name="SitDown" Frequency="16">
 				<NextBehavior Add="true">
 					<BehaviorReference Name="SitWhileDanglingLegs" Frequency="100" />
 					<BehaviorReference Name="LieDown" Frequency="100" />
 				</NextBehavior>
 			</Behavior>
-			<Behavior Name="SitWhileDanglingLegs" Frequency="50" />
-			<Behavior Name="LieDown" Frequency="25">
+			<Behavior Name="SitWhileDanglingLegs" Frequency="14" />
+			<Behavior Name="LieDown" Frequency="8">
 				<NextBehavior Add="false">
 					<BehaviorReference Name="SitDown" Frequency="100" />
 				</NextBehavior>
 			</Behavior>
-			<Behavior Name="HugAffordance" Frequency="30" />
-			<Behavior Name="HugSearch" Frequency="1000" />
+			<Behavior Name="HugAffordance" Frequency="16" />
+			<Behavior Name="HugSearch" Frequency="20" />
 		</Condition>
 
 		<!-- On the Wall -->
@@ -75,43 +75,43 @@
 		
 		<!-- On Work Area Floor -->
 		<Condition Condition="#{mascot.environment.floor.isOn(mascot.anchor)}">
-			<Behavior Name="WalkAlongWorkAreaFloor" Frequency="100" Hidden="true" />
-			<Behavior Name="RunAlongWorkAreaFloor" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkLeftAlongFloorAndSit" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkRightAlongFloorAndSit" Frequency="100" Hidden="true" />
-			<Behavior Name="GrabWorkAreaBottomLeftWall" Frequency="100" Hidden="true" />
-			<Behavior Name="GrabWorkAreaBottomRightWall" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkLeftAndSit" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkRightAndSit" Frequency="100" Hidden="true" />
-			<Behavior Name="RunAndGrabBottomLeftWall" Frequency="100" />
-			<Behavior Name="RunAndGrabBottomRightWall" Frequency="100" />
+			<Behavior Name="WalkAlongWorkAreaFloor" Frequency="27" Hidden="true" />
+			<Behavior Name="RunAlongWorkAreaFloor" Frequency="27" Hidden="true" />
+			<Behavior Name="WalkLeftAlongFloorAndSit" Frequency="8" Hidden="true" />
+			<Behavior Name="WalkRightAlongFloorAndSit" Frequency="13" Hidden="true" />
+			<Behavior Name="GrabWorkAreaBottomLeftWall" Frequency="7" Hidden="true" />
+			<Behavior Name="GrabWorkAreaBottomRightWall" Frequency="10" Hidden="true" />
+			<Behavior Name="WalkLeftAndSit" Frequency="12" Hidden="true" />
+			<Behavior Name="WalkRightAndSit" Frequency="6" Hidden="true" />
+			<Behavior Name="RunAndGrabBottomLeftWall" Frequency="9" />
+			<Behavior Name="RunAndGrabBottomRightWall" Frequency="14" />
 		</Condition>
 		
 		<!-- On Work Area Facing the Wall -->
 		<Condition Condition="#{mascot.lookRight ? mascot.environment.workArea.rightBorder.isOn(mascot.anchor) :
 					mascot.environment.workArea.leftBorder.isOn(mascot.anchor)}">
-			<Behavior Name="ClimbHalfwayAlongWall" Frequency="100" Hidden="true" />
-			<Behavior Name="ClimbAlongWall" Frequency="100" />
+			<Behavior Name="ClimbHalfwayAlongWall" Frequency="20" Hidden="true" />
+			<Behavior Name="ClimbAlongWall" Frequency="24" />
 		</Condition>
 		
 		<!-- On Work Area Top Facing -->
 		<Condition Condition="#{mascot.environment.ceiling.isOn(mascot.anchor)}">
 			<!-- Only Blue does this. Good arm strength -->
-			<Behavior Name="ClimbAlongCeiling" Frequency="100" />
+			<Behavior Name="ClimbAlongCeiling" Frequency="28" />
 		</Condition>
 		
 		<!-- On Top of IE -->
 		<Condition Condition="#{mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}">
-			<Behavior Name="WalkAlongIECeiling" Frequency="100" Hidden="true" />
-			<Behavior Name="RunAlongIECeiling" Frequency="100" Hidden="true" />
-			<Behavior Name="SitOnTheLeftEdgeOfIE" Frequency="100" Hidden="true" />
-			<Behavior Name="SitOnTheRightEdgeOfIE" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkAlongIECeiling" Frequency="9" Hidden="true" />
+			<Behavior Name="RunAlongIECeiling" Frequency="13" Hidden="true" />
+			<Behavior Name="SitOnTheLeftEdgeOfIE" Frequency="6" Hidden="true" />
+			<Behavior Name="SitOnTheRightEdgeOfIE" Frequency="12" Hidden="true" />
 			<Behavior Name="JumpFromLeftEdgeOfIE" Frequency="100" Hidden="true" />
 			<Behavior Name="JumpFromRightEdgeOfIE" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkLeftAlongIEAndSit" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkRightAlongIEAndSit" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkLeftAlongIEAndJump" Frequency="100" Hidden="true" />
-			<Behavior Name="WalkRightAlongIEAndJump" Frequency="100" Hidden="true" />
+			<Behavior Name="WalkLeftAlongIEAndSit" Frequency="7" Hidden="true" />
+			<Behavior Name="WalkRightAlongIEAndSit" Frequency="11" Hidden="true" />
+			<Behavior Name="WalkLeftAlongIEAndJump" Frequency="10" Hidden="true" />
+			<Behavior Name="WalkRightAlongIEAndJump" Frequency="5" Hidden="true" />
 		</Condition>
 		
 		<!-- On IE's Side -->
@@ -129,36 +129,38 @@
 			<Behavior Name="GrabIEBottomRightWall" Frequency="100" Hidden="true" />
 		</Condition>
 		<!-- AVA:generated:behaviors:start -->
-		<Behavior Name="PaperPlane" Frequency="8" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Mine" Frequency="10" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Cry" Frequency="5" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="CursorSlash" Frequency="16" Condition="${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 &amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}" />
 		<Behavior Name="Phone" Frequency="7" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Coffee" Frequency="13" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="PushUps" Frequency="9" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
 		<Behavior Name="Bonk" Frequency="6" />
 		<Behavior Name="SnackTime" Frequency="10" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Stretch" Frequency="14" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Cry" Frequency="5" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Cheer" Frequency="18" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="PlayGuitar" Frequency="27" />
 		<Behavior Name="Meditate" Frequency="8" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
 		<Behavior Name="PowerSlide" Frequency="8" />
-		<Behavior Name="Sleep" Frequency="13" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Dance" Frequency="16" Condition="#{mascot.environment.floor.isOn(mascot.anchor)}" />
-		<Behavior Name="GlitchOut" Frequency="6" />
-		<Behavior Name="FightCombo" Frequency="16" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Victory" Frequency="9" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Backflip" Frequency="10" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="CursorSlash" Frequency="16" Condition="${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) &lt; 300 &amp;&amp; Math.abs(mascot.anchor.y - mascot.environment.cursor.y) &lt; 300}" />
-		<Behavior Name="BattleRage" Frequency="7" />
-		<Behavior Name="Dizzy" Frequency="6" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Idle" Frequency="25" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="SwordPractice" Frequency="12" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Cheer" Frequency="18" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Wave" Frequency="16" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Juggle" Frequency="7" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Sneeze" Frequency="6" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="Taunt" Frequency="11" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="PushUps" Frequency="9" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
-		<Behavior Name="PlayGuitar" Frequency="27" />
 		<Behavior Name="Hurt" Frequency="8" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Crawl" Frequency="15" Condition="#{mascot.environment.floor.isOn(mascot.anchor)}" />
+		<Behavior Name="Dizzy" Frequency="6" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Juggle" Frequency="7" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Stretch" Frequency="14" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Coffee" Frequency="13" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Backflip" Frequency="10" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Taunt" Frequency="11" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="SwordPractice" Frequency="12" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Sneeze" Frequency="6" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Idle" Frequency="13" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="FightCombo" Frequency="16" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Wave" Frequency="16" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Dance" Frequency="16" Condition="#{mascot.environment.floor.isOn(mascot.anchor)}" />
+		<Behavior Name="Mine" Frequency="10" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="GlitchOut" Frequency="6" />
+		<Behavior Name="PaperPlane" Frequency="8" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
 		<Behavior Name="SpinKick" Frequency="8" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="JumpRope" Frequency="17" />
+		<Behavior Name="BattleRage" Frequency="7" />
+		<Behavior Name="Victory" Frequency="9" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
+		<Behavior Name="Sleep" Frequency="13" Condition="#{mascot.environment.floor.isOn(mascot.anchor) || mascot.environment.activeIE.topBorder.isOn(mascot.anchor)}" />
 		<!-- AVA:generated:behaviors:end -->
 	</BehaviorList>
 </Mascot>

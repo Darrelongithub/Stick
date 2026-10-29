@@ -52,7 +52,7 @@ FAMILY_ANCHOR = {
 #   type      Shimeji-ee action type
 #   border    BorderType (or None)
 #   loop      Loop attribute (or None -> emit nothing)
-#   durations per-pose durations in ms (40ms ticks); ints or Shimeji-ee
+#   durations per-pose durations in 40ms Shimeji ticks; ints or Shimeji-ee
 #             expressions, e.g. "${6+Math.random()*4}"
 #   velocity  optional per-pose "vx,vy" (Move actions)
 #   embed     optional dict of extra attributes (Embedded actions)
@@ -123,25 +123,28 @@ _add("PlayGuitar", prefix="music", frames=4, family="floor", type="Animate", bor
 # on a canvas of the wrong size (Yellow fall01-03 were 161px wide with the arm
 # sliced off; Green hang01-05 hung 211px below the ceiling; Orange's wall_climb
 # legs sank up to 19px under the anchor; Blue's lay01 was cut on both sides).
-_add("Falling", prefix="fall", frames=3, family="air", type="Embedded", border=None,
+# Falling and edge-crawling are cyclic, high-motion actions. They run at the
+# host's full 25 fps instead of holding three near-static drawings for 1.6
+# seconds each (the old Falling cadence). ``phase`` starts each colour at a
+# different quarter of the 48-frame cycle, so four mascots spawned on the same
+# host tick do not move like synchronized clones.
+_add("Falling", prefix="fall", frames=48, family="air", type="Embedded", border=None,
      embed={"Class": "com.group_finity.mascot.action.Fall",
             "RegistanceX": "0.05", "RegistanceY": "0.1", "Gravity": "1"},
-     durations=[40, 40, 40], regen=True)
-_add("GrabCeiling", prefix="hang", frames=3, family="ceiling", type="Stay", border="Ceiling",
-     durations=[12, 10, 14], regen=True)
-_add("ClimbCeiling", prefix="swing", frames=8, family="ceiling", type="Move", border="Ceiling",
-     # These eight existing swing poses alternate support legs. Keep a steady
-     # 4 px/tick travel speed and let the stronger reaches land on slightly
-     # longer beats instead of changing speed sharply from pose to pose.
-     durations=[3, 3, 4, 3, 3, 4, 3, 3],
-     velocity=["-4,0"] * 8,
+     durations=[1] * 48, phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36},
      regen=True)
-_add("GrabWall", prefix="wall_climb", frames=5, family="wall", type="Stay", border="Wall",
-     durations=[250], plays=[1], regen=True)
-_add("ClimbWall", prefix="wall_climb", frames=5, family="wall", type="Move", border="Wall",
-     # The original five wall poses are visually very close together. A calm,
-     # even cadence and matching displacement keep them from stuttering.
-     durations=[4, 4, 4, 4, 4], velocity=["0,-3"] * 5,
+_add("GrabCeiling", prefix="hang", frames=16, family="ceiling", type="Stay", border="Ceiling",
+     durations=[2] * 16,
+     phase={"Blue": 0, "Orange": 4, "Yellow": 8, "Green": 12}, regen=True)
+_add("ClimbCeiling", prefix="swing", frames=48, family="ceiling", type="Move", border="Ceiling",
+     durations=[1] * 48, velocity=["-1,0"] * 48,
+     phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36}, regen=True)
+_add("GrabWall", prefix="wall_hold", anim="wall_hold", frames=16, family="wall", type="Stay",
+     border="Wall", durations=[2] * 16,
+     phase={"Blue": 0, "Orange": 4, "Yellow": 8, "Green": 12}, regen=True)
+_add("ClimbWall", prefix="wall_climb", frames=48, family="wall", type="Move", border="Wall",
+     durations=[1] * 48, velocity=["0,-1"] * 48,
+     phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36},
      regen=True, two_animations=True)
 _add("Sprawl", prefix="lay", frames=3, family="floor", type="Stay", border="Floor",
      durations=[40, 12, 60], regen=True)
@@ -170,8 +173,30 @@ _add("Juggle", prefix="juggle", frames=7, family="floor", type="Animate", border
      durations=[3, 3, 3, 3, 3, 3, 6], regen=True)
 _add("Victory", prefix="victory", frames=7, family="floor", type="Animate", border="Floor",
      durations=[4, 3, 3, 3, 3, 5, 8], regen=True)
-_add("Idle", prefix="idle", frames=3, family="floor", type="Animate", border="Floor",
-     durations=[20, 12, 20], regen=True)
+_add("Idle", prefix="idle", frames=8, family="floor", type="Animate", border="Floor",
+     durations=[3] * 8,
+     phase={"Blue": 0, "Orange": 2, "Yellow": 4, "Green": 6}, regen=True)
+
+# A real low-to-the-floor crawl (separate from wall/ceiling crawling).  It is a
+# finite moving Animate action so it can be selected directly as a behaviour;
+# unlike a target-driven Move it never waits forever for an absent TargetX.
+_add("Crawl", prefix="crawl", frames=48, family="floor", type="Animate", border="Floor",
+     durations=[1] * 48, velocity=["-1,0"] * 48,
+     phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36}, regen=True)
+
+# One additional move unique to each character.  Exclusive moves make the
+# crew read as four personalities even when their host gives every mascot the
+# same random seed.
+_add("Cartwheel", prefix="cartwheel", frames=48, family="floor", type="Animate",
+     border="Floor", durations=[1] * 48, regen=True, sig="Orange")
+_add("ReadBook", prefix="read", frames=8, family="floor", type="Animate",
+     border="Floor", durations=[5, 4, 4, 3, 4, 4, 5, 5],
+     regen=True, sig="Blue")
+_add("Inspect", prefix="inspect", frames=8, family="floor", type="Animate",
+     border="Floor", durations=[4, 3, 3, 4, 3, 3, 4, 5],
+     regen=True, sig="Yellow")
+_add("JumpRope", prefix="jumprope", frames=24, family="floor", type="Animate",
+     border="Floor", durations=[1] * 24, regen=True, sig="Green")
 
 # ---- sequences (no frames of their own) --------------------------------------
 SEQUENCES = {
@@ -198,8 +223,9 @@ CURSOR_NEAR = ("${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) < 300 
 # weights, and tempo profiles instead.
 # name -> (base frequency, gate, condition)
 BEHAVIORS = [
-    ("Idle",         25, "floor", None),        # breathing / weight shift
-    ("Dance",        10, "floor_only", None),    # only on the real work-area floor
+    ("Idle",         18, "floor", None),        # animated breathing / weight shift
+    ("Crawl",        14, "floor_only", None),   # active floor locomotion
+    ("Dance",        10, "floor_only", None),   # only on the real work-area floor
     ("Wave",         20, "floor", None),
     ("Cheer",        14, "floor", None),
     ("Stretch",      12, "floor", None),
@@ -234,16 +260,19 @@ BEHAVIORS = [
 FLAVOR = {
     "Orange": {"FightCombo": 1.6, "SpinKick": 1.4, "DrawAlive": 1.4, "Victory": 1.3,
                "Wave": 0.8, "Meditate": 0.6, "Coffee": 0.8, "Tinker": 0.0,
-               "Dance": 1.4, "Idle": 0.7, "Stretch": 0.8, "Cheer": 1.3},
+               "Dance": 1.4, "Crawl": 0.7, "Idle": 0.55, "Stretch": 0.8,
+               "Cheer": 1.3},
     "Blue":   {"BrewPotion": 1.4, "Meditate": 1.6, "Sleep": 1.4, "Coffee": 1.3,
-               "FightCombo": 0.7, "Dizzy": 0.7, "Tinker": 0.0, "Idle": 1.2,
-               "Dance": 0.3, "Wave": 1.2, "Stretch": 1.3, "Cheer": 0.8},
+               "FightCombo": 0.7, "Dizzy": 0.7, "Tinker": 0.0, "Idle": 0.8,
+               "Crawl": 0.6, "Dance": 0.3, "Wave": 1.2, "Stretch": 1.3,
+               "Cheer": 0.8},
     "Yellow": {"Tinker": 1.5, "Juggle": 1.5, "Mine": 1.3, "Phone": 1.3,
-               "Cry": 0.6, "Sleep": 0.8, "Taunt": 1.2,
-               "Dance": 0.6, "Idle": 0.9, "Wave": 1.4, "Stretch": 0.8, "Cheer": 1.1},
+               "Cry": 0.6, "Sleep": 0.8, "Taunt": 1.2, "Crawl": 1.5,
+               "Dance": 0.6, "Idle": 0.65, "Wave": 1.4, "Stretch": 0.8,
+               "Cheer": 1.1},
     "Green":  {"PlayGuitar": 1.5, "Cheer": 1.3, "Coffee": 1.3, "PushUps": 1.3,
-               "Phone": 0.7, "Sleep": 0.9, "Stretch": 1.2,
-               "Dance": 1.6, "Idle": 1.0, "Wave": 0.8, "Taunt": 1.1},
+               "Phone": 0.7, "Sleep": 0.9, "Stretch": 1.2, "Crawl": 1.1,
+               "Dance": 1.6, "Idle": 0.7, "Wave": 0.8, "Taunt": 1.1},
 }
 
 # Per-frame accent patterns (added to existing Dance durations) make the same
@@ -254,8 +283,21 @@ DANCE_TEMPO_ACCENTS = {
     "Yellow": (0, 1, 0, 0, 1, 0, 0, 0),  # playful skip
     "Green":  (0, 0, 0, 1, 0, 0, 0, 1),  # relaxed long beats
 }
+# Keep the original mapping public for compatibility with existing pack tools,
+# and layer the new exclusive move on top through ``signature_behaviors``.
 SIG_BEHAVIORS = {"Orange": ("DrawAlive", 18), "Yellow": ("Tinker", 18),
                  "Blue": ("BrewPotion", 18), "Green": ("PlayGuitar", 18)}
+EXTRA_SIG_BEHAVIORS = {
+    "Orange": [("Cartwheel", 17)],
+    "Blue": [("ReadBook", 16)],
+    "Yellow": [("Inspect", 17)],
+    "Green": [("JumpRope", 17)],
+}
+
+
+def signature_behaviors(char):
+    """Ordered ``(action, frequency)`` pairs exclusive to ``char``."""
+    return [SIG_BEHAVIORS[char], *EXTRA_SIG_BEHAVIORS.get(char, ())]
 
 # Behaviours from the original pack that this pack switches off.  Breeding is
 # the big one: PullUpShimeji let every character clone itself while walking
@@ -269,8 +311,8 @@ DISABLED_BEHAVIORS = ["PullUpShimeji"]
 def freq(action, char):
     """Frequency of `action`'s behaviour for `char` (0 = never fires)."""
     base = next((f for n, f, _g, _c in BEHAVIORS if n == action), None)
-    if base is None and SIG_BEHAVIORS.get(char, (None, 0))[0] == action:
-        base = SIG_BEHAVIORS[char][1]
+    if base is None:
+        base = next((f for n, f in signature_behaviors(char) if n == action), None)
     if base is None:
         return 0
     scale = FLAVOR.get(char, {}).get(action, 1.0)
@@ -321,12 +363,14 @@ def frame_names(action):
     return [f"{a['prefix']}{i + 1:02d}.png" for i in range(a["frames"])]
 
 
-def poses(action):
+def poses(action, char=None):
     """[(image, anchor, velocity, duration), ...] in playback order.
 
     ``durations``/``velocity`` either describe the frame files one-to-one, or
     - when ``plays`` repeats frames - the playback list.  That is why the
-    lengths are compared before zipping.
+    lengths are compared before zipping.  Cyclic actions can declare a stable
+    per-character phase; this is applied to velocity and duration together so
+    the choreography remains internally consistent.
     """
     a = ACTIONS[action]
     names = frame_names(action)
@@ -341,12 +385,38 @@ def poses(action):
             pairs.append((names[idx - 1],
                           vel[i] if i < len(vel) else "0,0",
                           durations[i] if i < len(durations) else 4))
+    if char and pairs:
+        if len(pairs) == 1 and char in (a.get("start_frame") or {}):
+            _img, velocity, duration = pairs[0]
+            pairs[0] = (names[int(a["start_frame"][char]) - 1], velocity, duration)
+        phase = int((a.get("phase") or {}).get(char, 0)) % len(pairs)
+        pairs = pairs[phase:] + pairs[:phase]
     return [(img, anchor(action), v, d) for img, v, d in pairs]
+
+
+# Slightly different long-beat placement prevents two independently hosted
+# mascots from staying locked together after choosing the same one-shot move.
+# Fast one-tick locomotion is left untouched; phase offsets handle those loops.
+TEMPO_PROFILES = {
+    "Blue": (5, 0),
+    "Orange": (11, 3),
+    "Yellow": (7, 2),
+    "Green": (3, 1),
+}
+
+
+def duration_for(action, char, index, duration):
+    """Return a stable, subtle personality timing accent for one pose."""
+    if not isinstance(duration, int) or duration < 3:
+        return duration
+    period, offset = TEMPO_PROFILES[char]
+    salt = sum(ord(c) for c in action)
+    return duration + (1 if (index + salt) % period == offset else 0)
 
 
 def expected_images():
     """{char: sorted list of frame files the generator must produce}."""
-    return {c: sorted({f for n in generated_actions() for f in frame_names(n)})
+    return {c: sorted({f for n in generated_actions_for(c) for f in frame_names(n)})
             for c in CHARS}
 
 
@@ -379,9 +449,10 @@ def self_check():
         if name in ACTIONS:
             problems.append(f"{name}: is both a sequence and a frame action")
     for char in CHARS:
+        signature_names = {n for n, _f in signature_behaviors(char)}
         for sig in sig_for(char):
             if BEHAVIORS and not any(n == sig for n, _f, _g, _c in BEHAVIORS) \
-                    and SIG_BEHAVIORS.get(char, (None, None))[0] != sig:
+                    and sig not in signature_names:
                 problems.append(f"{char}: signature {sig} has no behaviour")
     if problems:
         raise AssertionError("ava_common spec is inconsistent:\n  " + "\n  ".join(problems))
