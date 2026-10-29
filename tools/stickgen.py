@@ -164,6 +164,108 @@ STAND = dict(
     HIP=(64, 80), KL=(59, 102), FL=(53, 123), KR=(69, 102), FR=(75, 123),
 )
 
+# ---------------------------------------------------------------- proportions
+# Every pose used to be authored as a bag of free-floating coordinates, so bone
+# lengths drifted from animation to animation: the standing figure has a 14px
+# forearm, but Hang/Swing gave it 31px (a 2.2x rubber arm), wall_hold 40px
+# (2.8x), and WallClimb a 39px shin (1.8x).  Neck length ranged from 5px to
+# 15px, which is the "why does Yellow suddenly have a long neck" complaint.
+#
+# The skeleton below is the only source of bone length.  ``normalize_pose``
+# rebuilds any pose onto it: each bone keeps the *direction* the artwork asked
+# for (so every gesture, kick and reach survives) but is rescaled to the length
+# here.  Poses express a pose, not a body plan.
+PROPORTIONS = {
+    "neck": math.dist(STAND["H"], STAND["N"]),            # head centre -> neck base
+    "neck-shoulder": math.dist(STAND["N"], STAND["SH"]),  # neck base -> shoulders
+    "upper arm": math.dist(STAND["SH"], STAND["EL"]),
+    "forearm": math.dist(STAND["EL"], STAND["HL"]),
+    "torso": math.dist(STAND["SH"], STAND["HIP"]),
+    "thigh": math.dist(STAND["HIP"], STAND["KL"]),
+    "shin": math.dist(STAND["KL"], STAND["FL"]),
+}
+
+# Bones as (parent, joint, reference length) in rebuild order.
+BONE_CHAIN = (
+    ("SH", "HIP"),            # torso, resolved about its midpoint below
+    ("SH", "N"),              # neck-shoulder
+    ("N", "H"),               # neck
+    ("SH", "EL"),             # upper arm
+    ("EL", "HL"),             # forearm
+    ("HIP", "KL"),            # thigh
+    ("KL", "FL"),             # shin
+)
+_BONE_LENGTH = {
+    ("SH", "HIP"): "torso", ("SH", "N"): "neck-shoulder", ("N", "H"): "neck",
+    ("SH", "EL"): "upper arm", ("EL", "HL"): "forearm",
+    ("HIP", "KL"): "thigh", ("KL", "FL"): "shin",
+}
+
+# (near joint, far joint, near parent, far parent): the far side takes its
+# length from the near side but hangs off its *own* parent.  Anchoring it to
+# the near parent instead (an earlier bug) put the right hand on the left
+# elbow, which is what made the crawl's right arm snap 20px in one frame.
+_MIRROR = (("EL", "ER", "SH", "SH"), ("HL", "HR", "EL", "ER"),
+           ("KL", "KR", "HIP", "HIP"), ("FL", "FR", "KL", "KR"))
+
+
+def _unit(origin, point, fallback):
+    dx, dy = point[0] - origin[0], point[1] - origin[1]
+    length = math.hypot(dx, dy)
+    if length < 1e-6:
+        return fallback
+    return (dx / length, dy / length)
+
+
+def _place(origin, direction, length):
+    return (origin[0] + direction[0] * length, origin[1] + direction[1] * length)
+
+
+def normalize_pose(frame, stretch=0.0):
+    """Rebuild an authored pose onto the reference skeleton.
+
+    Bone *directions* are kept, bone *lengths* come from PROPORTIONS.  That is
+    what stops a limb rubber-banding between animations while still letting a
+    pose lean, kick, fold or reach.
+
+    ``stretch`` widens the torso for the few poses that legitimately imply one
+    (a full-body twist), and is 0 for everything else.
+    """
+    joints = dict(STAND)
+    joints.update({k: tuple(v) for k, v in frame.items()
+                   if k in STAND and isinstance(v, (tuple, list))})
+    out = dict(joints)
+
+    # Torso: keep its midpoint and bearing, fix its length.
+    sh, hip = joints["SH"], joints["HIP"]
+    mid = ((sh[0] + hip[0]) / 2.0, (sh[1] + hip[1]) / 2.0)
+    direction = _unit(sh, hip, (0.0, 1.0))
+    torso = PROPORTIONS["torso"] * (1.0 + stretch)
+    out["SH"] = (mid[0] - direction[0] * torso / 2.0,
+                 mid[1] - direction[1] * torso / 2.0)
+    out["HIP"] = (mid[0] + direction[0] * torso / 2.0,
+                  mid[1] + direction[1] * torso / 2.0)
+
+    for parent, joint in BONE_CHAIN:
+        if parent == "SH" and joint == "HIP":
+            continue                      # done above
+        length = PROPORTIONS[_BONE_LENGTH[(parent, joint)]]
+        direction = _unit(out[parent], joints[joint],
+                          _unit(STAND[parent], STAND[joint], (0.0, 1.0)))
+        out[joint] = _place(out[parent], direction, length)
+
+    # The far side takes its length from the near side, so a pose cannot end up
+    # with one arm longer than the other.
+    for near, far, near_parent, far_parent in _MIRROR:
+        length = PROPORTIONS[_BONE_LENGTH[(near_parent, near)]]
+        direction = _unit(out[far_parent], joints[far],
+                          _unit(STAND[far_parent], STAND[far], (0.0, 1.0)))
+        out[far] = _place(out[far_parent], direction, length)
+
+    out.update({k: v for k, v in frame.items() if k not in STAND})
+    return out
+
+
 def draw_figure(d, color, dy=0, dx=0, **j):
     g = dict(STAND); g.update(j)
     def mv(p):
@@ -441,11 +543,14 @@ def ROT(joints, angle, cx, cy, place, fx=None):
 
 
 def _full_joints(frame):
-    """Resolve a pose to absolute joints, including its dx/dy offset."""
-    g = dict(STAND)
-    g.update({k: v for k, v in frame.items() if k in STAND})
+    """Resolve a pose to absolute joints, including its dx/dy offset.
+
+    The pose is proportion-locked first, so continuity checks measure the
+    skeleton that is actually drawn.
+    """
+    g = normalize_pose(frame)
     dx, dy = frame.get("dx", 0), frame.get("dy", 0)
-    return {k: (p[0] + dx, p[1] + dy) for k, p in g.items()}
+    return {k: (g[k][0] + dx, g[k][1] + dy) for k in STAND}
 
 
 def tween_pose(a, b, t=0.5):
@@ -546,10 +651,68 @@ def contact_track(phase, start, end, fixed, lift, axis="x", lift_sign=-1,
         other = fixed
     else:
         q = (phase - stance) / (1.0 - stance)
-        slope = (end - start) / stance * (1.0 - stance)
-        moving = _hermite(end, start, slope, slope, q)
+        # Zero end slopes: the recovery eases out of the plant and back into the
+        # next one.  Matching the planted velocity here (the previous C1 form)
+        # made the contact overshoot its whole stride *and* double back, which
+        # on a 30px stride looped the foot through the hip and flipped the knee
+        # 40px in a single frame.  The planted speed is only 1px/tick, so a
+        # gentle ease costs nothing visually and cannot overshoot.
+        moving = _hermite(end, start, 0.0, 0.0, q)
         other = fixed + lift_sign * lift * math.sin(math.pi * q) ** 2
     return (moving, other) if axis == "x" else (other, moving)
+
+
+_SEED_RULES = {
+    "min_y": lambda point: point[1],
+    "max_y": lambda point: -point[1],
+    "min_x": lambda point: point[0],
+    "max_x": lambda point: -point[0],
+}
+
+
+def crawl_limb(root, contact, upper, lower, previous=None, seed="min_y"):
+    """Two-bone IK with the reference bone lengths (never stretches).
+
+    Both valid bends are computed and the one nearest the previous frame's
+    joint is kept.  Any fixed rule (a pole, ``min_x`` or "highest") flips
+    branch when the limb straightens out and snapped a joint tens of pixels in
+    a single frame; continuity cannot.
+    """
+    dx, dy = contact[0] - root[0], contact[1] - root[1]
+    distance = max(1e-6, math.hypot(dx, dy))
+    if distance > upper + lower:
+        # A fixed-length limb cannot be teleported onto an out-of-reach target;
+        # clamping the reach silently bends it straight and snaps the joint
+        # several pixels in one frame. Fail loudly instead of drawing that.
+        raise ValueError(f"unreachable contact: {distance:.1f}px from {root} "
+                         f"at {contact} (reach {upper + lower:.1f}px)")
+    reach = min(max(distance, abs(upper - lower) + 1e-6), upper + lower - 1e-6)
+    ux, uy = dx / distance, dy / distance
+    along = (upper * upper - lower * lower + reach * reach) / (2 * reach)
+    height = math.sqrt(max(0.0, upper * upper - along * along))
+    base = (root[0] + ux * along, root[1] + uy * along)
+    px, py = -uy, ux
+    choices = ((base[0] + px * height, base[1] + py * height),
+               (base[0] - px * height, base[1] - py * height))
+    if previous is None:
+        return min(choices, key=_SEED_RULES[seed])
+    return min(choices, key=lambda point: math.dist(point, previous))
+
+
+def _chain(builder, count, warmup=2):
+    """Build a cyclic rig frame by frame so each IK bend follows the last.
+
+    Two warm-up laps are run first so the bend that the *seam* inherits is the
+    one the cycle actually settles on; without them frame 1 would be solved
+    from a cold start while the loop closes on a branch the cycle had since
+    abandoned, and the hip/knee snapped back at the wrap.
+    """
+    frames, previous = [], {}
+    for index in range(count * (warmup + 1)):
+        frame = builder(index % count, count, previous)
+        previous = {key: frame[key] for key in ("EL", "ER", "KL", "KR")}
+        frames.append(frame)
+    return frames[-count:]
 
 
 ANIMS = {}
@@ -741,172 +904,304 @@ ANIMS["plane"] = [
 # re-rendered here so the whole crew falls, hangs, lies and climbs alike, and
 # so every one of those frames is inside its frame by construction.
 
-# Falling is sampled directly from a continuous rig. The old revision linearly
-# blended eight rotated drawings, which shortened limbs between keys and made
-# the tumble pulse. Here every limb keeps its authored length while the whole
-# body turns through an even 360 degrees, with a secondary flutter in the arms
-# and legs so it reads as air resistance rather than a rigid cartwheel.
+# Falling is sampled directly from a continuous rig.  It used to rotate the
+# whole figure a full 360 degrees per cycle, which is a *somersault* - every
+# loop the mascot tumbled head over heels while dropping, and with reference
+# bone lengths that read as a pinwheel rather than gravity.  A falling body is
+# orientated: head up and tipped back, both arms dragged overhead by the air,
+# one leg trailing and one tucked, with a slow flail so it is not a frozen pose.
 def FALL_FRAME(index, count=48):
-    phase = 2 * math.pi * index / count
-    shoulder = (64, 52)
-    hip = (64, 79)
-    joints = {
-        "H": (64, 27), "N": (64, 40), "SH": shoulder, "HIP": hip,
-    }
-    joints["EL"] = polar(shoulder, 18, 2.85 + 0.34 * math.sin(phase * 2))
-    joints["HL"] = polar(joints["EL"], 20,
-                         3.45 + 0.58 * math.cos(phase * 2 + 0.35))
-    joints["ER"] = polar(shoulder, 18, 0.28 - 0.34 * math.sin(phase * 2))
-    joints["HR"] = polar(joints["ER"], 20,
-                         -0.35 - 0.58 * math.cos(phase * 2 + 0.35))
-    joints["KL"] = polar(hip, 22, 2.05 + 0.28 * math.cos(phase * 2))
-    joints["FL"] = polar(joints["KL"], 23,
-                         1.86 + 0.52 * math.sin(phase * 2 + 0.6))
-    joints["KR"] = polar(hip, 22, 1.09 - 0.28 * math.cos(phase * 2))
-    joints["FR"] = polar(joints["KR"], 23,
-                         1.28 - 0.52 * math.sin(phase * 2 + 0.6))
-    angle = index * 360.0 / count + 3.0 * math.sin(phase * 2)
-    return F(**rotate_joints(joints, angle, (64, 67)))
+    t = index / count
+    phase = 2 * math.pi * t
+    slow = 2 * math.pi * t * 2          # two flails per loop
+
+    # The body hangs a couple of degrees off vertical and swings with the wind.
+    sway = 0.10 * math.sin(phase) + 0.03 * math.sin(slow + 0.7)
+    shoulder = (64 + 2.2 * math.sin(phase + 0.3), 50 + 1.4 * math.cos(phase))
+    down = math.pi / 2 + sway
+    torso = PROPORTIONS["torso"]
+    hip = (shoulder[0] + math.cos(down) * torso,
+           shoulder[1] + math.sin(down) * torso)
+    # Head thrown back, chin up: the way a falling figure looks at the sky.
+    neck_ang = -math.pi / 2 + 0.16 + 0.09 * math.sin(phase + 0.9)
+    neck = (shoulder[0] + math.cos(neck_ang) * PROPORTIONS["neck-shoulder"],
+            shoulder[1] + math.sin(neck_ang) * PROPORTIONS["neck-shoulder"])
+    head = (neck[0] + math.cos(neck_ang - 0.30) * PROPORTIONS["neck"],
+            neck[1] + math.sin(neck_ang - 0.30) * PROPORTIONS["neck"])
+
+    # Arms: dragged up and back by the air, sweeping alternately.  A stick
+    # figure has no chest, so the arms have to frame the head rather than
+    # disappear behind it.
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    # Both arms above the shoulder line, hands higher than the head, with the
+    # forearms angled further outward than the upper arms so the pose reads as
+    # "the air is holding my arms up" rather than a sideways T.
+    left_up = -2.52 - 0.26 * math.sin(slow)
+    right_up = -0.62 + 0.26 * math.sin(slow + 0.9)
+    left_far = left_up - 0.30 - 0.22 * math.cos(slow)
+    right_far = right_up - 0.46 + 0.22 * math.cos(slow + 0.9)
+    left_elbow = polar(shoulder, upper, left_up)
+    left_hand = polar(left_elbow, forearm, left_far)
+    right_elbow = polar(shoulder, upper, right_up)
+    right_hand = polar(right_elbow, forearm, right_far)
+
+    # Legs: knees bent and trailing behind the body's fall, feet floating back
+    # up.  Alternating the bend keeps them from moving as a single stick.
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    # Legs trail behind the fall: thighs swung back, shins folded down.  Straight
+    # legs read as "standing in the air" and a big alternating kick reads as
+    # walking, so this is a small, slow bicycle in place.
+    kick = math.sin(slow * 0.5)
+    # One leg trails almost straight, the other tucks: a symmetric tuck reads
+    # as a cannonball, and two straight legs read as standing in the air.
+    left_knee = polar(hip, thigh, 1.40 + 0.12 * kick)
+    left_foot = polar(left_knee, shin, 1.02 - 0.16 * kick)
+    right_knee = polar(hip, thigh, 1.02 - 0.12 * kick)
+    right_foot = polar(right_knee, shin, -0.62 + 0.18 * kick)
+
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot,
+             fx=[("wind", (112, 48 + 6 * math.sin(phase)), index % 3),
+                 ("wind", (18, 70 - 5 * math.cos(phase)), (index + 1) % 3)])
 
 
 ANIMS["fall"] = [FALL_FRAME(i) for i in range(48)]
 
 
-def CEILING_HOLD_FRAME(index, count=16):
-    """A quiet two-hand pendulum used while waiting on the ceiling."""
-    phase = 2 * math.pi * index / count
-    angle = 0.10 * math.sin(phase) + 0.035 * math.cos(phase)
-    ux, uy = math.sin(angle), math.cos(angle)
-    shoulder = (63 + 2.5 * math.sin(phase) + 0.7 * math.cos(phase),
-                40 + 1.5 * math.cos(phase))
-    hip = (shoulder[0] + ux * 32, shoulder[1] + uy * 32)
-    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
-    head = (neck[0] - ux * 12, neck[1] - uy * 12)
-    left_hand, right_hand = (32, 1), (94, 1)
-    left_elbow = joint_between(shoulder, left_hand, 31, 31, "negative")
-    right_elbow = joint_between(shoulder, right_hand, 31, 31, "positive")
-    leg_axis = math.pi / 2 + angle
-    left_knee = polar(hip, 23, leg_axis + 0.28)
-    left_foot = polar(left_knee, 24, leg_axis + 0.16 + 0.08 * math.sin(phase))
-    right_knee = polar(hip, 23, leg_axis - 0.28)
-    right_foot = polar(right_knee, 24, leg_axis - 0.16 - 0.08 * math.sin(phase))
-    return F(H=head, N=neck, SH=shoulder, HIP=hip,
-             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
-             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+# ---- wall and ceiling rigs -------------------------------------------------
+# These used to be authored around a 62px arm and a 46px leg, i.e. a figure with
+# limbs roughly twice the reference length.  Once every pose is rebuilt on the
+# reference skeleton an arm reaches 30.7px, so a body hanging 40px off a surface
+# can no longer touch it: the hands drifted a hand's width away and the climb
+# read as a swim.  The rigs below are laid out *from* PROPORTIONS instead - the
+# body sits inside the limbs' reach, planted contacts sweep exactly the action's
+# own velocity (so a grip stays glued to the surface), and every bend is solved
+# with the real bone lengths and carried over from the previous frame.
+WALL_GRIP_X = 4.0          # the wall is the left edge of the canvas
+WALL_RECOVER = 7.0        # a recovering hand steps this far off the wall
+CEILING_GRIP_Y = 7.0       # the ceiling is the top edge of the canvas
+CEILING_RECOVER = 22.0     # a released hand swings *below* the body, not across the head
+CEILING_LANE = (63.5, 76.0)   # 12.5px of travel / 30 planted ticks = 0.42px/tick
 
 
-ANIMS["hang"] = [CEILING_HOLD_FRAME(i) for i in range(16)]
+def _lean(origin, dx, dy, length):
+    """``length`` away from ``origin`` along the (dx, dy) bearing."""
+    span = math.hypot(dx, dy) or 1.0
+    return (origin[0] + dx / span * length, origin[1] + dy / span * length)
 
 
-# True hand-over-hand brachiation. A planted palm counter-moves by 1 px per
-# host tick, exactly cancelling the action's screen velocity; the other hand
-# follows a smooth recovery arc. The torso hangs as a pendulum beneath the
-# support and the legs kick through each transfer instead of dangling straight.
-def CEILING_SWING_FRAME(index, count=48):
+def _reach(root, target, upper, lower, what="contact"):
+    """Fail loudly instead of silently clamping an out-of-reach limb."""
+    span = math.dist(root, target)
+    if span > upper + lower + 1e-6:
+        raise ValueError(f"{what} {span:.1f}px out of reach "
+                         f"({upper + lower:.1f}px): {root} -> {target}")
+    return target
+
+
+def WALL_CLIMB_FRAME(index, count=48, previous=None):
+    """Climb the left wall at 1px/tick, body close in to the surface.
+
+    The body has to sit *inside* the arms' 30.7px reach, and a climber's limbs
+    run up and down the wall rather than out across it, so the whole figure
+    stays a narrow column against the wall instead of a horizontal bundle of
+    limbs crossed in front of the face.
+    """
     t = index / count
     step = 4 * math.pi * t
-    # Separate hand lanes keep the silhouette readable as one palm passes the
-    # other: the old shared lane made both arms collapse across the face.
-    left_hand = contact_track(t, 32, 62, 1, 17, lift_sign=1)
-    right_hand = contact_track(t + 0.5, 70, 100, 1, 17, lift_sign=1)
+    previous = previous or {}
+    shoulder = (26.0 + 1.2 * math.sin(step), 56.0 + 1.8 * math.cos(step))
+    hip = (24.0 + 1.5 * math.sin(step - 0.42),
+           84.0 + 1.2 * math.cos(step - 0.20))
+    neck = _lean(shoulder, 0.30, -0.95, PROPORTIONS["neck-shoulder"])
+    head = _lean(neck, 0.25, -0.97, PROPORTIONS["neck"])
 
-    # Build the body as a real pendulum under the grip line. The previous
-    # shoulder/hip sine waves barely changed their relative angle, so the pose
-    # looked like a standing figure with raised arms instead of a swing.
-    swing_angle = 0.62 * math.sin(step - 0.25)
-    ux, uy = math.sin(swing_angle), math.cos(swing_angle)
-    shoulder = (64 + 7 * math.sin(step - 0.25),
-                40 + 2 * math.cos(step))
-    hip = (shoulder[0] + ux * 32, shoulder[1] + uy * 32)
-    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
-    head = (neck[0] - ux * 12, neck[1] - uy * 12)
-
-    # Bent arms visibly transfer the load; fixed IK lengths prevent rubbery
-    # forearms even at the widest part of the swing.
-    left_elbow = joint_between(shoulder, left_hand, 31, 31, "negative")
-    right_elbow = joint_between(shoulder, right_hand, 31, 31, "positive")
-
-    # Fixed-length legs follow the pendulum with a delayed kick. Their lower
-    # segments alternately tuck and extend, but never pop between IK branches.
-    leg_axis = math.pi / 2 + swing_angle - 0.20 * math.sin(step - 0.70)
-    pump = math.cos(step)
-    lower_sweep = 0.18 * pump
-    left_knee = polar(hip, 23, leg_axis + 0.28)
-    left_foot = polar(left_knee, 23 - 3 * pump,
-                      leg_axis + 0.16 + lower_sweep)
-    right_knee = polar(hip, 23, leg_axis - 0.28)
-    right_foot = polar(right_knee, 23 + 3 * pump,
-                       leg_axis - 0.16 + lower_sweep)
-
-    return F(H=head, N=neck, SH=shoulder, HIP=hip,
-             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
-             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
-
-
-ANIMS["swing"] = [CEILING_SWING_FRAME(i) for i in range(48)]
-
-
-# Wall climbing uses the same planted-contact rule in the vertical direction.
-# Each supporting hand/foot moves down locally by 1 px while the sprite moves
-# up by 1 px, so it grips the wall instead of skating over it. Reversing these
-# frames for descent preserves the contact automatically.
-def WALL_CLIMB_FRAME(index, count=48):
-    t = index / count
-    step = 4 * math.pi * t
-    left_hand = contact_track(t, 20, 50, 1, 11, axis="y", lift_sign=1)
-    right_hand = contact_track(t + 0.5, 24, 54, 1, 11,
-                               axis="y", lift_sign=1)
-    left_foot = contact_track(t + 0.5, 78, 108, 2, 12,
+    # Planted holds slide down 1px/tick while the sprite climbs 1px/tick; the
+    # recovering limb steps away from the wall so the two never overlap.
+    left_hand = contact_track(t, 38.0, 68.0, WALL_GRIP_X, WALL_RECOVER,
                               axis="y", lift_sign=1)
-    right_foot = contact_track(t, 76, 106, 2, 12,
+    right_hand = contact_track(t + 0.5, 38.0, 68.0, WALL_GRIP_X, WALL_RECOVER,
                                axis="y", lift_sign=1)
+    left_foot = contact_track(t + 0.5, 90.0, 120.0, WALL_GRIP_X + 2.0,
+                              WALL_RECOVER, axis="y", lift_sign=1)
+    right_foot = contact_track(t, 90.0, 120.0, WALL_GRIP_X + 2.0,
+                               WALL_RECOVER, axis="y", lift_sign=1)
 
-    # Keep the torso visibly away from the wall. Crowding it against x=38 made
-    # all four bent limbs collapse into one diamond-shaped knot.
-    shoulder = (52 + 3 * math.sin(step), 53 + 3 * math.cos(step))
-    hip = (57 + 5 * math.sin(step - 0.45),
-           82 + 3 * math.cos(step - 0.20))
-    neck = (51 + 3 * math.sin(step - 0.12), shoulder[1] - 12)
-    head = (53 + 4 * math.sin(step - 0.18), neck[1] - 13)
-    # Side-view limbs get separate visual lanes. Exact circular IK made the
-    # near/far limbs fold through each other whenever their holds traded height;
-    # these continuously moving midpoints preserve a clean climbing silhouette.
-    left_elbow = (39 + 2 * math.sin(step),
-                  (shoulder[1] + left_hand[1]) / 2 - 3)
-    right_elbow = (45 + 2 * math.sin(step + 0.4),
-                   (shoulder[1] + right_hand[1]) / 2 + 3)
-    left_knee = (41 + 3 * math.sin(step - 0.3),
-                 (hip[1] + left_foot[1]) / 2 - 3)
-    right_knee = (50 + 3 * math.sin(step + 0.3),
-                  (hip[1] + right_foot[1]) / 2 + 3)
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    for root, target, upper_len, lower_len in (
+            (shoulder, left_hand, upper, forearm),
+            (shoulder, right_hand, upper, forearm),
+            (hip, left_foot, thigh, shin),
+            (hip, right_foot, thigh, shin)):
+        _reach(root, target, upper_len, lower_len)
     return F(H=head, N=neck, SH=shoulder, HIP=hip,
-             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
-             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+             EL=crawl_limb(shoulder, left_hand, upper, forearm,
+                           previous.get("EL"), seed="max_x"),
+             HL=left_hand,
+             ER=crawl_limb(shoulder, right_hand, upper, forearm,
+                           previous.get("ER"), seed="max_x"),
+             HR=right_hand,
+             KL=crawl_limb(hip, left_foot, thigh, shin, previous.get("KL"),
+                           seed="max_x"),
+             FL=left_foot,
+             KR=crawl_limb(hip, right_foot, thigh, shin, previous.get("KR"),
+                           seed="max_x"),
+             FR=right_foot)
 
 
-ANIMS["wall_climb"] = [WALL_CLIMB_FRAME(i) for i in range(48)]
+ANIMS["wall_climb"] = _chain(WALL_CLIMB_FRAME, 48)
 
 
-def WALL_HOLD_FRAME(index, count=16):
+def WALL_HOLD_FRAME(index, count=16, previous=None):
     """Breathing grip loop for pauses between wall-climbing actions."""
     phase = 2 * math.pi * index / count
     sway = math.sin(phase)
-    shoulder = (52 + 1.5 * sway, 53 + math.cos(phase))
-    hip = (57 + 2 * sway, 82 + math.cos(phase + 0.4))
-    neck = (51 + 1.5 * sway, shoulder[1] - 12)
-    head = (53 + 2 * sway, neck[1] - 13)
-    left_hand, right_hand = (1, 24), (1, 54)
-    left_foot, right_foot = (2, 78), (2, 108)
-    left_elbow = (39 + sway, (shoulder[1] + left_hand[1]) / 2 - 3)
-    right_elbow = (45 - sway, (shoulder[1] + right_hand[1]) / 2 + 3)
-    left_knee = (41 + 1.5 * sway, (hip[1] + left_foot[1]) / 2 - 3)
-    right_knee = (50 - 1.5 * sway, (hip[1] + right_foot[1]) / 2 + 3)
+    previous = previous or {}
+    shoulder = (26.0 + 1.0 * sway, 56.0 + 0.7 * math.cos(phase))
+    hip = (24.0 + 1.2 * sway, 84.0 + 0.7 * math.cos(phase + 0.4))
+    neck = _lean(shoulder, 0.30, -0.95, PROPORTIONS["neck-shoulder"])
+    head = _lean(neck, 0.25, -0.97, PROPORTIONS["neck"])
+
+    left_hand, right_hand = (WALL_GRIP_X, 44.0), (WALL_GRIP_X, 66.0)
+    left_foot = (WALL_GRIP_X + 2.0, 92.0 + sway)
+    right_foot = (WALL_GRIP_X + 2.0, 108.0 - sway)
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    for root, target, upper_len, lower_len in (
+            (shoulder, left_hand, upper, forearm),
+            (shoulder, right_hand, upper, forearm),
+            (hip, left_foot, thigh, shin),
+            (hip, right_foot, thigh, shin)):
+        _reach(root, target, upper_len, lower_len)
     return F(H=head, N=neck, SH=shoulder, HIP=hip,
-             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             EL=crawl_limb(shoulder, left_hand, upper, forearm,
+                           previous.get("EL"), seed="max_x"),
+             HL=left_hand,
+             ER=crawl_limb(shoulder, right_hand, upper, forearm,
+                           previous.get("ER"), seed="max_x"),
+             HR=right_hand,
+             KL=crawl_limb(hip, left_foot, thigh, shin, previous.get("KL"),
+                           seed="max_x"),
+             FL=left_foot,
+             KR=crawl_limb(hip, right_foot, thigh, shin, previous.get("KR"),
+                           seed="max_x"),
+             FR=right_foot)
+
+
+ANIMS["wall_hold"] = _chain(WALL_HOLD_FRAME, 16)
+
+
+def ceiling_hand(phase, start, end, stance=0.55):
+    """One hand of a hand-over-hand ceiling traversal.
+
+    Planted for ``stance`` of the cycle (sweeping back at the action's own
+    velocity), then released and swung forward *under* the body.  Keeping the
+    released hand low means the two hands never stack on top of the face.
+    """
+    phase %= 1.0
+    if phase < stance:
+        return (start + (end - start) * (phase / stance), CEILING_GRIP_Y)
+    q = (phase - stance) / (1.0 - stance)
+    ease = q * q * (3 - 2 * q)
+    arc = math.sin(math.pi * q) ** 2
+    # The swing also bulges outward: coming straight back up along the grip
+    # line drove the hand through the shoulder, folding the arm shut and
+    # flipping the elbow 20px in one frame.
+    return (end + (start - end) * ease + 20.0 * arc,
+            CEILING_GRIP_Y + CEILING_RECOVER * arc)
+
+
+def _ceiling_body(shoulder, angle):
+    """Neck, head and hips under a ceiling grip.
+
+    The head hangs to the left of the grip instead of straight above the
+    shoulders.  With a 24px-wide head and a 30.7px arm there is no room for a
+    hand at the ceiling *and* a head over the shoulders - the arms vanished
+    behind the head - so the neck leans away from the grip line and both the
+    gripping arm and the face stay readable.
+    """
+    ux, uy = math.sin(angle), math.cos(angle)
+    neck = _lean(shoulder, -0.62 - 0.5 * ux, -0.78,
+                 PROPORTIONS["neck-shoulder"])
+    head = _lean(neck, -0.55, -0.83, PROPORTIONS["neck"])
+    hip = (shoulder[0] + ux * PROPORTIONS["torso"],
+           shoulder[1] + uy * PROPORTIONS["torso"])
+    return neck, head, hip
+
+
+def CEILING_HOLD_FRAME(index, count=16, previous=None):
+    """A quiet two-hand pendulum used while waiting on the ceiling."""
+    phase = 2 * math.pi * index / count
+    previous = previous or {}
+    angle = 0.10 * math.sin(phase)
+    shoulder = (64.0 + 1.6 * math.sin(phase), 32.8 + 0.6 * math.cos(phase))
+    neck, head, hip = _ceiling_body(shoulder, angle)
+
+    # One hand carries the grip, the other dangles: a one-armed hang keeps the
+    # whole silhouette readable at this head size.
+    left_hand = (CEILING_LANE[0] - 1.0 + 0.8 * math.sin(phase), CEILING_GRIP_Y)
+    right_hand = (79.0 + 1.2 * math.sin(phase + 0.6),
+                  shoulder[1] + 17.0 + 1.5 * math.cos(phase))
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    for root, target in ((shoulder, left_hand), (shoulder, right_hand)):
+        _reach(root, target, upper, forearm)
+
+    leg_axis = math.pi / 2 + angle
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    left_knee = polar(hip, thigh, leg_axis + 0.45)
+    left_foot = polar(left_knee, shin, leg_axis + 0.20 + 0.10 * math.sin(phase))
+    right_knee = polar(hip, thigh, leg_axis - 0.48)
+    right_foot = polar(right_knee, shin, leg_axis - 0.22 - 0.10 * math.sin(phase))
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=crawl_limb(shoulder, left_hand, upper, forearm,
+                           previous.get("EL")),
+             HL=left_hand,
+             ER=crawl_limb(shoulder, right_hand, upper, forearm,
+                           previous.get("ER")),
+             HR=right_hand,
              KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
 
 
-ANIMS["wall_hold"] = [WALL_HOLD_FRAME(i) for i in range(16)]
+ANIMS["hang"] = _chain(CEILING_HOLD_FRAME, 16)
+
+
+def CEILING_SWING_FRAME(index, count=48, previous=None):
+    """Hand-over-hand brachiation: 0.7px/tick, one palm always planted."""
+    t = index / count
+    step = 4 * math.pi * t
+    previous = previous or {}
+    angle = 0.42 * math.sin(step - 0.25)
+    shoulder = (64.0 + 1.6 * math.sin(step - 0.25),
+                32.8 + 0.9 * math.cos(step))
+    neck, head, hip = _ceiling_body(shoulder, angle)
+
+    left_hand = ceiling_hand(t, CEILING_LANE[0], CEILING_LANE[1])
+    right_hand = ceiling_hand(t + 0.5, CEILING_LANE[0], CEILING_LANE[1])
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    for root, target in ((shoulder, left_hand), (shoulder, right_hand)):
+        _reach(root, target, upper, forearm)
+
+    # Legs trail the pendulum with a delayed kick instead of dangling rigidly.
+    leg_axis = math.pi / 2 + angle - 0.16 * math.sin(step - 0.70)
+    pump = math.cos(step)
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    left_knee = polar(hip, thigh, leg_axis + 0.24)
+    left_foot = polar(left_knee, shin, leg_axis + 0.14 + 0.10 * pump)
+    right_knee = polar(hip, thigh, leg_axis - 0.26)
+    right_foot = polar(right_knee, shin, leg_axis - 0.16 - 0.10 * pump)
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=crawl_limb(shoulder, left_hand, upper, forearm,
+                           previous.get("EL")),
+             HL=left_hand,
+             ER=crawl_limb(shoulder, right_hand, upper, forearm,
+                           previous.get("ER")),
+             HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+
+
+ANIMS["swing"] = _chain(CEILING_SWING_FRAME, 48)
 
 
 def LIE(dy=0, leg=0):
@@ -1147,45 +1442,92 @@ IDLE_KEYS = [
 ]
 ANIMS["idle"] = tween_cycle(IDLE_KEYS)
 
-# A low, weight-bearing diagonal crawl. Palms and opposite feet stay planted in
-# screen space while the sprite advances, then recover on rounded arcs. The
-# shoulder/hip counter-rotation and fixed-length IK limbs remove the old linear
-# morph's sliding palms, changing bone lengths, and abrupt direction changes.
-def GROUND_CRAWL_FRAME(index, count=48):
+# A low crawl that still reads as a *person* on all fours.
+#
+# The previous rig was the problem: a shoulder line stretched almost
+# horizontally (34,91)->(81,98) with straight 30px arms and 32px legs splayed
+# off both ends turns the figure into a four-legged insect with its head
+# dragging along the floor.  It also had a 37px knee jump at the loop seam.
+#
+# This rig keeps the human reading the stock art uses: a *short* back
+# (55,82)->(78,96), a head held up at the front, and limbs that fold instead of
+# spearing out.  Contacts slide backwards at exactly the action's own speed
+# (Crawl moves -1px per tick), so a planted hand or foot stays glued to the
+# desktop for the whole stance, and each limb recovers on a rounded arc.
+CRAWL_STANCE = 0.375             # fraction of the cycle a contact is planted
+CRAWL_STRIDE = 48 * CRAWL_STANCE # px swept while planted == 1px/tick travel
+CRAWL_FLOOR = 121.0
+
+
+def crawl_tread(phase, front, lift):
+    """Planted contact travelling back at the action velocity, then an arc."""
+    phase %= 1.0
+    if phase < CRAWL_STANCE:
+        return front + CRAWL_STRIDE * (phase / CRAWL_STANCE), CRAWL_FLOOR
+    q = (phase - CRAWL_STANCE) / (1.0 - CRAWL_STANCE)
+    ease = q * q * (3 - 2 * q)
+    return (front + CRAWL_STRIDE - CRAWL_STRIDE * ease,
+            CRAWL_FLOOR - lift * math.sin(math.pi * q))
+
+
+def GROUND_CRAWL_FRAME(index, count=48, previous=None):
+    """Hands-and-knees crawl, head up.
+
+    Two earlier rigs failed for opposite reasons: a splayed four-point pose
+    read as an insect, and a belly-drag with the whole body on one horizontal
+    line read as a lizard.  The human reading needs the *head above the back*:
+    shoulders ~23px above the floor so reference-length arms can reach it,
+    hips just behind them, knees and shins folded on the floor, and the head
+    held up and forward.  Contacts slide back at the action's own 1px/tick so
+    palms and toes stay glued to the desktop.
+    """
     t = index / count
-    step = 4 * math.pi * t
-    left_hand = contact_track(t, 28, 58, 121, 11)
-    right_hand = contact_track(t + 0.5, 40, 70, 120, 11)
-    # Opposite hand and foot travel together, the standard crawl gait.
-    left_foot = contact_track(t + 0.5, 78, 108, 123, 8)
-    right_foot = contact_track(t, 74, 104, 122, 8)
+    previous = previous or {}
+    bob = 0.8 * math.cos(4 * math.pi * t)
+    shoulder = (54.0 + 1.2 * math.sin(2 * math.pi * t), 98.0 + bob)
+    # Hips sit one thigh above the floor so the thighs are vertical and the
+    # shins can lie along the floor behind them - that keeps the legs in their
+    # own lane behind the body instead of folded up under the chest.
+    hip = (shoulder[0] + 26.0, CRAWL_FLOOR - PROPORTIONS["thigh"] - 1.0)
+    neck = (shoulder[0] - 2.0, shoulder[1] - 11.0)
+    head = (neck[0] - 2.0, neck[1] - 10.5)
 
-    shoulder = (49 + 4 * math.sin(step), 91 + 2 * math.cos(step))
-    hip = (81 + 4 * math.sin(step - 0.45),
-           98 - 2 * math.cos(step - 0.20))
-    tx, ty = hip[0] - shoulder[0], hip[1] - shoulder[1]
-    length = math.hypot(tx, ty)
-    ux, uy = tx / length, ty / length
-    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
-    head = (neck[0] - ux * 12, neck[1] - uy * 12 - 2)
+    # Hands lead, palms under the shoulders; the second hand plants just before
+    # the first releases, so the figure is never airborne on both arms.
+    left_hand = crawl_tread(t, 36.0, 10.0)
+    right_hand = crawl_tread(t + 0.35, 42.0, 10.0)
+    left_knee_x = crawl_tread(t + 0.5, 80.0, 4.0)[0]
+    right_knee_x = crawl_tread(t, 76.0, 4.0)[0]
 
-    # Near and far limbs occupy slightly different height lanes. That keeps
-    # the diagonal gait readable instead of turning into an X-shaped knot when
-    # the recovering palm passes the planted one.
-    left_elbow = ((shoulder[0] + left_hand[0]) / 2 - 3,
-                  107 + 2 * math.sin(step))
-    right_elbow = ((shoulder[0] + right_hand[0]) / 2 + 3,
-                   102 - 2 * math.sin(step))
-    left_knee = ((hip[0] + left_foot[0]) / 2 - 2,
-                 108 + 2 * math.sin(step - 0.3))
-    right_knee = ((hip[0] + right_foot[0]) / 2 + 3,
-                  113 - 2 * math.sin(step - 0.3))
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    for root, target in ((shoulder, left_hand), (shoulder, right_hand)):
+        _reach(root, target, upper, forearm)
+    left_knee = (left_knee_x, CRAWL_FLOOR - 1.0)
+    right_knee = (right_knee_x, CRAWL_FLOOR - 1.0)
+    left_foot = (left_knee_x + shin * 0.94, CRAWL_FLOOR + 1.5)
+    right_foot = (right_knee_x + shin * 0.94, CRAWL_FLOOR + 1.5)
     return F(H=head, N=neck, SH=shoulder, HIP=hip,
-             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             EL=crawl_limb(shoulder, left_hand, upper, forearm,
+                           previous.get("EL"), seed="max_x"),
+             HL=left_hand,
+             ER=crawl_limb(shoulder, right_hand, upper, forearm,
+                           previous.get("ER"), seed="max_x"),
+             HR=right_hand,
              KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
 
 
-ANIMS["crawl"] = [GROUND_CRAWL_FRAME(i) for i in range(48)]
+def crawl_frames(count=48):
+    """Build the cycle in order so each bend carries on from the last frame."""
+    frames, previous = [], {}
+    for index in range(count):
+        frame = GROUND_CRAWL_FRAME(index, count, previous)
+        previous = {key: frame[key] for key in ("EL", "ER", "KL", "KR")}
+        frames.append(frame)
+    return frames
+
+
+ANIMS["crawl"] = crawl_frames()
 
 # Orange: a continuously sampled cartwheel. The old twelve-frame version held
 # its setup, then jumped 35-45 degrees per drawing. This rigid vector rig turns
@@ -1485,7 +1827,7 @@ def check(im, anim, idx, errors, stage):
     return im
 
 def render_frame(color_rgb, anim, frame_idx):
-    fr = dict(ANIMS[anim][frame_idx])
+    fr = normalize_pose(ANIMS[anim][frame_idx])
     fx = fr.pop("fx")
     rot = fr.pop("rot", None)
     if rot is not None:
@@ -1579,6 +1921,27 @@ CONTINUITY_LIMITS = {"fall": 12.0, "swing": 7.5, "hang": 2.5,
                      "cartwheel": 10.5, "jumprope": 2.0}
 
 
+def proportion_errors(tolerance=0.01):
+    """Every frame of every animation must sit on the reference skeleton.
+
+    ``normalize_pose`` is what enforces this at render time, so this is a
+    regression guard: it fails if a rig starts authoring a rubber limb again
+    (a 40px forearm, a 5px neck - the "why does Yellow have a long neck"
+    complaint) instead of only looking wrong in the finished frames.
+    """
+    errors = []
+    for anim, frames in ANIMS.items():
+        for index, frame in enumerate(frames):
+            pose = normalize_pose(frame)
+            for (parent, joint), key in _BONE_LENGTH.items():
+                want = PROPORTIONS[key]
+                got = math.dist(pose[parent], pose[joint])
+                if abs(got - want) > tolerance:
+                    errors.append(f"{anim} frame {index + 1}: {parent}->{joint} "
+                                  f"is {got:.2f}px, reference is {want:.2f}px")
+    return errors
+
+
 def continuity_errors():
     errors = []
     for anim, limit in CONTINUITY_LIMITS.items():
@@ -1602,7 +1965,7 @@ def main(out_root="AVA Shimejis", only=None, preview_dir="preview/new", prune=Fa
     OUT_ROOT = out_root
     SPEC.self_check()
     os.makedirs(preview_dir, exist_ok=True)
-    errors, written, sheets = continuity_errors(), 0, {}
+    errors, written, sheets = continuity_errors() + proportion_errors(), 0, {}
     for char, rgb in BODY.items():
         if only and char not in only:
             continue

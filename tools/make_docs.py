@@ -172,8 +172,133 @@ def main():
     new_moves()
     action_grid()
     before_after()
+    crew_proportions()
+    crawl_rebuild()
+    fall_rebuild()
     for name in sorted(os.listdir(DOCS)):
         print(f"docs/{name}")
+
+
+
+
+def crew_proportions():
+    """Before/after for the "sometimes bigger, sometimes smaller" bug.
+
+    Needs the pre-change frames in /tmp/orig_pack (same convention as
+    before_after), because the whole point is the comparison.
+    """
+    before = "/tmp/orig_pack"
+    if not os.path.isdir(before):
+        print("docs/crew-proportions.png skipped: pre-change frames not in /tmp/orig_pack")
+        return
+    rows = [("stand01.png", "standing"), ("walk01.png", "walking"),
+            ("run01.png", "running"), ("dance01.png", "dancing")]
+    S, PAD, LBL, CAP = 1.6, 18, 24, 34
+    CELL = int(160 * S)
+    cols = len(rows)
+    W = PAD + cols * (CELL + PAD)
+    H = PAD * 3 + LBL * 2 + CELL * 2 + CAP
+    sheet = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(sheet)
+    d.text((PAD, 6), "BEFORE  -  Orange drawn larger than the other three", fill=(255, 130, 130))
+    y2 = PAD + LBL + CELL + CAP
+    d.text((PAD, y2 - 20), "AFTER  -  one figure scale for all four", fill=(150, 245, 170))
+    for i, (name, label) in enumerate(rows):
+        x = PAD + i * (CELL + PAD)
+        for row, folder in ((0, before), (1, ROOT)):
+            path = os.path.join(folder, "AVA Shimejis", "Orange", name)
+            if not os.path.isfile(path):
+                continue
+            im = Image.open(path).convert("RGBA")
+            if im.size != (160, 160):
+                canvas = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
+                canvas.alpha_composite(im, (16, 16))
+                im = canvas
+            top = PAD + LBL + row * (CELL + LBL + CAP) + (CAP if row else 0)
+            sheet.paste(cell(im, S), (x, top))
+            if row == 0:
+                d.text((x + 2, top - 16), f"{label}  -  before", fill=FG)
+            else:
+                d.text((x + 2, top - 16), f"{label}  -  after", fill=FG)
+    sheet.save(os.path.join(DOCS, "crew-proportions.png"), optimize=True)
+
+
+def crawl_rebuild():
+    """The old four-legged crawl next to the rebuilt one."""
+    before = "/tmp/orig_pack"
+    if not os.path.isdir(before):
+        print("docs/crawl-rebuild.png skipped: pre-change frames not in /tmp/orig_pack")
+        return
+    picks = [1, 9, 17, 25, 33, 41]
+    S, PAD, LBL = 1.3, 16, 26
+    cellw = int(160 * S)
+    W = PAD + len(picks) * (cellw + 6) + PAD
+    H = PAD + LBL * 2 + cellw * 2 + PAD
+    sheet = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(sheet)
+    d.text((PAD, 6), "BEFORE  -  head dragging, four splayed limbs", fill=(255, 130, 130))
+    d.text((PAD, PAD + LBL + cellw + 6), "AFTER  -  head up, short back, folded limbs",
+           fill=(150, 245, 170))
+    for row, folder in ((0, before), (1, ROOT)):
+        top = PAD + LBL + row * (cellw + LBL + 6)
+        for i, index in enumerate(picks):
+            name = f"crawl{index:02d}.png"
+            path = os.path.join(folder, "AVA Shimejis", "Blue", name)
+            im = Image.open(path).convert("RGBA")
+            if im.size != (160, 160):
+                canvas = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
+                canvas.alpha_composite(im, (16, 16))
+                im = canvas
+            sheet.paste(cell(im, S), (PAD + i * (cellw + 6), top))
+    sheet.save(os.path.join(DOCS, "crawl-rebuild.png"), optimize=True)
+
+
+# The old Falling rig is in git history; read it straight out of the object
+# store so the before/after sheet does not depend on a scratch directory.
+FALL_BEFORE_REVS = ("03f6510", "43c2e92")
+
+
+def _git_frame(rev, name):
+    import subprocess
+    from io import BytesIO
+    try:
+        data = subprocess.run(["git", "show", f"{rev}:AVA Shimejis/Blue/{name}"],
+                              cwd=ROOT, capture_output=True, check=True).stdout
+    except Exception:
+        return None
+    return Image.open(BytesIO(data)).convert("RGBA")
+
+
+def fall_rebuild():
+    """The old tumbling fall next to the freefall rig."""
+    picks = [1, 7, 13, 19, 25, 31, 37, 43]
+    olds = [_git_frame(rev, f"fall{index:02d}.png")
+            for rev in FALL_BEFORE_REVS for index in picks]
+    olds = [im for im in olds if im is not None][:len(picks)]
+    if len(olds) != len(picks):
+        print("docs/fall-rebuild.png skipped: pre-change frames not in git history")
+        return
+    S, PAD, LBL = 1.3, 16, 26
+    cellw = int(160 * S)
+    W = PAD + len(picks) * (cellw + 6) + PAD
+    H = PAD + LBL * 2 + cellw * 2 + PAD
+    sheet = Image.new("RGB", (W, H), BG)
+    d = ImageDraw.Draw(sheet)
+    d.text((PAD, 6), "BEFORE  -  a full 360-degree tumble every cycle", fill=(255, 130, 130))
+    d.text((PAD, PAD + LBL + cellw + 6),
+           "AFTER  -  freefall: head up, arms dragged overhead, one leg trailing",
+           fill=(150, 245, 170))
+    for row in (0, 1):
+        top = PAD + LBL + row * (cellw + LBL + 6)
+        for i, index in enumerate(picks):
+            if row == 0:
+                im = olds[i]
+            else:
+                path = os.path.join(ROOT, "AVA Shimejis", "Blue",
+                                    f"fall{index:02d}.png")
+                im = Image.open(path).convert("RGBA")
+            sheet.paste(cell(im, S), (PAD + i * (cellw + 6), top))
+    sheet.save(os.path.join(DOCS, "fall-rebuild.png"), optimize=True)
 
 
 if __name__ == "__main__":

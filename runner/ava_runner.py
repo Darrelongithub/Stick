@@ -31,7 +31,12 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(ROOT, "tools"))
 import pack  # noqa: E402
+try:                                     # the shared spec (activity classes)
+    import ava_common as SPEC  # noqa: E402
+except ImportError:                      # pragma: no cover - tools/ is in the repo
+    SPEC = None
 
 TICK_MS = 40                     # Shimeji-ee tick; one pose Duration unit
 RENDER_HZ = 60                   # position updates are interpolated at 60 Hz
@@ -94,12 +99,33 @@ def visual_key(action):
     return min(names[i:] + names[:i] for i in range(len(names)))
 
 
+def activity_slot(name):
+    """The crew activity class of `name` (0-3), or None when it is free.
+
+    Mirrors the Shimeji-ee conditions: the four characters are offset by a
+    quarter cycle, so no two of them are ever offered the same class at the
+    same moment (see SLOT_TICKS in tools/ava_common.py).
+    """
+    if SPEC is None:
+        return None
+    return SPEC.activity_slot(name)
+
+
+def slot_of(char, tick):
+    """Which activity class `char` may use on `tick` (0-3, or None)."""
+    if SPEC is None:
+        return None
+    phase = SPEC.SLOT_PHASE.get(char, 0)
+    return int((tick // SPEC.SLOT_TICKS + phase) % 4)
+
+
 class ActionCoordinator:
     """Reserve visual actions across the crew and enforce short cooldowns."""
 
-    def __init__(self):
+    def __init__(self, tick=0):
         self.active = {}
         self.global_recent = collections.deque(maxlen=4)
+        self.tick = tick
 
     def choose(self, owner, pool, weights, rng, recent):
         # The owner's old action no longer needs to reserve its slot.
@@ -107,19 +133,28 @@ class ActionCoordinator:
         busy = set(self.active.values())
         recent = set(recent)
 
-        def candidates(avoid_recent=True, avoid_global=True):
+        def candidates(avoid_recent=True, avoid_global=True, avoid_slot=True):
             out = []
+            open_slot = slot_of(getattr(owner, "name", None), self.tick)
             for action, weight in zip(pool, weights):
                 key = visual_key(action)
                 if key in busy or (avoid_recent and key in recent):
                     continue
                 if avoid_global and key in self.global_recent:
                     continue
+                # A grouped activity is only offered during its own slot, and
+                # the slots are disjoint per character, so two mascots cannot
+                # start the same *kind* of animation together either.
+                slot = activity_slot(action.name)
+                if avoid_slot and slot is not None and slot != open_slot:
+                    continue
                 out.append((action, weight))
             return out
 
         choices = (candidates() or candidates(avoid_global=False)
-                   or candidates(avoid_recent=False, avoid_global=False))
+                   or candidates(avoid_recent=False, avoid_global=False)
+                   or candidates(avoid_recent=False, avoid_global=False,
+                                 avoid_slot=False))
         if not choices:
             # Only possible for a tiny custom pack with fewer distinct actions
             # than mascots; degrade gracefully rather than stopping the runner.
@@ -237,17 +272,36 @@ def simulate(args, chars):
                               args.screen_w, coordinator=coordinator))
     out_of_bounds = 0
     simultaneous_duplicates = 0
+    simultaneous_classes = 0
+    repeats = 0
     frame_changes = [0] * len(mascots)
+    previous = [None] * len(mascots)
     for _ in range(args.simulate):
+        coordinator.tick += 1
+        started_now = []
         for i, m in enumerate(mascots):
             m.dirty = False
+            before = m.started.copy()
             m.step()
+            is_new = sum(m.started.values()) != sum(before.values())
+            if is_new:
+                started_now.append(m)
+                # Same character immediately replaying the same animation is
+                # the other half of "they repeat animations too many times".
+                if previous[i] is not None and m.action.name == previous[i]:
+                    repeats += 1
+                previous[i] = m.action.name
             if m.dirty:
                 frame_changes[i] += 1
             if not (0 <= m.x <= args.screen_w):
                 out_of_bounds += 1
         keys = [visual_key(m.action) for m in mascots]
         simultaneous_duplicates += len(keys) - len(set(keys))
+        # Two characters *starting* the same activity class on the same tick is
+        # what reads as "they all do it together".
+        classes = [activity_slot(m.action.name) for m in started_now]
+        grouped = [c for c in classes if c is not None]
+        simultaneous_classes += len(grouped) - len(set(grouped))
     seconds = args.simulate * TICK_MS / 1000
     print(f"simulated {seconds:.0f}s of {len(mascots)} characters "
           f"({args.simulate} ticks x {TICK_MS} ms)")
@@ -257,7 +311,11 @@ def simulate(args, chars):
               f"| {sum(m.started.values())} actions | {top}")
     print(f"out-of-bounds positions: {out_of_bounds}")
     print(f"simultaneous duplicate animations: {simultaneous_duplicates}")
-    return 0 if out_of_bounds == 0 and simultaneous_duplicates == 0 else 1
+    print(f"simultaneous same-class animations: {simultaneous_classes}")
+    print(f"back-to-back repeats: {repeats}")
+    ok = (out_of_bounds == 0 and simultaneous_duplicates == 0
+          and simultaneous_classes == 0 and repeats == 0)
+    return 0 if ok else 1
 
 
 def prepare_desktop():
@@ -404,6 +462,7 @@ def run_desktop(args, chars):
         # paint event is not useful and would make every sprite teleport.
         elapsed = min(100.0, max(1.0, float(now - last_ms)))
         last_ms = now
+        coordinator.tick += max(1, int(round(elapsed / TICK_MS)))
         for m, s in zip(mascots, sprites):
             m.dirty = False
             m.advance(elapsed / TICK_MS)

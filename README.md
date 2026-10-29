@@ -8,6 +8,26 @@ class support for **Hyprland**.
 
 Recently rebuilt:
 
+* **The crew no longer acts in unison.** Every character now gets a permanent
+  quarter-cycle offset, and the watch-me moves are split into four activity
+  classes, so at any instant exactly one character may dance, crawl, fight or
+  potion-brew — never all four. Nothing is remapped as "already running", so
+  the whole repertoire stays available; see
+  [Nobody does it at the same time](#nobody-does-it-at-the-same-time).
+* **Nobody replays the same move twice in a row.** Every behaviour this pack
+  generates refuses to start while the character is still finishing it, which
+  is what used to produce wave → wave → wave.
+* **One figure scale for all four.** Orange's original-pack art was drawn
+  ~1.10× larger with a 37 px hollow head where the other three use a 24 px
+  filled one, so Orange got bigger on Walk/Run/Sit/Dance and shrank again on
+  the next move. Its stock frames are now the shared originals in Orange's own
+  colour. `tools/normalize_stock_art.py` measures this and refuses to guess.
+* **The crawl is a crawl again, not a spider.** The old rig stretched the
+  shoulder line almost horizontally with straight 30 px limbs splayed off both
+  ends and the head dragging at floor level; it also had a 37 px knee jump at
+  the loop seam. The rebuilt rig keeps a short back, a head held up at the
+  front and folded limbs, with planted contacts that travel at exactly the
+  action's own speed (≤ 2.5 px between frames instead of 37).
 * **16 new moves** and rebuilt crawl/fall cycles: falling, wall crawling and
   ceiling crawling now use 48-frame, 25 fps cycles, each character gets a different
   phase/tempo, and four new personality-exclusive moves keep the crew from
@@ -290,11 +310,15 @@ everyone else's); Blue's `lay01` was cut on *both* sides; Orange's wall-climb
 legs sank up to 19 px under the anchor, so the feet were chopped off at the
 bottom of the screen. All of them are regenerated inside their margins. The
 latest pass also replaces the old three-frame, 40-tick fall (up to 1.6 seconds
-on one drawing) with a 48-frame rigid-limb tumble at one tick per frame, and
-replaces the nearly identical five-frame wall poses with a 48-frame planted-
-contact climb at one tick per frame:
+on one drawing) with a 48-frame freefall at one tick per frame — head up and
+tipped back, both arms dragged overhead by the air, one leg trailing and one
+tucked, with a slow flail so it is never a frozen pose — and replaces the
+nearly identical five-frame wall poses with a 48-frame planted-contact climb at
+one tick per frame:
 
 ![Before and after](docs/before-after.png)
+
+![Freefall rebuild](docs/fall-rebuild.png)
 
 **Reactive**: CursorSlash still leaps at your cursor when it is within 300 px
 (its leap no longer throws the sword off the top of the frame).
@@ -320,6 +344,73 @@ It also gates each behaviour by where the character is — ground moves only fir
 while standing on the floor or on top of a window, so nobody starts a push-up
 mid-air or mimes a guitar while hanging from the ceiling.
 
+### Nobody does it at the same time
+
+Four mascots that each pick from the same weighted pool will, sooner or later,
+crawl at the same time — and four identical crawls read as one insect, not a
+crew. Shimeji-ee gives a behaviour condition the mascot as `mascot` (a Nashorn
+script), but a stock Shimeji-ee `Manager` only exposes `getCount()`, so there is
+no supported way to ask "is somebody else crawling right now?". What every
+version *does* expose is the mascot's own tick counter, `mascot.getTime()`.
+
+So the repertoire is split into four activity classes and each character is
+given a permanent quarter-cycle offset:
+
+| Quarter | Blue | Orange | Yellow | Green |
+|---|---|---|---|---|
+| 0 | perform | hobby | action | quiet |
+| 1 | quiet | perform | hobby | action |
+| 2 | action | quiet | perform | hobby |
+| 3 | hobby | action | quiet | perform |
+
+* **perform** — Dance, Cheer, Wave, Taunt, Victory, SpinKick, Cartwheel, JumpRope
+* **quiet** — Sleep, Meditate, Coffee, ReadBook, Cry, Dizzy, GlitchOut, Sneeze, Hurt, Bonk
+* **action** — Crawl, FightCombo, SwordPractice, BattleRage, PushUps, PowerSlide
+* **hobby** — Juggle, PaperPlane, SnackTime, Phone, Mine, BrewPotion, DrawAlive, Tinker, PlayGuitar, Inspect
+
+All four mascots are ticked by the same timer, so the classes are disjoint: at
+any instant exactly one character may perform, one may be quiet, one may act and
+one may do a hobby. The classes rotate every 10 seconds (`SLOT_TICKS`), so every
+character still gets the whole repertoire — just never at the same moment as a
+crew mate. Idle, Walk, Run and Stretch are deliberately *not* classed: four
+stickmen walking about should look alive, not queued.
+
+Alongside that, each behaviour refuses to start while the character is still
+sitting in it (`mascot.getBehavior().toString() != 'Behavior(Dance)'`), which
+kills the wave → wave → wave repeat. Both rules are wrapped in
+`try { ... } catch { return true }`, so a host that lacks either API loses the
+desynchronising rather than the behaviour. The built-in Python runner applies
+the same class rules and reports `simultaneous same-class animations` and
+`back-to-back repeats` in `--simulate`, both of which are 0.
+
+### One figure scale
+
+A mascot that changes size between animations is not a taste problem, it is a
+number. Measured on the original-pack frames:
+
+| frame | Blue | Yellow | Green | Orange |
+|---|---|---|---|---|
+| `stand01.png` | 24 px head, 110 px tall | 24 px | 24 px | **37 px head, 125 px tall** |
+
+Every generated frame is drawn at one scale for all four characters, so Orange
+alone read bigger while it walked, ran, sat, danced, bounced or hugged and
+snapped back to normal on its next generated move.
+
+`tools/normalize_stock_art.py` measures each character's original-pack art
+against the shared originals (Blue, Yellow and Green are within 0.1 % of each
+other — identical drawings) and re-renders only the characters that are off, in
+their own body colour. It leaves variant art that is already the right size
+alone, and it refuses to guess: it prints the measured ratio and the frame
+count, and `python3 tools/normalize_stock_art.py --check` changes nothing.
+
+![Orange, before and after](docs/crew-proportions.png)
+
+The crawl was rebuilt on the same pass — it used to stretch the shoulder line
+almost horizontally with straight 30 px limbs, put the head at floor level and
+jump a knee 37 px at the loop seam:
+
+![The crawl, rebuilt](docs/crawl-rebuild.png)
+
 ### Why the frames are 160×160 now
 
 Poses are authored in the original 128×128 space (centre x=64, feet y=128) and
@@ -342,9 +433,16 @@ Frames are procedural — tweak poses in `tools/stickgen.py`, then:
 pip install pillow
 python3 tools/stickgen.py            # render frames (raises on any clipped frame)
 python3 tools/stickgen.py --prune    # ...and delete frames the spec dropped
+python3 tools/normalize_stock_art.py # keep every character on one figure scale
 python3 tools/patch_xml.py           # (re)wire actions.xml + behaviors.xml
 python3 tools/validate.py            # frames, XML, references, behaviour balance
+python3 tools/make_docs.py           # refresh the pictures in docs/
+python3 -m unittest discover -s tests
 ```
+
+`normalize_stock_art.py --check` reports the measured figure scale of each
+character without writing anything; the test suite fails if the four ever drift
+more than 6 % apart again.
 
 `tools/ava_common.py` is the single source of truth: which actions exist, how
 many frames each has, its anchor canvas, its durations, its behaviour
