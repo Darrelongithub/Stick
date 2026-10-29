@@ -45,8 +45,8 @@ def cell(im, scale=1):
 
 
 def hero():
-    picks = {"Blue": "wave03.png", "Orange": "fight_punch01.png",
-             "Yellow": "tinker02.png", "Green": "music02.png"}
+    picks = {"Blue": "read04.png", "Orange": "cartwheel31.png",
+             "Yellow": "inspect04.png", "Green": "jumprope07.png"}
     S, PAD, LBL = 2, 14, 26
     W = PAD + len(picks) * (160 * S + PAD)
     H = PAD + LBL + 160 * S + PAD
@@ -60,27 +60,38 @@ def hero():
 
 
 def new_moves():
-    picks = [("Idle", "idle02.png"), ("Stretch", "stretch03.png"), ("Taunt", "taunt04.png"),
-             ("SpinKick", "spin03.png"), ("Phone", "phone03.png"), ("Coffee", "coffee03.png"),
-             ("Meditate", "meditate02.png"), ("Cry", "cry03.png"), ("Dizzy", "dizzy02.png"),
-             ("Juggle", "juggle01.png"), ("Victory", "victory03.png"),
-             ("Falling", "fall02.png"), ("GrabCeiling", "hang02.png"),
-             ("ClimbCeiling", "swing03.png"), ("GrabWall", "wall_climb01.png"),
-             ("ClimbWall", "wall_climb02.png"), ("Sprawl", "lay02.png"),
-             ("Tripping", "trip02.png")]
-    new = {p[0] for p in picks[:11]}
+    picks = [
+        ("Blue", "Crawl", "crawl12.png", "new"),
+        ("Blue", "ReadBook", "read04.png", "new"),
+        ("Orange", "Cartwheel", "cartwheel31.png", "new"),
+        ("Yellow", "Inspect", "inspect04.png", "new"),
+        ("Green", "JumpRope", "jumprope07.png", "new"),
+        ("Blue", "Idle / Stand", "idle04.png", "smoothed"),
+        ("Blue", "Falling", "fall07.png", "smoothed"),
+        ("Blue", "ClimbCeiling", "swing16.png", "smoothed"),
+        ("Blue", "ClimbWall", "wall_climb09.png", "smoothed"),
+        ("Blue", "Stretch", "stretch03.png", "move"),
+        ("Blue", "SpinKick", "spin03.png", "move"),
+        ("Blue", "Phone", "phone03.png", "move"),
+        ("Blue", "Coffee", "coffee03.png", "move"),
+        ("Blue", "Meditate", "meditate02.png", "move"),
+        ("Blue", "Juggle", "juggle01.png", "move"),
+        ("Blue", "Victory", "victory03.png", "move"),
+        ("Blue", "Sprawl", "lay02.png", "re-drawn"),
+        ("Blue", "Tripping", "trip02.png", "re-drawn"),
+    ]
     PAD, LBL, COLS = 12, 20, 6
     rows = (len(picks) + COLS - 1) // COLS
     W = PAD + COLS * (160 + PAD)
     H = PAD * (rows + 1) + rows * (160 + LBL)
     sheet = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(sheet)
-    for i, (name, fn) in enumerate(picks):
+    for i, (char, name, fn, tag) in enumerate(picks):
         x = PAD + (i % COLS) * (160 + PAD)
         y = PAD + (i // COLS) * (160 + LBL + PAD) + LBL
-        sheet.paste(cell(frame("Blue", fn)), (x, y))
-        tag = "new" if name in new else "re-drawn"
-        d.text((x + 2, y - 16), f"{name} [{tag}]", fill=FG if name in new else ACC)
+        sheet.paste(cell(frame(char, fn)), (x, y))
+        color = FG if tag in ("new", "move") else ACC
+        d.text((x + 2, y - 16), f"{name} [{tag}]", fill=color)
     sheet.save(os.path.join(DOCS, "new-moves.png"), optimize=True)
 
 
@@ -89,18 +100,22 @@ def action_grid():
               ("SwordPractice", "sword03.png"), ("Mine", "mine02.png"), ("Sleep", "sleep02.png"),
               ("SnackTime", "snack03.png"), ("Juggle", "juggle01.png"), ("Victory", "victory03.png"),
               ("Meditate", "meditate02.png")]
-    sigs = {"Orange": ("DrawAlive", "draw05.png"), "Yellow": ("Tinker", "tinker03.png"),
-            "Blue": ("BrewPotion", "potion03.png"), "Green": ("PlayGuitar", "music02.png")}
+    sigs = {
+        "Orange": [("DrawAlive", "draw05.png"), ("Cartwheel", "cartwheel31.png")],
+        "Yellow": [("Tinker", "tinker03.png"), ("Inspect", "inspect04.png")],
+        "Blue": [("BrewPotion", "potion03.png"), ("ReadBook", "read04.png")],
+        "Green": [("PlayGuitar", "music02.png"), ("JumpRope", "jumprope07.png")],
+    }
     PAD, LBL = 6, 18
-    cols = len(common) + 1
+    cols = len(common) + 2
     W = PAD + cols * (160 + PAD)
     H = PAD + len(SPEC.CHARS) * (160 + PAD + LBL)
     sheet = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(sheet)
     for r, ch in enumerate(SPEC.CHARS):
         y = PAD + r * (160 + PAD + LBL)
-        d.text((PAD, y), f"{ch}   (last column = signature move)", fill=FG)
-        for c, (name, fn) in enumerate(common + [sigs[ch]]):
+        d.text((PAD, y), f"{ch}   (last two columns = exclusive moves)", fill=FG)
+        for c, (name, fn) in enumerate(common + sigs[ch]):
             x = PAD + c * (160 + PAD)
             bg = Image.new("RGB", (160, 160), (48, 50, 58))
             f = frame(ch, fn)

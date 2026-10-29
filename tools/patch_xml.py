@@ -7,7 +7,7 @@ The script is *idempotent by construction*: it deletes everything it owns
 (between its own marker comments, plus any older unmarked copy of the same
 elements) and writes it back fresh.  Running it twice changes nothing.
 
-It also does two repairs that matter for people who have the pack installed:
+It also applies repairs that matter for people who have the pack installed:
 
 * switches ``PullUpShimeji`` off.  That behaviour is Shimeji-ee's breeding
   action: with the stock ``Frequency="50"`` every character clones itself while
@@ -18,6 +18,9 @@ It also does two repairs that matter for people who have the pack installed:
   ``<ActionReference Name="Dancing"/>``, then emits one per-character Dance
   weight gated to the actual work-area floor. Dance poses get a stable,
   character-specific beat accent without changing or inventing sprite frames.
+* turns the one-frame Stand/StandAffordance statues into phased idle loops,
+  caps 20-60 second passive rests, fixes every malformed climb expression,
+  and retimes high-displacement stock locomotion for smooth playback.
 
 Usage:
     python3 tools/patch_xml.py            # patch every character
@@ -127,15 +130,18 @@ def fix_dance(raw):
 
 
 def fix_crawl_sequence_expressions(raw):
-    """Correct the missing-call parentheses in ClimbAlongWall's target.
+    """Correct missing-call parentheses in every edge-crawl target.
 
-    Shimeji-ee/ShimeLinux expose Math.random() as a function; subtracting the
-    function object itself is not a valid target expression. Keep this repair
-    scoped to the wall-crawl sequence rather than rewriting unrelated actions.
+    Both ``ClimbAlongWall`` and ``ClimbIEWall`` contained a branch using
+    ``Math.random*100``. Shimeji-ee/ShimeLinux expose ``Math.random`` as a
+    function; arithmetic on the function object aborts that branch and makes a
+    mascot look stuck to the edge.  Repair only climb action bodies.
     """
     sequence = re.compile(
-        r'(<Action\b(?=[^>]*\bName="ClimbAlongWall")[^>]*>.*?</Action>)', re.S)
-    return sequence.sub(lambda m: m.group(1).replace("Math.random*100", "Math.random()*100"), raw)
+        r'(<Action\b(?=[^>]*\bName="(?:ClimbAlongWall|ClimbIEWall|ClimbIEBottom)"'
+        r')[^>]*>.*?</Action>)', re.S)
+    return sequence.sub(
+        lambda m: re.sub(r'Math\.random(?!\s*\()', 'Math.random()', m.group(1)), raw)
 
 
 def retime_dance(raw, char):
@@ -176,6 +182,155 @@ def retime_dance(raw, char):
     indent = updated[line_start:start]
     eol = eol_of(updated)
     return updated[:line_start] + indent + marker + eol + updated[line_start:]
+
+
+def animate_stand(raw, char):
+    """Replace stock one-frame standing statues with the generated idle loop.
+
+    Stand remains a ``Stay`` action because dozens of stock sequences rely on
+    its duration override; only its animation changes. StandAffordance (the
+    waiting-for-a-hug pose) receives the same treatment and loses the stray
+    literal ``\\D\\.png`` text shipped in the source XML.
+    """
+    eol = eol_of(raw)
+    poses = SPEC.poses("Idle", char)
+    for action_name in ("Stand", "StandAffordance"):
+        action = re.compile(
+            r'(?P<head><Action\b(?=[^>]*\bName="' + action_name + r'")[^>]*>)'
+            r'(?P<body>.*?)(?P<tail></Action>)', re.S)
+        match = action.search(raw)
+        if not match:
+            continue
+        line_start = raw.rfind("\n", 0, match.start("head")) + 1
+        indent = raw[line_start:match.start("head")]
+        lines = [indent + "\t<Animation>"]
+        for i, (img, anc, vel, dur) in enumerate(poses):
+            dur = SPEC.duration_for("Idle", char, i, dur)
+            lines.append(indent + "\t\t" + pose_line(eol, img, anc, vel, dur).lstrip())
+        lines.append(indent + "\t</Animation>")
+        body = eol + eol.join(lines) + eol + indent
+        raw = (raw[:match.end("head")] + body
+               + match.group("tail") + raw[match.end("tail"):])
+    return raw
+
+
+# A 500-1500 tick stock rest is 20-60 seconds of apparent inactivity.  Keep
+# rests, but cap them to a few seconds so active behaviours get another turn.
+REST_LIMITS = {
+    "Stand": (18, 32),              # 0.7-2.0 s, breathing throughout
+    "Sit": (30, 55),                # 1.2-3.4 s
+    "Sprawl": (35, 65),             # 1.4-4.0 s
+    "SitWithLegsDown": (24, 42),
+    "SitAndDangleLegs": (35, 55),
+    "GrabWall": (30, 50),
+    "GrabCeiling": (30, 50),
+}
+
+
+def shorten_long_rests(raw):
+    ref = re.compile(r'<ActionReference\b[^>]*/>')
+    duration = re.compile(
+        r'Duration="\$\{(?P<base>\d+)\+Math\.random\(\)\*(?P<spread>\d+)\}"')
+
+    def cap(match):
+        tag = match.group(0)
+        name_match = re.search(r'\bName="(' + "|".join(map(re.escape, REST_LIMITS)) + r')"', tag)
+        value = duration.search(tag)
+        if not name_match or not value:
+            return tag
+        if int(value.group("base")) + int(value.group("spread")) <= 120:
+            return tag
+        new_base, new_spread = REST_LIMITS[name_match.group(1)]
+        replacement = f'Duration="${{{new_base}+Math.random()*{new_spread}}}"'
+        return tag[:value.start()] + replacement + tag[value.end():]
+
+    return ref.sub(cap, raw)
+
+
+# Stock locomotion jumped as much as 18 px on every 40ms host tick.  More frame
+# changes with smaller per-tick displacement preserves energy without judder.
+STOCK_MOTION = {
+    "Blue":   {"Walk": (-3, 2), "Run": (-8, 1), "Dash": (-10, 1),
+               "RunAffordance": (-10, 1)},
+    "Orange": {"Walk": (-4, 2), "Run": (-11, 1), "Dash": (-13, 1),
+               "RunAffordance": (-13, 1)},
+    "Yellow": {"Walk": (-3, 2), "Run": (-9, 1), "Dash": (-11, 1),
+               "RunAffordance": (-11, 1)},
+    "Green":  {"Walk": (-3, 2), "Run": (-10, 1), "Dash": (-12, 1),
+               "RunAffordance": (-12, 1)},
+}
+
+
+def smooth_stock_motion(raw, char):
+    for name, (vx, duration) in STOCK_MOTION[char].items():
+        action = re.compile(
+            r'(<Action\b(?=[^>]*\bName="' + re.escape(name) + r'")[^>]*>.*?</Action>)',
+            re.S)
+
+        def tune(match):
+            body = re.sub(r'Velocity="-?\d+,0"', f'Velocity="{vx},0"', match.group(1))
+            return re.sub(r'Duration="\d+"', f'Duration="{duration}"', body)
+
+        raw = action.sub(tune, raw, count=1)
+    return raw
+
+
+# Lower the stock 20-60 second rest paths and give locomotion different odds
+# per character.  Generated moves now compete fairly instead of losing every
+# decision to a Frequency=1000 HugSearch or two Frequency=200 static rests.
+STOCK_BEHAVIOR_WEIGHTS = {
+    "Blue":   {"SitAndFaceMouse": 7, "StandUp": 24, "SitDown": 13,
+               "SitWhileDanglingLegs": 10, "LieDown": 7, "HugAffordance": 8,
+               "HugSearch": 18, "WalkAlongWorkAreaFloor": 34,
+               "RunAlongWorkAreaFloor": 12, "ClimbHalfwayAlongWall": 22,
+               "ClimbAlongWall": 18, "ClimbAlongCeiling": 36},
+    "Orange": {"SitAndFaceMouse": 5, "StandUp": 12, "SitDown": 8,
+               "SitWhileDanglingLegs": 6, "LieDown": 4, "HugAffordance": 14,
+               "HugSearch": 22, "WalkAlongWorkAreaFloor": 18,
+               "RunAlongWorkAreaFloor": 42, "ClimbHalfwayAlongWall": 14,
+               "ClimbAlongWall": 26, "ClimbAlongCeiling": 16},
+    "Yellow": {"SitAndFaceMouse": 9, "StandUp": 18, "SitDown": 11,
+               "SitWhileDanglingLegs": 12, "LieDown": 5, "HugAffordance": 10,
+               "HugSearch": 16, "WalkAlongWorkAreaFloor": 30,
+               "RunAlongWorkAreaFloor": 21, "ClimbHalfwayAlongWall": 34,
+               "ClimbAlongWall": 38, "ClimbAlongCeiling": 14},
+    "Green":  {"SitAndFaceMouse": 8, "StandUp": 20, "SitDown": 16,
+               "SitWhileDanglingLegs": 14, "LieDown": 8, "HugAffordance": 16,
+               "HugSearch": 20, "WalkAlongWorkAreaFloor": 27,
+               "RunAlongWorkAreaFloor": 27, "ClimbHalfwayAlongWall": 20,
+               "ClimbAlongWall": 24, "ClimbAlongCeiling": 28},
+}
+
+# The remaining floor/window routes were all Frequency=100 in identical order.
+# Give each character a different low-weight route profile so those stock
+# sequences cannot swamp the richer generated pool or march in lockstep.
+SECONDARY_STOCK_BEHAVIORS = (
+    "WalkLeftAlongFloorAndSit", "WalkRightAlongFloorAndSit",
+    "GrabWorkAreaBottomLeftWall", "GrabWorkAreaBottomRightWall",
+    "WalkLeftAndSit", "WalkRightAndSit",
+    "RunAndGrabBottomLeftWall", "RunAndGrabBottomRightWall",
+    "WalkAlongIECeiling", "RunAlongIECeiling",
+    "SitOnTheLeftEdgeOfIE", "SitOnTheRightEdgeOfIE",
+    "WalkLeftAlongIEAndSit", "WalkRightAlongIEAndSit",
+    "WalkLeftAlongIEAndJump", "WalkRightAlongIEAndJump",
+)
+SECONDARY_STOCK_PROFILES = {
+    "Blue":   (12, 7, 6, 9, 11, 5, 5, 8, 14, 6, 7, 10, 9, 5, 6, 8),
+    "Orange": (6, 11, 5, 8, 4, 9, 15, 10, 5, 14, 4, 7, 5, 9, 13, 8),
+    "Yellow": (10, 6, 13, 7, 8, 12, 6, 11, 12, 8, 11, 5, 10, 6, 7, 13),
+    "Green":  (8, 13, 7, 10, 12, 6, 9, 14, 9, 13, 6, 12, 7, 11, 10, 5),
+}
+for _char, _profile in SECONDARY_STOCK_PROFILES.items():
+    STOCK_BEHAVIOR_WEIGHTS[_char].update(zip(SECONDARY_STOCK_BEHAVIORS, _profile))
+
+
+def retune_stock_behaviors(raw, char):
+    for name, frequency in STOCK_BEHAVIOR_WEIGHTS[char].items():
+        element = re.compile(
+            r'(<Behavior\b(?=[^>]*\bName="' + re.escape(name)
+            + r'")[^>]*?\bFrequency=")\d+("[^>]*>)')
+        raw = element.sub(rf'\g<1>{frequency}\2', raw, count=1)
+    return raw
 
 
 # Everything that can make a copy of a character.  Shimeji-ee breeds through an
@@ -229,8 +384,8 @@ def single_pass(name, poses):
     return out
 
 
-def action_xml(name, eol):
-    """The <Action> element for a generated action."""
+def action_xml(name, eol, char):
+    """The <Action> element for a generated action, personality timing included."""
     spec = SPEC.ACTIONS[name]
     attrs = [f'Name="{name}"', f'Type="{spec["type"]}"']
     if spec.get("border"):
@@ -240,18 +395,24 @@ def action_xml(name, eol):
     for k, v in (spec.get("embed") or {}).items():
         attrs.append(f'{k}="{v}"')
     head = "\t\t<Action " + " ".join(attrs) + ">"
-    poses = single_pass(name, SPEC.poses(name))
+    poses = single_pass(name, SPEC.poses(name, char))
+    poses = [(img, anc, vel, SPEC.duration_for(name, char, i, dur))
+             for i, (img, anc, vel, dur) in enumerate(poses)]
     body = [pose_line(eol, img, anc, vel, dur)
             for img, anc, vel, dur in poses]
     lines = [head, "\t\t\t<Animation>"] + body + ["\t\t\t</Animation>", "\t\t</Action>"]
     if spec.get("two_animations"):
-        # The wall sprite set has five existing poses. Climb up in authored
-        # order and descend in reverse with the matching positive velocity;
-        # reusing the up-cycle while moving down made the feet/arms snap back.
+        # Climb up in authored order and descend through the 48-frame cycle in
+        # reverse with matching positive velocity; reusing the up-cycle while
+        # moving down made the contacting feet and hands snap backward.
         cond_up = '#{TargetY &lt; mascot.anchor.y}'
         cond_dn = '#{TargetY &gt;= mascot.anchor.y}'
-        down = [pose_line(eol, img, anc, "0,3", dur)
-                for img, anc, _vel, dur in reversed(poses)]
+        def reverse_vertical(velocity):
+            x, y = velocity.split(",", 1)
+            return f"{x},{-int(y)}"
+
+        down = [pose_line(eol, img, anc, reverse_vertical(vel), dur)
+                for img, anc, vel, dur in reversed(poses)]
         anims = [f"\t\t\t<Animation Condition=\"{cond_up}\">",
                  eol.join(body), "\t\t\t</Animation>",
                  f"\t\t\t<Animation Condition=\"{cond_dn}\">",
@@ -270,8 +431,9 @@ def sequence_xml(name, eol):
 
 def behavior_xml(name, char, eol):
     freq = SPEC.freq(name, char)
-    if name == SPEC.SIG_BEHAVIORS[char][0]:
-        freq = SPEC.freq(name, char) or SPEC.SIG_BEHAVIORS[char][1]
+    signature_defaults = dict(SPEC.signature_behaviors(char))
+    if name in signature_defaults:
+        freq = freq or signature_defaults[name]
     cond = SPEC.condition(name) or SPEC.gate(name)
     cond_attr = f' Condition="{esc(cond)}"' if cond else ""
     return f'\t\t<Behavior Name="{name}" Frequency="{freq}"{cond_attr} />'
@@ -284,9 +446,9 @@ def generated_names(char):
 
 def behavior_names(char):
     names = [n for n, _f, _g, _c in SPEC.BEHAVIORS if SPEC.freq(n, char) > 0]
-    sig = SPEC.SIG_BEHAVIORS[char][0]
-    if sig not in names:
-        names.append(sig)
+    for sig, _freq in SPEC.signature_behaviors(char):
+        if sig not in names:
+            names.append(sig)
     # The selection pool is weighted, but order also maps the random chooser's
     # cumulative intervals. A stable per-character shuffle avoids identical
     # ordering while keeping generated XML reproducible.
@@ -303,7 +465,8 @@ def patch_actions(path, char):
     # sequences are ours too - strip them, or re-running duplicates them
     raw = strip_elements(raw, "Action", REMOVABLE_ACTIONS)
     # only this character's actions (signature moves belong to one character)
-    block = [A_START] + [action_xml(n, eol) for n in SPEC.generated_actions_for(char)]
+    block = [A_START] + [action_xml(n, eol, char)
+                         for n in SPEC.generated_actions_for(char)]
     block += [sequence_xml(n, eol) for n in SPEC.SEQUENCES]
     block += [A_END]
     if "</ActionList>" not in raw:
@@ -313,6 +476,9 @@ def patch_actions(path, char):
     raw = insert_before_line(raw, "</ActionList>", eol.join(block), eol)
     raw = fix_crawl_sequence_expressions(raw)
     raw = retime_dance(raw, char)
+    raw = smooth_stock_motion(raw, char)
+    raw = shorten_long_rests(raw)
+    raw = animate_stand(raw, char)
     write(path, raw)
     print(f"  {path}: {len(SPEC.generated_actions_for(char))} actions, "
           f"{len(SPEC.SEQUENCES)} sequences")
@@ -326,6 +492,7 @@ def patch_behaviors(path, char):
                                            if n not in ("Dance", "Trip")})
     raw = fix_dance(raw)
     raw = disable_breeding(raw)
+    raw = retune_stock_behaviors(raw, char)
     block = ([B_START]
              + [behavior_xml(n, char, eol) for n in behavior_names(char)]
              + [B_END])

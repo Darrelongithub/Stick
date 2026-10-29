@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Procedural Shimeji frame generator - AvA stick figures, HARD-EDGE pixel style.
+"""Procedural Shimeji frame generator for the AvA stick figures.
 
 Poses are authored in a 128x128 space (centre x=64, floor y=128) and rendered
 onto a 160x160 canvas padded by 16px on every side - see tools/ava_common.py.
 That padding is deliberate: a generated frame can never have its art touching
 the canvas edge, so no limb can be sliced in half and no frame can poke out of
-its window.  Every rendered frame is asserted to sit inside that margin.
+its window. Every rendered frame is asserted to sit inside that margin.
 
-Canvas 160x160, feet anchored at (80,144).  Drawn at NATIVE resolution with
-hard pixel edges to match the hand-drawn originals (no supersample blur).
-Body color varies per character; props keep fixed colors.
+Canvas 160x160, feet anchored at (80,144). Primitives render at 4x by default
+and box-filter down for edges matching the stock art (AVA_SS=1 is the geometry
+/debug mode). Body color varies per character; props keep fixed colors.
 """
 import glob, math, os, re, sys
 from PIL import Image, ImageDraw
@@ -62,7 +62,7 @@ P = {   # fixed prop palette (same for every character)
     "dust":   (200, 200, 200),
 }
 
-# ---------------------------------------------------------------- helpers (1x, hard edges)
+# ---------------------------------------------------------------- drawing helpers
 # Anti-aliasing: every drawing primitive is rendered on a canvas SS times the
 # pose size and box-filtered back down before it is composited.  Drawing 1x
 # with ImageDraw gives hard stair-stepped edges, which is what made the new
@@ -379,6 +379,42 @@ def popstar(d, pos, r, phase=0):
     """Star burst that grows and fades - used for potion/sneeze/cheer pops."""
     burst(d, pos, r + phase, core=P["white"], outer=P["spark"])
 
+
+def book_prop(d, pos, page=0):
+    """Small open book with a visible spine and moving page line."""
+    x, y = pos
+    poly(d, [(x-18, y-9), (x-2, y-6), (x, y+8), (x-17, y+4)],
+         P["cream"], outline=P["ink"])
+    poly(d, [(x+18, y-9), (x+2, y-6), (x, y+8), (x+17, y+4)],
+         P["cream"], outline=P["ink"])
+    seg(d, (x, y-6), (x, y+8), 2, P["grip"])
+    off = (-10, 8, -6, 11)[page % 4]
+    seg(d, (x + off, y-4), (x + off * 0.8, y+1), 1, P["lead"], 190)
+
+
+def magnifier(d, pos, angle=-25, glint=False):
+    """Magnifying glass used by Yellow's inspection move."""
+    x, y = pos
+    a = math.radians(angle)
+    dx, dy = math.cos(a), math.sin(a)
+    ellipse(d, (x, y), 8, 8, P["glass"], 90, outline=P["steel_d"], ow=3)
+    seg(d, (x-dx*6, y-dy*6), (x-dx*20, y-dy*20), 4, P["grip"])
+    if glint:
+        sparkle(d, (x+4, y-4), 4, P["white"])
+
+
+def rope_prop(d, phase=0):
+    """Jump rope sweeping around the body; fractional phases stay smooth."""
+    a = 2 * math.pi * (phase % 12) / 12
+    top = 35 + 8 * math.sin(a)
+    bottom = 124 - 6 * math.sin(a)
+    width = 38 + 5 * math.cos(a)
+    color = P["white"] if math.sin(a) >= 0 else P["steel_d"]
+    alpha = 225 if math.sin(a) >= 0 else 145
+    arc(d, (64-width, top, 64+width, bottom), 190, 350, 2, color, alpha)
+    arc(d, (64-width, top, 64+width, bottom), 10, 170, 2, color, alpha)
+
+
 # ---------------------------------------------------------------- poses
 def F(fx=None, **kw):
     fr = dict(kw); fr["fx"] = fx or []
@@ -402,6 +438,119 @@ def ROT(joints, angle, cx, cy, place, fx=None):
     fr["rot"] = (angle, cx, cy, place)
     fr["fx"] = fx or []
     return fr
+
+
+def _full_joints(frame):
+    """Resolve a pose to absolute joints, including its dx/dy offset."""
+    g = dict(STAND)
+    g.update({k: v for k, v in frame.items() if k in STAND})
+    dx, dy = frame.get("dx", 0), frame.get("dy", 0)
+    return {k: (p[0] + dx, p[1] + dy) for k, p in g.items()}
+
+
+def tween_pose(a, b, t=0.5):
+    """Vector in-between for two ordinary stick poses.
+
+    Props/effects switch at the midpoint while every body joint follows a
+    linear path. This remains useful for the tiny breathing idle; high-motion
+    cycles below use continuous kinematic rigs instead.
+    """
+    ga, gb = _full_joints(a), _full_joints(b)
+    out = {k: (ga[k][0] + (gb[k][0] - ga[k][0]) * t,
+               ga[k][1] + (gb[k][1] - ga[k][1]) * t) for k in STAND}
+    out["fx"] = list((a if t < 0.5 else b).get("fx", []))
+    return out
+
+
+def tween_cycle(keys, inbetweens=1):
+    """Insert vector in-betweens after every key, including loop closure."""
+    out = []
+    for i, frame in enumerate(keys):
+        out.append(frame)
+        target = keys[(i + 1) % len(keys)]
+        for step in range(1, inbetweens + 1):
+            out.append(tween_pose(frame, target, step / (inbetweens + 1)))
+    return out
+
+
+def rotate_joints(joints, angle, center=(64, 76)):
+    """Rotate fully-authored joints without rotating/rasterizing the canvas."""
+    a = math.radians(angle)
+    ca, sa = math.cos(a), math.sin(a)
+    cx, cy = center
+    out = {}
+    for name, (x, y) in joints.items():
+        x, y = x - cx, y - cy
+        out[name] = (cx + x * ca - y * sa, cy + x * sa + y * ca)
+    return out
+
+
+def polar(origin, length, angle):
+    """Endpoint of a fixed-length limb at ``angle`` radians."""
+    return (origin[0] + math.cos(angle) * length,
+            origin[1] + math.sin(angle) * length)
+
+
+def joint_between(start, end, upper, lower, prefer="max_x"):
+    """Two-bone inverse kinematics with a stable visual bend direction.
+
+    Keeping limb lengths fixed avoids the rubber-arm effect produced by linear
+    interpolation. ``positive``/``negative`` select one continuous branch;
+    directional preferences remain useful for non-cyclic authored poses.
+    """
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    distance = max(1e-6, math.hypot(dx, dy))
+    reach = min(max(distance, abs(upper - lower) + 1e-6), upper + lower - 1e-6)
+    ux, uy = dx / distance, dy / distance
+    along = (upper * upper - lower * lower + reach * reach) / (2 * reach)
+    height = math.sqrt(max(0.0, upper * upper - along * along))
+    base = (start[0] + ux * along, start[1] + uy * along)
+    perp = (-uy * height, ux * height)
+    choices = ((base[0] + perp[0], base[1] + perp[1]),
+               (base[0] - perp[0], base[1] - perp[1]))
+    if prefer == "positive":
+        return choices[0]
+    if prefer == "negative":
+        return choices[1]
+    if prefer == "min_x":
+        return min(choices, key=lambda point: point[0])
+    if prefer == "min_y":
+        return min(choices, key=lambda point: point[1])
+    if prefer == "max_y":
+        return max(choices, key=lambda point: point[1])
+    return max(choices, key=lambda point: point[0])
+
+
+def _hermite(start, end, start_slope, end_slope, t):
+    """Cubic Hermite interpolation used for a contact limb's recovery arc."""
+    t2, t3 = t * t, t * t * t
+    return ((2 * t3 - 3 * t2 + 1) * start
+            + (t3 - 2 * t2 + t) * start_slope
+            + (-2 * t3 + 3 * t2) * end
+            + (t3 - t2) * end_slope)
+
+
+def contact_track(phase, start, end, fixed, lift, axis="x", lift_sign=-1,
+                  stance=0.625):
+    """A seamless plant-and-recovery path for a hand or foot.
+
+    During the planted five-eighths of the cycle, the local contact point moves by the
+    exact opposite of the sprite velocity, so it stays fixed on the floor,
+    ceiling, or wall in screen space. The recovery uses a C1-continuous Hermite
+    arc: no teleport at lift-off and no snap when contact is made again.
+    """
+    phase %= 1.0
+    if phase < stance:
+        q = phase / stance
+        moving = start + (end - start) * q
+        other = fixed
+    else:
+        q = (phase - stance) / (1.0 - stance)
+        slope = (end - start) / stance * (1.0 - stance)
+        moving = _hermite(end, start, slope, slope, q)
+        other = fixed + lift_sign * lift * math.sin(math.pi * q) ** 2
+    return (moving, other) if axis == "x" else (other, moving)
+
 
 ANIMS = {}
 
@@ -592,60 +741,173 @@ ANIMS["plane"] = [
 # re-rendered here so the whole crew falls, hangs, lies and climbs alike, and
 # so every one of those frames is inside its frame by construction.
 
-AIR = dict(N=(58, 44), SH=(60, 54), HIP=(64, 80), H=(56, 30),
-           EL=(46, 60), HL=(36, 48), ER=(76, 58), HR=(88, 50),
-           KL=(52, 102), FL=(42, 120), KR=(76, 104), FR=(88, 122))
-ANIMS["fall"] = [
-    F(fx=[("wind", (100, 44), 0)], **AIR),
-    F(N=(68, 42), SH=(66, 54), HIP=(64, 80), H=(70, 28),
-      EL=(50, 58), HL=(40, 70), ER=(80, 58), HR=(90, 46),
-      KL=(58, 106), FL=(50, 124), KR=(70, 100), FR=(78, 116),
-      fx=[("wind", (22, 40), 1)]),
-    F(N=(60, 46), SH=(62, 56), HIP=(64, 82), H=(58, 32),
-      EL=(48, 62), HL=(39, 74), ER=(78, 60), HR=(88, 48),
-      KL=(54, 104), FL=(44, 118), KR=(74, 106), FR=(86, 124),
-      fx=[("wind", (98, 60), 2), ("wind", (28, 34), 0)]),
-]
+# Falling is sampled directly from a continuous rig. The old revision linearly
+# blended eight rotated drawings, which shortened limbs between keys and made
+# the tumble pulse. Here every limb keeps its authored length while the whole
+# body turns through an even 360 degrees, with a secondary flutter in the arms
+# and legs so it reads as air resistance rather than a rigid cartwheel.
+def FALL_FRAME(index, count=48):
+    phase = 2 * math.pi * index / count
+    shoulder = (64, 52)
+    hip = (64, 79)
+    joints = {
+        "H": (64, 27), "N": (64, 40), "SH": shoulder, "HIP": hip,
+    }
+    joints["EL"] = polar(shoulder, 18, 2.85 + 0.34 * math.sin(phase * 2))
+    joints["HL"] = polar(joints["EL"], 20,
+                         3.45 + 0.58 * math.cos(phase * 2 + 0.35))
+    joints["ER"] = polar(shoulder, 18, 0.28 - 0.34 * math.sin(phase * 2))
+    joints["HR"] = polar(joints["ER"], 20,
+                         -0.35 - 0.58 * math.cos(phase * 2 + 0.35))
+    joints["KL"] = polar(hip, 22, 2.05 + 0.28 * math.cos(phase * 2))
+    joints["FL"] = polar(joints["KL"], 23,
+                         1.86 + 0.52 * math.sin(phase * 2 + 0.6))
+    joints["KR"] = polar(hip, 22, 1.09 - 0.28 * math.cos(phase * 2))
+    joints["FR"] = polar(joints["KR"], 23,
+                         1.28 - 0.52 * math.sin(phase * 2 + 0.6))
+    angle = index * 360.0 / count + 3.0 * math.sin(phase * 2)
+    return F(**rotate_joints(joints, angle, (64, 67)))
 
-def HANG_FRAME(sway=0, leg=0, grip=0, lean=0):
-    """Hands on the ceiling line (pose y=0), body dangling below."""
-    return F(H=(64 + sway, 20), N=(64 + sway, 32), SH=(64 + sway, 44),
-             HIP=(64 + sway - lean, 70),
-             EL=(52, 9), HL=(53 + grip, 1), ER=(76, 9), HR=(75 - grip, 1),
-             KL=(56, 92 + leg), FL=(50, 110 + leg),
-             KR=(72, 92 - leg), FR=(70, 108 - leg))
 
-ANIMS["hang"] = [
-    HANG_FRAME(0, 0, 0, 0),
-    HANG_FRAME(1, 3, 1, 0),
-    HANG_FRAME(-1, -2, -1, 1),
-]
+ANIMS["fall"] = [FALL_FRAME(i) for i in range(48)]
 
-ANIMS["swing"] = [
-    HANG_FRAME(0, 0, 0, 0),
-    HANG_FRAME(2, 4, 3, 1),
-    HANG_FRAME(3, 6, 5, 2),
-    HANG_FRAME(1, 2, 2, 1),
-    HANG_FRAME(0, -2, -2, 0),
-    HANG_FRAME(-2, -4, -4, -1),
-    HANG_FRAME(-3, -6, -5, -2),
-    HANG_FRAME(-1, -2, -2, -1),
-]
 
-def WALL_FRAME(hi, lo, hipy, knee, lean=0):
-    """Climbing a wall: the wall is the left edge, hands and feet gripping it."""
-    return F(H=(26 + lean, 46), N=(28 + lean, 56), SH=(30 + lean, 66),
-             HIP=(38 + lean, hipy),
-             EL=(12, 54), HL=(1, hi), ER=(20, 64), HR=(2, lo),
-             KL=(22, 104 + knee), FL=(1, 122), KR=(34, 100 - knee), FR=(4, 118))
+def CEILING_HOLD_FRAME(index, count=16):
+    """A quiet two-hand pendulum used while waiting on the ceiling."""
+    phase = 2 * math.pi * index / count
+    angle = 0.10 * math.sin(phase) + 0.035 * math.cos(phase)
+    ux, uy = math.sin(angle), math.cos(angle)
+    shoulder = (63 + 2.5 * math.sin(phase) + 0.7 * math.cos(phase),
+                40 + 1.5 * math.cos(phase))
+    hip = (shoulder[0] + ux * 32, shoulder[1] + uy * 32)
+    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
+    head = (neck[0] - ux * 12, neck[1] - uy * 12)
+    left_hand, right_hand = (32, 1), (94, 1)
+    left_elbow = joint_between(shoulder, left_hand, 31, 31, "negative")
+    right_elbow = joint_between(shoulder, right_hand, 31, 31, "positive")
+    leg_axis = math.pi / 2 + angle
+    left_knee = polar(hip, 23, leg_axis + 0.28)
+    left_foot = polar(left_knee, 24, leg_axis + 0.16 + 0.08 * math.sin(phase))
+    right_knee = polar(hip, 23, leg_axis - 0.28)
+    right_foot = polar(right_knee, 24, leg_axis - 0.16 - 0.08 * math.sin(phase))
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
 
-ANIMS["wall_climb"] = [
-    WALL_FRAME(18, 40, 78, 0),
-    WALL_FRAME(12, 34, 80, 3, 1),
-    WALL_FRAME(22, 44, 76, 0),
-    WALL_FRAME(14, 36, 80, 3),
-    WALL_FRAME(20, 42, 78, 1, 1),
-]
+
+ANIMS["hang"] = [CEILING_HOLD_FRAME(i) for i in range(16)]
+
+
+# True hand-over-hand brachiation. A planted palm counter-moves by 1 px per
+# host tick, exactly cancelling the action's screen velocity; the other hand
+# follows a smooth recovery arc. The torso hangs as a pendulum beneath the
+# support and the legs kick through each transfer instead of dangling straight.
+def CEILING_SWING_FRAME(index, count=48):
+    t = index / count
+    step = 4 * math.pi * t
+    # Separate hand lanes keep the silhouette readable as one palm passes the
+    # other: the old shared lane made both arms collapse across the face.
+    left_hand = contact_track(t, 32, 62, 1, 17, lift_sign=1)
+    right_hand = contact_track(t + 0.5, 70, 100, 1, 17, lift_sign=1)
+
+    # Build the body as a real pendulum under the grip line. The previous
+    # shoulder/hip sine waves barely changed their relative angle, so the pose
+    # looked like a standing figure with raised arms instead of a swing.
+    swing_angle = 0.62 * math.sin(step - 0.25)
+    ux, uy = math.sin(swing_angle), math.cos(swing_angle)
+    shoulder = (64 + 7 * math.sin(step - 0.25),
+                40 + 2 * math.cos(step))
+    hip = (shoulder[0] + ux * 32, shoulder[1] + uy * 32)
+    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
+    head = (neck[0] - ux * 12, neck[1] - uy * 12)
+
+    # Bent arms visibly transfer the load; fixed IK lengths prevent rubbery
+    # forearms even at the widest part of the swing.
+    left_elbow = joint_between(shoulder, left_hand, 31, 31, "negative")
+    right_elbow = joint_between(shoulder, right_hand, 31, 31, "positive")
+
+    # Fixed-length legs follow the pendulum with a delayed kick. Their lower
+    # segments alternately tuck and extend, but never pop between IK branches.
+    leg_axis = math.pi / 2 + swing_angle - 0.20 * math.sin(step - 0.70)
+    pump = math.cos(step)
+    lower_sweep = 0.18 * pump
+    left_knee = polar(hip, 23, leg_axis + 0.28)
+    left_foot = polar(left_knee, 23 - 3 * pump,
+                      leg_axis + 0.16 + lower_sweep)
+    right_knee = polar(hip, 23, leg_axis - 0.28)
+    right_foot = polar(right_knee, 23 + 3 * pump,
+                       leg_axis - 0.16 + lower_sweep)
+
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+
+
+ANIMS["swing"] = [CEILING_SWING_FRAME(i) for i in range(48)]
+
+
+# Wall climbing uses the same planted-contact rule in the vertical direction.
+# Each supporting hand/foot moves down locally by 1 px while the sprite moves
+# up by 1 px, so it grips the wall instead of skating over it. Reversing these
+# frames for descent preserves the contact automatically.
+def WALL_CLIMB_FRAME(index, count=48):
+    t = index / count
+    step = 4 * math.pi * t
+    left_hand = contact_track(t, 20, 50, 1, 11, axis="y", lift_sign=1)
+    right_hand = contact_track(t + 0.5, 24, 54, 1, 11,
+                               axis="y", lift_sign=1)
+    left_foot = contact_track(t + 0.5, 78, 108, 2, 12,
+                              axis="y", lift_sign=1)
+    right_foot = contact_track(t, 76, 106, 2, 12,
+                               axis="y", lift_sign=1)
+
+    # Keep the torso visibly away from the wall. Crowding it against x=38 made
+    # all four bent limbs collapse into one diamond-shaped knot.
+    shoulder = (52 + 3 * math.sin(step), 53 + 3 * math.cos(step))
+    hip = (57 + 5 * math.sin(step - 0.45),
+           82 + 3 * math.cos(step - 0.20))
+    neck = (51 + 3 * math.sin(step - 0.12), shoulder[1] - 12)
+    head = (53 + 4 * math.sin(step - 0.18), neck[1] - 13)
+    # Side-view limbs get separate visual lanes. Exact circular IK made the
+    # near/far limbs fold through each other whenever their holds traded height;
+    # these continuously moving midpoints preserve a clean climbing silhouette.
+    left_elbow = (39 + 2 * math.sin(step),
+                  (shoulder[1] + left_hand[1]) / 2 - 3)
+    right_elbow = (45 + 2 * math.sin(step + 0.4),
+                   (shoulder[1] + right_hand[1]) / 2 + 3)
+    left_knee = (41 + 3 * math.sin(step - 0.3),
+                 (hip[1] + left_foot[1]) / 2 - 3)
+    right_knee = (50 + 3 * math.sin(step + 0.3),
+                  (hip[1] + right_foot[1]) / 2 + 3)
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+
+
+ANIMS["wall_climb"] = [WALL_CLIMB_FRAME(i) for i in range(48)]
+
+
+def WALL_HOLD_FRAME(index, count=16):
+    """Breathing grip loop for pauses between wall-climbing actions."""
+    phase = 2 * math.pi * index / count
+    sway = math.sin(phase)
+    shoulder = (52 + 1.5 * sway, 53 + math.cos(phase))
+    hip = (57 + 2 * sway, 82 + math.cos(phase + 0.4))
+    neck = (51 + 1.5 * sway, shoulder[1] - 12)
+    head = (53 + 2 * sway, neck[1] - 13)
+    left_hand, right_hand = (1, 24), (1, 54)
+    left_foot, right_foot = (2, 78), (2, 108)
+    left_elbow = (39 + sway, (shoulder[1] + left_hand[1]) / 2 - 3)
+    right_elbow = (45 - sway, (shoulder[1] + right_hand[1]) / 2 + 3)
+    left_knee = (41 + 1.5 * sway, (hip[1] + left_foot[1]) / 2 - 3)
+    right_knee = (50 - 1.5 * sway, (hip[1] + right_foot[1]) / 2 + 3)
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+
+
+ANIMS["wall_hold"] = [WALL_HOLD_FRAME(i) for i in range(16)]
+
 
 def LIE(dy=0, leg=0):
     """Flat on the floor, head to the left (the way the crew faces)."""
@@ -870,16 +1132,144 @@ ANIMS["victory"] = [
     F(fx=[("sparkles", [(92, 52)], 3)]),
 ]
 
-# idle: a breath, a weight shift - the difference between a sprite and a
-# statue.  Short frames, high frequency.
-ANIMS["idle"] = [
+# idle: a seamless breath and weight shift.  This cycle is also injected into
+# the stock Stand action, replacing its single 10-second statue frame.
+IDLE_KEYS = [
     F(),
     F(H=(64, 27), N=(64, 38), SH=(64, 50), HIP=(64, 78),
       EL=(56, 65), HL=(54, 79), ER=(72, 65), HR=(74, 79),
       KL=(58, 102), FL=(53, 123), KR=(70, 102), FR=(75, 123)),
-    F(dx=1, H=(65, 28), N=(65, 39), SH=(65, 51),
-      EL=(57, 66), HL=(55, 80), ER=(73, 66), HR=(75, 80)),
+    F(dx=1, H=(65, 28), N=(65, 39), SH=(65, 51), HIP=(65, 80),
+      EL=(57, 66), HL=(55, 80), ER=(73, 66), HR=(75, 80),
+      KL=(60, 102), FL=(55, 123), KR=(71, 102), FR=(76, 123)),
+    F(H=(64, 30), N=(64, 41), SH=(64, 53), HIP=(64, 81),
+      EL=(55, 68), HL=(53, 82), ER=(73, 68), HR=(75, 82)),
 ]
+ANIMS["idle"] = tween_cycle(IDLE_KEYS)
+
+# A low, weight-bearing diagonal crawl. Palms and opposite feet stay planted in
+# screen space while the sprite advances, then recover on rounded arcs. The
+# shoulder/hip counter-rotation and fixed-length IK limbs remove the old linear
+# morph's sliding palms, changing bone lengths, and abrupt direction changes.
+def GROUND_CRAWL_FRAME(index, count=48):
+    t = index / count
+    step = 4 * math.pi * t
+    left_hand = contact_track(t, 28, 58, 121, 11)
+    right_hand = contact_track(t + 0.5, 40, 70, 120, 11)
+    # Opposite hand and foot travel together, the standard crawl gait.
+    left_foot = contact_track(t + 0.5, 78, 108, 123, 8)
+    right_foot = contact_track(t, 74, 104, 122, 8)
+
+    shoulder = (49 + 4 * math.sin(step), 91 + 2 * math.cos(step))
+    hip = (81 + 4 * math.sin(step - 0.45),
+           98 - 2 * math.cos(step - 0.20))
+    tx, ty = hip[0] - shoulder[0], hip[1] - shoulder[1]
+    length = math.hypot(tx, ty)
+    ux, uy = tx / length, ty / length
+    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
+    head = (neck[0] - ux * 12, neck[1] - uy * 12 - 2)
+
+    # Near and far limbs occupy slightly different height lanes. That keeps
+    # the diagonal gait readable instead of turning into an X-shaped knot when
+    # the recovering palm passes the planted one.
+    left_elbow = ((shoulder[0] + left_hand[0]) / 2 - 3,
+                  107 + 2 * math.sin(step))
+    right_elbow = ((shoulder[0] + right_hand[0]) / 2 + 3,
+                   102 - 2 * math.sin(step))
+    left_knee = ((hip[0] + left_foot[0]) / 2 - 2,
+                 108 + 2 * math.sin(step - 0.3))
+    right_knee = ((hip[0] + right_foot[0]) / 2 + 3,
+                  113 - 2 * math.sin(step - 0.3))
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)
+
+
+ANIMS["crawl"] = [GROUND_CRAWL_FRAME(i) for i in range(48)]
+
+# Orange: a continuously sampled cartwheel. The old twelve-frame version held
+# its setup, then jumped 35-45 degrees per drawing. This rigid vector rig turns
+# in even 7.5-degree steps with a filtered hand-to-foot support transfer.
+CART = dict(H=(64, 25), N=(64, 38), SH=(64, 51), HIP=(64, 78),
+            EL=(44, 55), HL=(26, 70), ER=(84, 55), HR=(102, 70),
+            KL=(50, 96), FL=(38, 121), KR=(78, 96), FR=(90, 121))
+
+
+def cartwheel_frames(count=48):
+    rigs = [rotate_joints(CART, index * 360.0 / count, (64, 74))
+            for index in range(count)]
+    lowest = [max(point[1] for point in rig.values()) for rig in rigs]
+    shifts = [123 - value for value in lowest]
+    # A hard "lowest point = floor" rule jumps when support changes from hand
+    # to foot. Circular filtering gives that hand-off a smooth centre-of-mass
+    # arc; one global correction keeps every drawing above the floor line.
+    for _ in range(4):
+        shifts = [(shifts[(i - 1) % count] + 2 * shifts[i]
+                   + shifts[(i + 1) % count]) / 4 for i in range(count)]
+    overflow = max(lowest[i] + shifts[i] - 123 for i in range(count))
+    shifts = [value - overflow for value in shifts]
+    return [F(**{name: (point[0], point[1] + shifts[index])
+                 for name, point in rig.items()})
+            for index, rig in enumerate(rigs)]
+
+
+ANIMS["cartwheel"] = cartwheel_frames()
+
+# Blue: sit cross-legged and turn a page rather than freezing in another static
+# sit pose.  Both hands follow the book over the eight-frame action.
+READ_POSE = dict(H=(58, 54), N=(60, 66), SH=(62, 78), HIP=(66, 102),
+                 EL=(51, 88), HL=(49, 101), ER=(75, 88), HR=(77, 101),
+                 KL=(51, 109), FL=(66, 121), KR=(81, 109), FR=(66, 121))
+ANIMS["read"] = [
+    F(**READ_POSE, fx=[("book", (64, 98), 0)]),
+    F(**{**READ_POSE, "H": (57, 52)}, fx=[("book", (64, 97), 0)]),
+    F(**{**READ_POSE, "HR": (71, 94), "ER": (76, 86)}, fx=[("book", (64, 97), 1)]),
+    F(**{**READ_POSE, "HR": (63, 91), "ER": (73, 84)}, fx=[("book", (64, 97), 2)]),
+    F(**{**READ_POSE, "HR": (54, 95), "ER": (69, 85)}, fx=[("book", (64, 97), 3)]),
+    F(**{**READ_POSE, "H": (60, 53), "HR": (72, 99)}, fx=[("book", (64, 98), 0)]),
+    F(**READ_POSE, fx=[("book", (64, 98), 1), ("bubble", (96, 60), "...", 0.7)]),
+    F(**READ_POSE, fx=[("book", (64, 98), 2)]),
+]
+
+# Yellow: inspect a mysterious speck, changing distance and lens angle on every
+# beat.  It complements Tinker without reusing the same wrench choreography.
+ANIMS["inspect"] = [
+    F(ER=(74, 64), HR=(82, 58), fx=[("magnify", (88, 52), -35, False)]),
+    F(N=(60, 44), SH=(61, 56), H=(57, 32), HIP=(64, 84),
+      ER=(73, 61), HR=(80, 54), fx=[("magnify", (84, 48), -30, False)]),
+    F(N=(56, 48), SH=(58, 60), H=(52, 38), HIP=(64, 88),
+      ER=(69, 62), HR=(73, 54), EL=(50, 72), HL=(44, 84),
+      fx=[("magnify", (77, 48), -20, True)]),
+    F(N=(54, 52), SH=(57, 64), H=(49, 42), HIP=(64, 92),
+      ER=(66, 65), HR=(68, 57), EL=(48, 76), HL=(42, 88),
+      fx=[("magnify", (72, 51), -10, False), ("sparkles", [(82, 45)], 3)]),
+    F(N=(56, 48), SH=(58, 60), H=(52, 38), HIP=(64, 88),
+      ER=(69, 62), HR=(73, 54), fx=[("magnify", (78, 48), -20, False)]),
+    F(ER=(74, 63), HR=(82, 56), fx=[("magnify", (87, 50), -35, True)]),
+    F(ER=(74, 68), HR=(78, 78), fx=[("magnify", (84, 74), -55, False),
+                                    ("bubble", (98, 38), "!", 0.7)]),
+    F(),
+]
+
+# Green: one complete rope revolution and jump sampled at the host's full
+# 25 fps. A sinusoidal take-off/landing has zero velocity at both seams, while
+# the rope accepts half-phases so its oval no longer advances in visible steps.
+def JUMP_ROPE_FRAME(index, count=24):
+    phase = 2 * math.pi * index / count
+    jump = math.sin(phase / 2) ** 2
+    lift = -8 * jump
+    wrist = 2 * math.sin(phase)
+    feet = 3 * jump
+    return F(
+        dy=lift,
+        EL=(50, 66), HL=(40, 77 + wrist),
+        ER=(78, 66), HR=(88, 77 - wrist),
+        KL=(57, 103), FL=(51 + feet, 121),
+        KR=(71, 103), FR=(77 - feet, 121),
+        fx=[("rope", index * 12.0 / count)])
+
+
+ANIMS["jumprope"] = [JUMP_ROPE_FRAME(i) for i in range(24)]
 
 # ---- signatures ----
 STAR_C = (90, 64)
@@ -1043,6 +1433,12 @@ def render_fx(d, fxlist, joints):
             balls(d, fx[1], phase=fx[2] if len(fx) > 2 else 0)
         elif k == "popstar":
             popstar(d, fx[1], fx[2], fx[3] if len(fx) > 3 else 0)
+        elif k == "book":
+            book_prop(d, fx[1], fx[2])
+        elif k == "magnify":
+            magnifier(d, fx[1], fx[2], fx[3])
+        elif k == "rope":
+            rope_prop(d, fx[1])
         elif k == "chips_wood":
             for c in fx[1]:
                 dot(d, c, 2, P["wood"])
@@ -1175,12 +1571,38 @@ def stale_files(char):
 
 OUT_ROOT = "AVA Shimejis"
 
+# Maximum vector travel of any joint between adjacent 40 ms frames, including
+# the last-to-first seam. These are deliberately tighter for planted-contact
+# motion than for a foot at the outside of a full-body tumble.
+CONTINUITY_LIMITS = {"fall": 12.0, "swing": 7.5, "hang": 2.5,
+                     "wall_climb": 4.0, "wall_hold": 1.0, "crawl": 4.0,
+                     "cartwheel": 10.5, "jumprope": 2.0}
+
+
+def continuity_errors():
+    errors = []
+    for anim, limit in CONTINUITY_LIMITS.items():
+        frames = ANIMS[anim]
+        for joint in STAND:
+            points = [_full_joints(frame)[joint] for frame in frames]
+            distances = [math.dist(points[i], points[(i + 1) % len(points)])
+                         for i in range(len(points))]
+            biggest = max(distances)
+            if biggest > limit:
+                index = distances.index(biggest)
+                errors.append(
+                    f"{anim}: {joint} jumps {biggest:.2f}px between "
+                    f"frames {index + 1} and {(index + 1) % len(frames) + 1} "
+                    f"(limit {limit:.2f}px)")
+    return errors
+
+
 def main(out_root="AVA Shimejis", only=None, preview_dir="preview/new", prune=False):
     global OUT_ROOT
     OUT_ROOT = out_root
     SPEC.self_check()
     os.makedirs(preview_dir, exist_ok=True)
-    errors, written, sheets = [], 0, {}
+    errors, written, sheets = continuity_errors(), 0, {}
     for char, rgb in BODY.items():
         if only and char not in only:
             continue
@@ -1208,16 +1630,22 @@ def main(out_root="AVA Shimejis", only=None, preview_dir="preview/new", prune=Fa
                     errors.append(err)
                 frame.save(os.path.join(dest, name))
                 written += 1
-            sheets.setdefault(action, {})[char] = [
-                Image.open(os.path.join(dest, n)) for n in names]
+            # Copy pixels eagerly so hundreds of preview frames do not keep an
+            # open file descriptor each (48-frame cycles otherwise exceed the
+            # common 1024-fd process limit before Green is rendered).
+            preview_frames = []
+            for name in names:
+                with Image.open(os.path.join(dest, name)) as image:
+                    preview_frames.append(image.convert("RGBA").copy())
+            sheets.setdefault(action, {})[char] = preview_frames
     build_previews(sheets, preview_dir)
     print(f"wrote {written} frames")
     if errors:
-        print("\nCLIPPING / EMPTY FRAME REPORT")
+        print("\nGENERATION QUALITY REPORT")
         for e in errors:
             print("  " + e)
         sys.exit(1)
-    print("every frame sits inside its margins")
+    print("every frame sits inside its margins; cycle continuity limits pass")
 
 def _anim_key_for(action, i):
     key = SPEC.ACTIONS[action].get("anim", SPEC.ACTIONS[action]["prefix"])
@@ -1252,14 +1680,14 @@ def build_previews(sheets, preview_dir):
                 sheet.alpha_composite(im, (col * OUT, row * OUT))
         sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST).save(
             os.path.join(preview_dir, f"{action.lower()}.png"))
-    # animated previews of the new moves (Blue), for a quick eyeball
+    # Animated previews use Blue when available, otherwise the action's owner.
     for action in sorted(sheets):
-        frames = sheets[action].get("Blue")
-        if not frames:
-            continue
+        owner = "Blue" if "Blue" in sheets[action] else next(iter(sheets[action]))
+        frames = sheets[action][owner]
         gif = [f.convert("RGBA") for f in frames]
+        preview_ms = 40 if len(gif) >= 16 else 110
         gif[0].save(os.path.join(preview_dir, f"_{action.lower()}_loop.gif"),
-                    save_all=True, append_images=gif[1:], duration=110, loop=0,
+                    save_all=True, append_images=gif[1:], duration=preview_ms, loop=0,
                     disposal=2, transparency=0)
 
 if __name__ == "__main__":
