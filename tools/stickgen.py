@@ -1147,39 +1147,53 @@ IDLE_KEYS = [
 ]
 ANIMS["idle"] = tween_cycle(IDLE_KEYS)
 
-# A low, weight-bearing diagonal crawl. Palms and opposite feet stay planted in
-# screen space while the sprite advances, then recover on rounded arcs. The
-# shoulder/hip counter-rotation and fixed-length IK limbs remove the old linear
-# morph's sliding palms, changing bone lengths, and abrupt direction changes.
+# A low crawl that still reads as a *person* on all fours.
+#
+# The previous rig was the problem: a shoulder line stretched almost
+# horizontally (34,91)->(81,98) with straight 30px arms and 32px legs splayed
+# off both ends turns the figure into a four-legged insect with its head
+# dragging along the floor.  It also had a 37px knee jump at the loop seam.
+#
+# This rig keeps the human reading the stock art uses: a *short* back
+# (55,82)->(78,96), a head held up at the front, and limbs that fold instead of
+# spearing out.  Contacts slide backwards at exactly the action's own speed
+# (Crawl moves -1px per tick), so a planted hand or foot stays glued to the
+# desktop for the whole stance, and each limb recovers on a rounded arc.
+CRAWL_STANCE = 0.625             # fraction of the cycle a contact is planted
+CRAWL_STEP = 48 * CRAWL_STANCE   # px swept while planted == 1px/tick travel
+
+
+def crawl_tread(phase, front, lift):
+    """Planted contact that travels back at the action velocity, then recovers."""
+    phase %= 1.0
+    if phase < CRAWL_STANCE:
+        return front - CRAWL_STEP * (phase / CRAWL_STANCE), 121.0
+    q = (phase - CRAWL_STANCE) / (1.0 - CRAWL_STANCE)
+    ease = q * q * (3 - 2 * q)
+    return (front - CRAWL_STEP + CRAWL_STEP * ease,
+            121.0 - lift * math.sin(math.pi * q))
+
+
 def GROUND_CRAWL_FRAME(index, count=48):
     t = index / count
-    step = 4 * math.pi * t
-    left_hand = contact_track(t, 28, 58, 121, 11)
-    right_hand = contact_track(t + 0.5, 40, 70, 120, 11)
-    # Opposite hand and foot travel together, the standard crawl gait.
-    left_foot = contact_track(t + 0.5, 78, 108, 123, 8)
-    right_foot = contact_track(t, 74, 104, 122, 8)
+    bob = 1.1 * math.cos(4 * math.pi * t)
+    head = (34, 64 + bob * 0.5)
+    neck = (45, 73 + bob * 0.7)
+    shoulder = (55, 82 + bob)
+    hip = (78, 96 + bob * 0.5)
 
-    shoulder = (49 + 4 * math.sin(step), 91 + 2 * math.cos(step))
-    hip = (81 + 4 * math.sin(step - 0.45),
-           98 - 2 * math.cos(step - 0.20))
-    tx, ty = hip[0] - shoulder[0], hip[1] - shoulder[1]
-    length = math.hypot(tx, ty)
-    ux, uy = tx / length, ty / length
-    neck = (shoulder[0] - ux * 12, shoulder[1] - uy * 12)
-    head = (neck[0] - ux * 12, neck[1] - uy * 12 - 2)
+    # Diagonal gait: left hand with right foot, right hand with left foot.
+    left_hand = crawl_tread(t, 56, 12)
+    right_hand = crawl_tread(t + 0.5, 54, 12)
+    left_foot = crawl_tread(t + 0.5, 96, 8)
+    right_foot = crawl_tread(t, 94, 8)
 
-    # Near and far limbs occupy slightly different height lanes. That keeps
-    # the diagonal gait readable instead of turning into an X-shaped knot when
-    # the recovering palm passes the planted one.
-    left_elbow = ((shoulder[0] + left_hand[0]) / 2 - 3,
-                  107 + 2 * math.sin(step))
-    right_elbow = ((shoulder[0] + right_hand[0]) / 2 + 3,
-                   102 - 2 * math.sin(step))
-    left_knee = ((hip[0] + left_foot[0]) / 2 - 2,
-                 108 + 2 * math.sin(step - 0.3))
-    right_knee = ((hip[0] + right_foot[0]) / 2 + 3,
-                  113 - 2 * math.sin(step - 0.3))
+    # Elbows fold behind the hands and knees fold under the hips: the limbs
+    # stay short, close to the body, and below the back line.
+    left_elbow = (left_hand[0] + 6, 104 + bob * 0.5)
+    right_elbow = (right_hand[0] + 6, 103 + bob * 0.5)
+    left_knee = ((left_foot[0] + hip[0]) / 2 + 2, 110 - (121.0 - left_foot[1]) * 0.6)
+    right_knee = ((right_foot[0] + hip[0]) / 2 + 1, 111 - (121.0 - right_foot[1]) * 0.6)
     return F(H=head, N=neck, SH=shoulder, HIP=hip,
              EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
              KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot)

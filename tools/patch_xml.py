@@ -434,7 +434,12 @@ def behavior_xml(name, char, eol):
     signature_defaults = dict(SPEC.signature_behaviors(char))
     if name in signature_defaults:
         freq = freq or signature_defaults[name]
-    cond = SPEC.condition(name) or SPEC.gate(name)
+    # A move that is only offered during its activity slot is available a
+    # quarter of the time, so its weight is raised to keep it about as common
+    # as it was while still being spread across the crew (see SLOT_TICKS).
+    if SPEC.activity_slot(name) is not None:
+        freq = max(1, int(round(freq * SPEC.SLOT_FREQ_SCALE)))
+    cond = SPEC.behaviour_condition(name, char)
     cond_attr = f' Condition="{esc(cond)}"' if cond else ""
     return f'\t\t<Behavior Name="{name}" Frequency="{freq}"{cond_attr} />'
 

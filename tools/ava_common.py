@@ -335,6 +335,132 @@ def condition(action):
     return None
 
 
+# ------------------------------------------------------- crew desynchronising
+# Two problems make four mascots read as one chorus line:
+#
+#   * every character weighs the same shared pool, so "all four crawl" is a
+#     perfectly ordinary coincidence, and
+#   * nothing stops a character picking the move it just finished.
+#
+# Shimeji-ee conditions are Nashorn JavaScript with the mascot bound as
+# `mascot`, so both can be decided per mascot *without* any peer lookup (a
+# stock Shimeji-ee Manager only exposes getCount(), and the Script engine is
+# built with a class filter that blocks Packages/Java.type, so there is no
+# supported way to ask "is somebody else crawling?").  What every version does
+# expose is the mascot's own 40ms tick counter, `mascot.getTime()`, and its
+# current behaviour, `mascot.getBehavior()`.
+#
+# So the repertoire is split into four activity classes and each character is
+# handed a permanent quarter-cycle offset.  Because all four mascots are ticked
+# by the same timer, at any instant Blue is in class 0, Orange class 1, Yellow
+# class 2 and Green class 3: no two of them can be offered the same class of
+# move at the same moment.  The classes rotate every SLOT_TICKS, so every
+# character still gets the whole repertoire, just never at the same time as a
+# crew mate.  Idle, Walk, Run and Stretch are deliberately *not* in a class -
+# four mascots walking about should look alive, not queued.
+SLOT_TICKS = 250                 # 10 s per activity class
+
+# Behaviour -> activity class.
+ACTIVITY_CLASS = {
+    # loud, expressive, watch-me moves
+    "Dance": "perform", "SpinKick": "perform", "Cartwheel": "perform",
+    "JumpRope": "perform", "Cheer": "perform", "Wave": "perform",
+    "Taunt": "perform", "Victory": "perform",
+    # quiet, inward moves
+    "Sleep": "quiet", "Meditate": "quiet", "Coffee": "quiet",
+    "ReadBook": "quiet", "Cry": "quiet", "Dizzy": "quiet",
+    "GlitchOut": "quiet", "Sneeze": "quiet", "Hurt": "quiet",
+    "Bonk": "quiet",
+    # doing something to something
+    "FightCombo": "action", "SwordPractice": "action", "BattleRage": "action",
+    "PushUps": "action", "Crawl": "action", "PowerSlide": "action",
+    # keeping busy with a hobby
+    "Juggle": "hobby", "PaperPlane": "hobby", "SnackTime": "hobby",
+    "Phone": "hobby", "Mine": "hobby", "BrewPotion": "hobby",
+    "DrawAlive": "hobby", "Tinker": "hobby", "PlayGuitar": "hobby",
+    "Inspect": "hobby",
+}
+
+SLOT_OF_CLASS = {"perform": 0, "quiet": 1, "action": 2, "hobby": 3}
+
+# Grouped moves are only offered for one quarter of the time, so their weight is
+# scaled up; 2 keeps them roughly as common as before without letting a single
+# class dominate the pool during its slot.
+SLOT_FREQ_SCALE = 2
+
+# Per-character quarter-cycle offset, so the four are never in the same class.
+SLOT_PHASE = {"Blue": 0, "Orange": 1, "Yellow": 2, "Green": 3}
+
+
+def activity_slot(action):
+    """Which activity class `action` belongs to, or None if it is free."""
+    cls = ACTIVITY_CLASS.get(action)
+    return None if cls is None else SLOT_OF_CLASS[cls]
+
+
+def _js(body):
+    """A fail-open condition: if a host lacks the API, allow the behaviour.
+
+    Losing the desynchronising is a cosmetic regression; losing the behaviour
+    (which is what a throwing condition does) is not.
+    """
+    return f"#{{(function(){{try{{return {body};}}catch(ex){{return true;}}}})()}}"
+
+
+def _bare(condition):
+    """Strip the ``#{ }`` / ``${ }`` wrapper so conditions can be ANDed."""
+    if condition and len(condition) > 3 and condition[:2] in ("#{", "${") \
+            and condition.endswith("}"):
+        return condition[2:-1]
+    return condition
+
+
+def slot_condition(action, char):
+    """JS that is true only while `char`'s quarter-cycle class is active."""
+    slot = activity_slot(action)
+    if slot is None:
+        return None
+    phase = SLOT_PHASE.get(char, 0)
+    return (f"Math.floor(mascot.getTime()/{SLOT_TICKS} + {phase}) % 4 == {slot}")
+
+
+def repeat_condition(action):
+    """JS that is false while the mascot is still sitting in `action`.
+
+    Shimeji-ee re-enters the behaviour it just finished when that behaviour's
+    own NextBehavior list is absent, which is what makes one character replay
+    the same animation back to back.
+    """
+    return f"mascot.getBehavior().toString() != 'Behavior({action})'"
+
+
+def behaviour_condition(action, char):
+    """The full ``Condition`` attribute for `action`'s behaviour of `char`.
+
+    Combines every reason the runner has to refuse the move: the classic gate
+    (on the floor / near the cursor), the crew slot, and no immediate repeat.
+    Returns None when there is nothing to say.
+    """
+    parts = []
+    base = condition(action)
+    if base:
+        parts.append(_bare(base))
+    gate_expr = gate(action)
+    if gate_expr:
+        parts.append(_bare(gate_expr))
+    repeat = repeat_condition(action)
+    if repeat:
+        parts.append(f'(function(){{try{{return {repeat};}}catch(ex){{return true;}}}})()')
+    slot = slot_condition(action, char)
+    if slot:
+        parts.append(f'(function(){{try{{return {slot};}}catch(ex){{return true;}}}})()')
+    if not parts:
+        return None
+    if len(parts) == 1 and parts[0].startswith("${"):
+        return parts[0]
+    return "#{" + " && ".join(parts) + "}"
+
+
 def anchor(action):
     """ImageAnchor written into conf/actions.xml for `action`'s poses."""
     return FAMILY_ANCHOR[ACTIONS[action]["family"]]
