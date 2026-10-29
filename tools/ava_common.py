@@ -136,8 +136,12 @@ _add("Falling", prefix="fall", frames=48, family="air", type="Embedded", border=
 _add("GrabCeiling", prefix="hang", frames=16, family="ceiling", type="Stay", border="Ceiling",
      durations=[2] * 16,
      phase={"Blue": 0, "Orange": 4, "Yellow": 8, "Green": 12}, regen=True)
+# 0.42px/tick: the ceiling grip has to sweep exactly the sprite's own velocity
+# to stay glued to the surface, and a reference-length arm can only travel
+# ~12px along the ceiling line per stance. Climbing the ceiling is therefore
+# deliberately slower than climbing a wall.
 _add("ClimbCeiling", prefix="swing", frames=48, family="ceiling", type="Move", border="Ceiling",
-     durations=[1] * 48, velocity=["-1,0"] * 48,
+     durations=[1] * 48, velocity=["-0.42,0"] * 48,
      phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36}, regen=True)
 _add("GrabWall", prefix="wall_hold", anim="wall_hold", frames=16, family="wall", type="Stay",
      border="Wall", durations=[2] * 16,

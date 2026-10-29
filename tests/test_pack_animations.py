@@ -43,7 +43,11 @@ class MascotAnimationRegressionTests(unittest.TestCase):
                 natural = [f"/swing{i:02}.png" for i in range(1, 49)]
                 expected = natural[offset:] + natural[:offset]
                 self.assertEqual([p.get("Image") for p in poses], expected)
-                self.assertEqual({p.get("Velocity") for p in poses}, {"-1,0"})
+                # The ceiling grip sweeps only as far as a reference-length arm
+                # can reach along the ceiling line, so the ceiling climb is
+                # slower than the wall climb.  Velocity and pose travel must
+                # still agree, or planted hands skate.
+                self.assertEqual({p.get("Velocity") for p in poses}, {"-0.42,0"})
                 self.assertEqual({p.get("Duration") for p in poses}, {"1"})
 
                 # Waiting for the next edge route must remain animated too.
