@@ -29,7 +29,7 @@ CONTINUOUS_RIGS = {
     "swing": 5.0,
     "cartwheel": 12.0,   # whole-body rotation: the head honestly travels far
     "jumprope": 6.0,
-    "fall": 14.0,        # a 48-step 360-degree tumble
+    "fall": 4.0,         # freefall: an orientated body with a slow flail
 }
 
 
@@ -90,6 +90,18 @@ class FigureProportionTests(unittest.TestCase):
                 ("swing", stickgen.CEILING_SWING_FRAME, 48)):
             with self.subTest(rig=name):
                 stickgen._chain(builder, count)
+
+    def test_falling_stays_upright_instead_of_tumbling(self):
+        """Falling is a fall, not a somersault: the rig used to rotate a full
+        360 degrees every cycle, which is what made it read as a cartwheel."""
+        frames = stickgen.ANIMS["fall"]
+        self.assertEqual(len(frames), 48)
+        for index, frame in enumerate(frames):
+            pose = stickgen.normalize_pose(frame)
+            head_up = pose["HIP"][1] - pose["H"][1]
+            with self.subTest(frame=index + 1):
+                self.assertGreater(head_up, 30.0)   # head always above the hips
+                self.assertNotIn("rot", frame)      # no whole-body spin
 
     def test_the_neck_is_one_short_length(self):
         """The 'why does Yellow suddenly have a long neck' bug."""

@@ -310,11 +310,15 @@ everyone else's); Blue's `lay01` was cut on *both* sides; Orange's wall-climb
 legs sank up to 19 px under the anchor, so the feet were chopped off at the
 bottom of the screen. All of them are regenerated inside their margins. The
 latest pass also replaces the old three-frame, 40-tick fall (up to 1.6 seconds
-on one drawing) with a 48-frame rigid-limb tumble at one tick per frame, and
-replaces the nearly identical five-frame wall poses with a 48-frame planted-
-contact climb at one tick per frame:
+on one drawing) with a 48-frame freefall at one tick per frame — head up and
+tipped back, both arms dragged overhead by the air, one leg trailing and one
+tucked, with a slow flail so it is never a frozen pose — and replaces the
+nearly identical five-frame wall poses with a 48-frame planted-contact climb at
+one tick per frame:
 
 ![Before and after](docs/before-after.png)
+
+![Freefall rebuild](docs/fall-rebuild.png)
 
 **Reactive**: CursorSlash still leaps at your cursor when it is within 300 px
 (its leap no longer throws the sword off the top of the frame).

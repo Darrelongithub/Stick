@@ -904,32 +904,66 @@ ANIMS["plane"] = [
 # re-rendered here so the whole crew falls, hangs, lies and climbs alike, and
 # so every one of those frames is inside its frame by construction.
 
-# Falling is sampled directly from a continuous rig. The old revision linearly
-# blended eight rotated drawings, which shortened limbs between keys and made
-# the tumble pulse. Here every limb keeps its authored length while the whole
-# body turns through an even 360 degrees, with a secondary flutter in the arms
-# and legs so it reads as air resistance rather than a rigid cartwheel.
+# Falling is sampled directly from a continuous rig.  It used to rotate the
+# whole figure a full 360 degrees per cycle, which is a *somersault* - every
+# loop the mascot tumbled head over heels while dropping, and with reference
+# bone lengths that read as a pinwheel rather than gravity.  A falling body is
+# orientated: head up and tipped back, both arms dragged overhead by the air,
+# one leg trailing and one tucked, with a slow flail so it is not a frozen pose.
 def FALL_FRAME(index, count=48):
-    phase = 2 * math.pi * index / count
-    shoulder = (64, 52)
-    hip = (64, 79)
-    joints = {
-        "H": (64, 27), "N": (64, 40), "SH": shoulder, "HIP": hip,
-    }
-    joints["EL"] = polar(shoulder, 18, 2.85 + 0.34 * math.sin(phase * 2))
-    joints["HL"] = polar(joints["EL"], 20,
-                         3.45 + 0.58 * math.cos(phase * 2 + 0.35))
-    joints["ER"] = polar(shoulder, 18, 0.28 - 0.34 * math.sin(phase * 2))
-    joints["HR"] = polar(joints["ER"], 20,
-                         -0.35 - 0.58 * math.cos(phase * 2 + 0.35))
-    joints["KL"] = polar(hip, 22, 2.05 + 0.28 * math.cos(phase * 2))
-    joints["FL"] = polar(joints["KL"], 23,
-                         1.86 + 0.52 * math.sin(phase * 2 + 0.6))
-    joints["KR"] = polar(hip, 22, 1.09 - 0.28 * math.cos(phase * 2))
-    joints["FR"] = polar(joints["KR"], 23,
-                         1.28 - 0.52 * math.sin(phase * 2 + 0.6))
-    angle = index * 360.0 / count + 3.0 * math.sin(phase * 2)
-    return F(**rotate_joints(joints, angle, (64, 67)))
+    t = index / count
+    phase = 2 * math.pi * t
+    slow = 2 * math.pi * t * 2          # two flails per loop
+
+    # The body hangs a couple of degrees off vertical and swings with the wind.
+    sway = 0.10 * math.sin(phase) + 0.03 * math.sin(slow + 0.7)
+    shoulder = (64 + 2.2 * math.sin(phase + 0.3), 50 + 1.4 * math.cos(phase))
+    down = math.pi / 2 + sway
+    torso = PROPORTIONS["torso"]
+    hip = (shoulder[0] + math.cos(down) * torso,
+           shoulder[1] + math.sin(down) * torso)
+    # Head thrown back, chin up: the way a falling figure looks at the sky.
+    neck_ang = -math.pi / 2 + 0.16 + 0.09 * math.sin(phase + 0.9)
+    neck = (shoulder[0] + math.cos(neck_ang) * PROPORTIONS["neck-shoulder"],
+            shoulder[1] + math.sin(neck_ang) * PROPORTIONS["neck-shoulder"])
+    head = (neck[0] + math.cos(neck_ang - 0.30) * PROPORTIONS["neck"],
+            neck[1] + math.sin(neck_ang - 0.30) * PROPORTIONS["neck"])
+
+    # Arms: dragged up and back by the air, sweeping alternately.  A stick
+    # figure has no chest, so the arms have to frame the head rather than
+    # disappear behind it.
+    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    # Both arms above the shoulder line, hands higher than the head, with the
+    # forearms angled further outward than the upper arms so the pose reads as
+    # "the air is holding my arms up" rather than a sideways T.
+    left_up = -2.52 - 0.26 * math.sin(slow)
+    right_up = -0.62 + 0.26 * math.sin(slow + 0.9)
+    left_far = left_up - 0.30 - 0.22 * math.cos(slow)
+    right_far = right_up - 0.46 + 0.22 * math.cos(slow + 0.9)
+    left_elbow = polar(shoulder, upper, left_up)
+    left_hand = polar(left_elbow, forearm, left_far)
+    right_elbow = polar(shoulder, upper, right_up)
+    right_hand = polar(right_elbow, forearm, right_far)
+
+    # Legs: knees bent and trailing behind the body's fall, feet floating back
+    # up.  Alternating the bend keeps them from moving as a single stick.
+    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    # Legs trail behind the fall: thighs swung back, shins folded down.  Straight
+    # legs read as "standing in the air" and a big alternating kick reads as
+    # walking, so this is a small, slow bicycle in place.
+    kick = math.sin(slow * 0.5)
+    # One leg trails almost straight, the other tucks: a symmetric tuck reads
+    # as a cannonball, and two straight legs read as standing in the air.
+    left_knee = polar(hip, thigh, 1.40 + 0.12 * kick)
+    left_foot = polar(left_knee, shin, 1.02 - 0.16 * kick)
+    right_knee = polar(hip, thigh, 1.02 - 0.12 * kick)
+    right_foot = polar(right_knee, shin, -0.62 + 0.18 * kick)
+
+    return F(H=head, N=neck, SH=shoulder, HIP=hip,
+             EL=left_elbow, HL=left_hand, ER=right_elbow, HR=right_hand,
+             KL=left_knee, FL=left_foot, KR=right_knee, FR=right_foot,
+             fx=[("wind", (112, 48 + 6 * math.sin(phase)), index % 3),
+                 ("wind", (18, 70 - 5 * math.cos(phase)), (index + 1) % 3)])
 
 
 ANIMS["fall"] = [FALL_FRAME(i) for i in range(48)]
