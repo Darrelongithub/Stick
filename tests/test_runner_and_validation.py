@@ -53,9 +53,16 @@ class RunnerTests(unittest.TestCase):
             self.assertTrue(all(len(set(action.images)) >= 2 for action in mascot.pool))
         for _ in range(5000):
             for mascot in mascots:
-                mascot.step()
-            keys = [runner.visual_key(mascot.action) for mascot in mascots]
+                mascot.dirty = False
+                mascot.advance(1.0)
+            runner.pump_schedule(coordinator, mascots)
+            active = [m for m in mascots if m.lease is not None]
+            self.assertLessEqual(len(active), 1)
+            keys = [runner.visual_key(m.action) for m in active]
             self.assertEqual(len(keys), len(set(keys)))
+            for mascot in mascots:
+                if mascot.lease is None:
+                    self.assertEqual(mascot.pose, mascot.idle_pose)
 
     def test_fractional_updates_smooth_movement_between_host_ticks(self):
         char = runner.pack.load_character(str(ROOT / "AVA Shimejis"), "Orange")
