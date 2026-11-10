@@ -1,0 +1,5 @@
+# Offline pack installation does not need these; only source-video tooling does.
+Pillow>=10
+av>=12
+numpy>=1.26
+scipy>=1.12

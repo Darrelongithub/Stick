@@ -36,9 +36,8 @@ BODY = {                    # measured from original pack
     "Yellow": (255, 197, 0),
     "Green":  (95, 183, 0),
 }
-LIMB_W = 7                  # reference stroke: thick, round-ended, uniform
-HEAD_R = 16                 # Animation-vs reference: large hollow ring head
-HEAD_STROKE = LIMB_W        # the ring is drawn with the same stroke as limbs
+LIMB_W = 6                  # uniform stick thickness (measured: 6px core)
+HEAD_R = 12
 
 P = {   # fixed prop palette (same for every character)
     "wood":   (139, 90, 43),
@@ -160,9 +159,9 @@ def zee(d, pos, s=1.0, alpha=255):
 
 # ---------------------------------------------------------------- figure
 STAND = dict(
-    H=(64, 26), N=(64, 42), SH=(64, 54),
-    EL=(54, 72), HL=(50, 89), ER=(74, 72), HR=(78, 89),
-    HIP=(64, 82), KL=(58, 104), FL=(54, 128), KR=(70, 104), FR=(74, 128),
+    H=(64, 29), N=(64, 40), SH=(64, 52),
+    EL=(57, 67), HL=(55, 81), ER=(71, 67), HR=(73, 81),
+    HIP=(64, 80), KL=(59, 102), FL=(53, 123), KR=(69, 102), FR=(75, 123),
 )
 
 # ---------------------------------------------------------------- proportions
@@ -275,12 +274,7 @@ def draw_figure(d, color, dy=0, dx=0, **j):
     limb(d, [mv(g["HIP"]), mv(g["KR"]), mv(g["FR"])], LIMB_W, color)
     limb(d, [mv(g["N"]), mv(g["SH"]), mv(g["HIP"])], LIMB_W, color)
     limb(d, [mv(g["HIP"]), mv(g["KL"]), mv(g["FL"])], LIMB_W, color)
-    # The reference stick figures have hollow ring heads, not filled discs.
-    # Draw the ring after the torso so the neck cannot fill its interior.
-    hx, hy = mv(g["H"])
-    r = HEAD_R
-    d.ellipse([_i((hx - r, hy - r)), _i((hx + r, hy + r))],
-              outline=color + (255,), width=max(1, _i(HEAD_STROKE)))
+    dot(d, mv(g["H"]), HEAD_R, color)
     limb(d, [mv(g["SH"]), mv(g["EL"]), mv(g["HL"])], LIMB_W, color)
     return {k: mv(v) for k, v in g.items()}
 
@@ -723,119 +717,6 @@ def _chain(builder, count, warmup=2):
 
 ANIMS = {}
 
-# Reference locomotion: planted contacts, opposite arm swing, compact torso,
-# long fixed-length limbs.  Walk/Run are Move actions in the host (the XML
-# velocity translates the anchor); the poses themselves stay centred.
-def _locomotion_frame(phase, run=False):
-    """Cyclic reference locomotion with planted stance and arced swing.
-
-    Feet are targets on the floor; knees/elbows are solved with fixed bone
-    lengths so the limbs cannot rubber-band between keys.
-    """
-    span = 34.0 if run else 22.0
-    lift = 16.0 if run else 7.0
-    bounce = 5.0 if run else 2.0
-    lean = -4.0 if run else -1.0
-    hip = (64.0 + lean * 0.4, 82.0 - bounce * abs(math.sin(2 * math.pi * phase)))
-    sh = (hip[0] + lean, hip[1] - PROPORTIONS["torso"])
-    n = (sh[0] + lean * 0.25, sh[1] - PROPORTIONS["neck-shoulder"])
-    h = (n[0] + lean * 0.2, n[1] - PROPORTIONS["neck"])
-    joints = {"H": h, "N": n, "SH": sh, "HIP": hip}
-    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
-    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
-    for side, offset in (("L", 0.0), ("R", 0.5)):
-        p = (phase + offset) % 1.0
-        if p < 0.5:                       # planted: foot sweeps back under body
-            t = p / 0.5
-            foot = (hip[0] - span / 2 + span * t, 128.0)
-        else:                             # recovery: foot arcs forward
-            t = (p - 0.5) / 0.5
-            foot = (hip[0] + span / 2 - span * t,
-                    128.0 - lift * math.sin(math.pi * t))
-        knee = joint_between(hip, foot, thigh, shin, prefer="min_x")
-        joints["K" + side] = knee
-        joints["F" + side] = foot
-        # Arms swing opposite the same-side leg.
-        ap = (phase + offset + 0.5) % 1.0
-        swing = math.cos(2 * math.pi * ap)
-        hand = (sh[0] + swing * (16.0 if run else 10.0),
-                sh[1] + (18.0 if run else 26.0) - (6.0 if run else 2.0) * abs(swing))
-        elbow = joint_between(sh, hand, upper, forearm, prefer="max_x")
-        joints["E" + side] = elbow
-        joints["H" + side] = hand
-    return F(**joints)
-
-
-ANIMS["walk"] = [_locomotion_frame(i / 6.0) for i in range(6)]
-ANIMS["run"] = [_locomotion_frame(i / 11.0, run=True) for i in range(11)]
-
-def _jump_frame(i, count=8):
-    """Anticipation, flight, landing compression and recovery without snaps."""
-    t = i / (count - 1)
-    # Vertical body offset: crouch -> launch -> apex -> land -> compress -> rise.
-    dy_keys = [0, 3, -8, -16, -8, 0, 4, 0]
-    hip_y_keys = [86, 88, 82, 80, 82, 88, 90, 82]
-    dy = dy_keys[i]
-    hip = (64.0, float(hip_y_keys[i]))
-    sh = (64.0, hip[1] - PROPORTIONS["torso"])
-    n = (64.0, sh[1] - PROPORTIONS["neck-shoulder"])
-    h = (64.0, n[1] - PROPORTIONS["neck"])
-    joints = {"H": h, "N": n, "SH": sh, "HIP": hip}
-    # Arms sweep from low/back through up to low/front continuously.
-    arm_angle = math.radians([80, 40, 0, -30, 0, 40, 80, 80][i])
-    reach = PROPORTIONS["upper arm"] + PROPORTIONS["forearm"] - 2.0
-    for side, sign in (("L", -1.0), ("R", 1.0)):
-        hand = (sh[0] + sign * math.cos(arm_angle) * reach * 0.5,
-                sh[1] + math.sin(arm_angle) * reach * 0.6)
-        elbow = joint_between(sh, hand, PROPORTIONS["upper arm"],
-                              PROPORTIONS["forearm"], prefer="min_x" if sign < 0 else "max_x")
-        joints["E" + side] = elbow
-        joints["H" + side] = hand
-    # Legs tuck during flight, plant on landing.
-    air = max(0.0, -dy) / 16.0
-    for side, sign in (("L", -1.0), ("R", 1.0)):
-        foot = (64.0 + sign * (6.0 + 8.0 * air),
-                128.0 - 18.0 * air + (4.0 if i in (1, 6) else 0.0))
-        knee = joint_between(hip, foot, PROPORTIONS["thigh"],
-                             PROPORTIONS["shin"], prefer="min_x")
-        joints["K" + side] = knee
-        joints["F" + side] = foot
-    fx = [("dust", (50, 126), 4), ("dust", (78, 126), 4)] if i == 5 else None
-    return F(dy=dy, fx=fx, **joints)
-
-
-ANIMS["jump"] = [_jump_frame(i) for i in range(8)]
-
-
-def _dance_frame(i, count=8):
-    t = i / count
-    sway = math.sin(2 * math.pi * t)
-    bounce = abs(math.cos(2 * math.pi * t))
-    hip = (64.0 + 4.0 * sway, 82.0 + 3.0 * bounce)
-    sh = (hip[0] + 1.5 * sway, hip[1] - PROPORTIONS["torso"])
-    n = (sh[0], sh[1] - PROPORTIONS["neck-shoulder"])
-    h = (n[0] + 1.5 * sway, n[1] - PROPORTIONS["neck"])
-    joints = {"H": h, "N": n, "SH": sh, "HIP": hip}
-    for side, sign in (("L", -1.0), ("R", 1.0)):
-        foot = (64.0 + sign * 10.0 + 2.0 * sway, 128.0)
-        knee = joint_between(hip, foot, PROPORTIONS["thigh"],
-                             PROPORTIONS["shin"], prefer="min_x")
-        joints["K" + side] = knee
-        joints["F" + side] = foot
-        # Alternating raised arms, solved through a continuous angle.
-        angle = math.radians(20.0 + 55.0 * math.sin(2 * math.pi * t + (0 if sign < 0 else math.pi)))
-        reach = PROPORTIONS["upper arm"] + PROPORTIONS["forearm"] - 3.0
-        hand = (sh[0] + sign * math.cos(angle) * reach * 0.5,
-                sh[1] + math.sin(angle) * reach * 0.6)
-        elbow = joint_between(sh, hand, PROPORTIONS["upper arm"],
-                              PROPORTIONS["forearm"], prefer="min_x" if sign < 0 else "max_x")
-        joints["E" + side] = elbow
-        joints["H" + side] = hand
-    return F(**joints)
-
-
-ANIMS["dance"] = [_dance_frame(i) for i in range(8)]
-
 ANIMS["wave"] = [
     F(),
     F(EL=(78, 62), HL=(82, 48)),
@@ -1101,7 +982,7 @@ WALL_GRIP_X = 4.0          # the wall is the left edge of the canvas
 WALL_RECOVER = 7.0        # a recovering hand steps this far off the wall
 CEILING_GRIP_Y = 7.0       # the ceiling is the top edge of the canvas
 CEILING_RECOVER = 22.0     # a released hand swings *below* the body, not across the head
-CEILING_LANE = (61.0, 79.0)   # 18px / 36 planted ticks = 0.5px/tick
+CEILING_LANE = (63.5, 76.0)   # 12.5px of travel / 30 planted ticks = 0.42px/tick
 
 
 def _lean(origin, dx, dy, length):
@@ -1212,7 +1093,7 @@ def WALL_HOLD_FRAME(index, count=16, previous=None):
 ANIMS["wall_hold"] = _chain(WALL_HOLD_FRAME, 16)
 
 
-def ceiling_hand(phase, start, end, stance=0.75):
+def ceiling_hand(phase, start, end, stance=0.55):
     """One hand of a hand-over-hand ceiling traversal.
 
     Planted for ``stance`` of the cycle (sweeping back at the action's own
@@ -1228,10 +1109,8 @@ def ceiling_hand(phase, start, end, stance=0.75):
     # The swing also bulges outward: coming straight back up along the grip
     # line drove the hand through the shoulder, folding the arm shut and
     # flipping the elbow 20px in one frame.
-    # Spread the recovery over both axes.  A narrow horizontal return with a
-    # 22px vertical arc folded the elbow through a 10px branch switch at landing.
-    return (end + (start - end) * ease + 8.0 * arc,
-            CEILING_GRIP_Y + 14.0 * arc)
+    return (end + (start - end) * ease + 20.0 * arc,
+            CEILING_GRIP_Y + CEILING_RECOVER * arc)
 
 
 def _ceiling_body(shoulder, angle):
@@ -1289,7 +1168,7 @@ ANIMS["hang"] = _chain(CEILING_HOLD_FRAME, 16)
 
 
 def CEILING_SWING_FRAME(index, count=48, previous=None):
-    """Hand-over-hand brachiation: 0.5px/tick, one palm always planted."""
+    """Hand-over-hand brachiation: 0.7px/tick, one palm always planted."""
     t = index / count
     step = 4 * math.pi * t
     previous = previous or {}
@@ -2038,9 +1917,8 @@ OUT_ROOT = "AVA Shimejis"
 # the last-to-first seam. These are deliberately tighter for planted-contact
 # motion than for a foot at the outside of a full-body tumble.
 CONTINUITY_LIMITS = {"fall": 12.0, "swing": 7.5, "hang": 2.5,
-                     "wall_climb": 4.5, "wall_hold": 1.0, "crawl": 4.0,
-                     "cartwheel": 10.5, "jumprope": 2.0,
-                     "walk": 16.0, "run": 18.0, "jump": 34.0, "dance": 22.0}
+                     "wall_climb": 4.0, "wall_hold": 1.0, "crawl": 4.0,
+                     "cartwheel": 10.5, "jumprope": 2.0}
 
 
 def proportion_errors(tolerance=0.01):

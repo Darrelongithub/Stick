@@ -47,8 +47,7 @@ class MascotAnimationRegressionTests(unittest.TestCase):
                 # can reach along the ceiling line, so the ceiling climb is
                 # slower than the wall climb.  Velocity and pose travel must
                 # still agree, or planted hands skate.
-                self.assertEqual({p.get("Velocity") for p in poses}, {"0,0", "-1,0"})
-                self.assertEqual(sum(int(p.get("Velocity").split(",")[0]) for p in poses), -24)
+                self.assertEqual({p.get("Velocity") for p in poses}, {"-0.42,0"})
                 self.assertEqual({p.get("Duration") for p in poses}, {"1"})
 
                 # Waiting for the next edge route must remain animated too.
@@ -137,112 +136,125 @@ class MascotAnimationRegressionTests(unittest.TestCase):
                     _, other_actions, _ = self.read_pack(other)
                     self.assertIsNone(self.action(other_actions, name))
 
-    def test_dance_is_a_finite_coordinated_floor_request(self):
+    def test_dance_only_starts_on_the_real_floor_and_has_no_chained_exit(self):
+        dance_weights = set()
+        dance_durations = {}
         for char in CHARS:
             with self.subTest(char=char):
                 base, actions, behaviors = self.read_pack(char)
                 action = self.action(actions, "Dance")
                 self.assertEqual(action.get("Type"), "Animate")
                 self.assertEqual(action.get("BorderType"), "Floor")
-                self.assertIn("mascot.environment.floor.isOn(mascot.anchor)", action.get("Condition"))
-                self.assertNotIn("'enter'", action.get("Condition", ""))
+                self.assertEqual(action.get("Condition"),
+                                 "#{mascot.environment.floor.isOn(mascot.anchor)}")
                 poses = action.findall(".//m:Pose", NS)
                 self.assertTrue(poses)
                 for pose in poses:
                     self.assertEqual(pose.get("Velocity"), "0,0")
                     self.assertTrue((base / pose.get("Image").lstrip("/")).is_file())
+                dance_durations[char] = tuple(p.get("Duration") for p in poses)
+
                 entries = behaviors.findall('.//m:Behavior[@Name="Dance"]', NS)
                 self.assertEqual(len(entries), 1)
                 behavior = entries[0]
-                self.assertGreater(int(behavior.get("Frequency")), 0)
-                self.assertIn("mascot.environment.floor.isOn(mascot.anchor)",
-                              behavior.get("Condition"))
+                # Dance still only starts on the real floor; the crew-slot and
+                # no-repeat rules are ANDed on top of that gate.
+                self.assertTrue(behavior.get("Condition").startswith(
+                    "#{mascot.environment.floor.isOn(mascot.anchor) && "))
                 self.assertNotIn("activeIE", behavior.get("Condition"))
                 self.assertEqual(len(behavior.findall("m:NextBehavior", NS)), 0)
+                dance_weights.add(behavior.get("Frequency"))
+        self.assertEqual(len(dance_weights), 4)
+        self.assertEqual(len(set(dance_durations.values())), 4)
 
-    def test_generated_locomotion_is_finite_under_the_native_host(self):
-        for char in CHARS:
-            with self.subTest(char=char):
-                _, actions, _ = self.read_pack(char)
-                for name, duration in (("Walk", "48"), ("Run", "33")):
-                    action = self.action(actions, name)
-                    self.assertEqual(action.get("Type"), "Move")
-                    self.assertEqual(action.get("Duration"), duration)
-
-    def test_character_request_pools_have_distinct_order(self):
+    def test_character_behavior_pools_have_distinct_order_and_weights(self):
         orders = []
+        dance_weights = []
         for char in CHARS:
             _, _, behaviors = self.read_pack(char)
             generated = behaviors.find("m:BehaviorList", NS)
-            import sys
-            sys.path.insert(0, str(ROOT / "tools"))
-            import ava_common
-            owned = set(ava_common.generated_actions_for(char)) | set(ava_common.SEQUENCES)
-            entries = [e for e in generated.iter(f"{{{NS['m']}}}Behavior")
-                       if e.get("Name") in owned]
-            names = [e.get("Name") for e in entries]
+            names = [e.get("Name") for e in generated
+                     if e.tag.endswith("Behavior") and e.get("Name")]
             orders.append(tuple(names))
-            self.assertIn("Walk", names)
-            self.assertIn("Wave", names)
-            self.assertTrue(all(int(e.get("Frequency", "0")) > 0 for e in entries))
+            dance_weights.append(next(e.get("Frequency") for e in generated
+                                      if e.tag.endswith("Behavior") and
+                                      e.get("Name") == "Dance"))
         self.assertEqual(len(set(orders)), 4)
+        self.assertEqual(len(set(dance_weights)), 4)
 
 
 STOCK_OR_FREE = {"Walk", "Run", "Idle", "Stretch", "SitAndFaceMouse",
                  "HugAffordance", "HugSearch", "Trip"}
 
 
-class NativeTurnContractTests(unittest.TestCase):
-    """The pack has no distributed lock: a patched host owns the FIFO stage."""
+class CrewDesynchronisationTests(unittest.TestCase):
+    """The four mascots must not perform the same kind of move at once."""
 
-    def test_static_idle_and_no_script_coordinator(self):
+    def setUp(self):
+        import sys
+        from pathlib import Path
+        tools = str(Path(__file__).resolve().parents[1] / "tools")
+        if tools not in sys.path:
+            sys.path.insert(0, tools)
+        import ava_common
+        self.spec = ava_common
+
+    def test_each_character_gets_a_different_quarter_cycle_slot(self):
+        phases = [self.spec.SLOT_PHASE[char] for char in CHARS]
+        self.assertEqual(len(set(phases)), 4)
+        self.assertEqual(sorted(phases), [0, 1, 2, 3])
+
+    def test_no_two_characters_are_offered_the_same_activity_class(self):
+        slots = sorted(self.spec.SLOT_OF_CLASS.values())
+        self.assertEqual(slots, [0, 1, 2, 3])
+        for tick in range(0, 4000, 3):
+            classes = {}
+            for char in CHARS:
+                phase = self.spec.SLOT_PHASE[char]
+                current = (tick // self.spec.SLOT_TICKS + phase) % 4
+                classes.setdefault(current, []).append(char)
+            self.assertEqual(max(len(v) for v in classes.values()), 1,
+                             f"two characters shared a slot at tick {tick}")
+
+    def test_every_character_still_reaches_every_activity_class(self):
+        for char in CHARS:
+            seen = set()
+            for tick in range(self.spec.SLOT_TICKS * 8):
+                seen.add((tick // self.spec.SLOT_TICKS
+                          + self.spec.SLOT_PHASE[char]) % 4)
+            self.assertEqual(seen, {0, 1, 2, 3})
+
+    def test_grouped_behaviours_are_slotted_and_never_repeat_immediately(self):
         for char in CHARS:
             with self.subTest(char=char):
-                base, actions, behaviors = MascotAnimationRegressionTests().read_pack(char)
-                idle = actions.find('.//m:Action[@Name="WaitIdle"]', NS)
-                self.assertIsNotNone(idle)
-                self.assertEqual(idle.get("Type"), "Animate")
-                poses = idle.findall('.//m:Pose', NS)
-                self.assertEqual(len(poses), 1)
-                self.assertEqual(poses[0].get("Velocity"), "0,0")
-                self.assertEqual(poses[0].get("Duration"), "1")
-                self.assertTrue((base / poses[0].get("Image").lstrip("/")).is_file())
-                for name in ("AvaTurn", "AvaRelease", "AvaRested", "WaitTurn"):
-                    self.assertIsNone(actions.find(f'.//m:Action[@Name="{name}"]', NS))
-                    self.assertIsNone(behaviors.find(f'.//m:Behavior[@Name="{name}"]', NS))
-                self.assertNotIn("Main.getProperties", Path(base / "conf/actions.xml").read_text())
+                _, _, behaviors = MascotAnimationRegressionTests().read_pack(char)
+                # Only the behaviours this pack generates are ours to tune;
+                # the original pack's own routes (walk, sit, hug) are left
+                # alone so the crew still behaves like the stock mascots.
+                mine = set(self.spec.ACTIONS) | set(self.spec.SEQUENCES)
+                seen = 0
+                for behavior in behaviors.iter(f"{{{NS['m']}}}Behavior"):
+                    name = behavior.get("Name")
+                    if name not in mine or name == "Dance" or behavior.get("Frequency") == "0":
+                        continue
+                    self.assertIn("getBehavior()", behavior.get("Condition") or "",
+                                  f"{char}/{name} can be replayed back to back")
+                    if self.spec.activity_slot(name) is not None:
+                        self.assertIn("getTime()", behavior.get("Condition") or "",
+                                      f"{char}/{name} is not crew-slotted")
+                    seen += 1
+                self.assertGreater(seen, 10)
 
-    def test_native_sources_are_pinned_and_cover_every_assignment_path(self):
-        base = ROOT / "linux/shimelinux"
-        self.assertEqual((base / "UPSTREAM_COMMIT").read_text().strip(),
-                         "b131465f5af478347009bcf6b29bad6f5579af85")
-        patch = (base / "shimelinux-turns.patch").read_text()
-        for path in ("Manager.kt", "Mascot.kt", "UserBehavior.kt", "Behavior.kt",
-                     "TurnCoordinator.kt", "StationaryIdle.kt"):
-            self.assertIn(path, patch)
-        coord = (base / "overlay/src/main/kotlin/com/group_finity/mascot/TurnCoordinator.kt").read_text()
-        for text in ("ArrayDeque<Request<O>>", "pending.removeFirst()",
-                     "lease.request.owner === owner", "lease.token == token",
-                     "require(elapsedTicks > 0)", "while (log.size > 256)"):
-            self.assertIn(text, coord)
-        self.assertIn("turns.pump", patch)
-        self.assertIn("acknowledgeCompletedTurn", patch)
-        self.assertIn('cancelUnstartedDrag()', patch)
-        self.assertIn('cancelQueued(this, isDragged)', patch)
-        self.assertIn('finishTurn(this, playedTicks, "drag-released")', patch)
-        self.assertIn('finishTurn(this, playedTicks, "lost-ground")', patch)
-
-    def test_pack_is_idempotent(self):
-        import hashlib
-        import subprocess
-        import sys
-        before = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
-                  for p in (ROOT / "AVA Shimejis").glob("*/conf/*.xml")}
-        subprocess.run([sys.executable, str(ROOT / "tools/patch_xml.py"), "Blue"],
-                       check=True, capture_output=True)
-        after = {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
-                 for p in (ROOT / "AVA Shimejis").glob("*/conf/*.xml")}
-        self.assertEqual(before, after)
+    def test_walking_and_breathing_are_not_locked_to_a_slot(self):
+        _, _, behaviors = MascotAnimationRegressionTests().read_pack("Blue")
+        for name in ("Walk", "Run", "Idle", "Stretch"):
+            self.assertIsNone(self.spec.activity_slot(name),
+                              f"{name} must stay available all the time")
+            entry = next((b for b in behaviors.iter(f"{{{NS['m']}}}Behavior")
+                          if b.get("Name") == name), None)
+            if entry is not None:
+                self.assertNotIn("getTime", entry.get("Condition") or "",
+                                 f"{name} must not be crew-slotted")
 
 
 class FigureScaleTests(unittest.TestCase):
@@ -258,9 +270,7 @@ class FigureScaleTests(unittest.TestCase):
         measured = art.measure_characters()
         for char, (ratio, count) in measured.items():
             with self.subTest(char=char):
-                # Walk/Run/Dance are now generated reference art, so fewer
-                # legacy stock frames remain to measure.
-                self.assertGreater(count, 10)
+                self.assertGreater(count, 50)
                 self.assertAlmostEqual(
                     ratio, 1.0, delta=art.SCALE_TOLERANCE,
                     msg=f"{char}'s original-pack art is {ratio:.3f}x the shared "

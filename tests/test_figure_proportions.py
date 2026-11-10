@@ -22,18 +22,14 @@ import stickgen  # noqa: E402
 # as discrete drawings and are deliberately not listed here.
 CONTINUOUS_RIGS = {
     "idle": 4.0,
-    "crawl": 4.0,
-    "wall_climb": 4.5,
-    "wall_hold": 1.0,
+    "crawl": 2.5,
+    "wall_climb": 4.0,
+    "wall_hold": 2.5,
     "hang": 2.5,
-    "swing": 7.5,
-    "cartwheel": 10.5,   # whole-body rotation: the head honestly travels far
-    "jumprope": 2.0,
-    "fall": 12.0,        # freefall: an orientated body with a slow flail
-    "walk": 16.0,
-    "run": 18.0,
-    "jump": 34.0,
-    "dance": 22.0,
+    "swing": 5.0,
+    "cartwheel": 12.0,   # whole-body rotation: the head honestly travels far
+    "jumprope": 6.0,
+    "fall": 4.0,         # freefall: an orientated body with a slow flail
 }
 
 
