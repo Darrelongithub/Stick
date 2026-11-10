@@ -33,10 +33,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import pack  # noqa: E402
-try:                                     # the shared spec (activity classes)
-    import ava_common as SPEC  # noqa: E402
-except ImportError:                      # pragma: no cover - tools/ is in the repo
-    SPEC = None
+from coordinator import ActionCoordinator  # noqa: E402
 
 TICK_MS = 40                     # Shimeji-ee tick; one pose Duration unit
 RENDER_HZ = 60                   # position updates are interpolated at 60 Hz
@@ -92,6 +89,8 @@ def action_weight(ch, action):
 
 def visual_key(action):
     """Animation identity independent of colour, alias, or cycle phase."""
+    if action is None:
+        return ()                       # stationary waiting idle owns no turn
     names = tuple(os.path.basename(name) for name in action.images)
     # Cyclic XML is quarter-phase shifted per character. Canonicalize rotations
     # so Crawl still reserves one shared visual even when Blue starts at 01 and
@@ -99,72 +98,22 @@ def visual_key(action):
     return min(names[i:] + names[:i] for i in range(len(names)))
 
 
-def activity_slot(name):
-    """The crew activity class of `name` (0-3), or None when it is free.
-
-    Mirrors the Shimeji-ee conditions: the four characters are offset by a
-    quarter cycle, so no two of them are ever offered the same class at the
-    same moment (see SLOT_TICKS in tools/ava_common.py).
-    """
-    if SPEC is None:
-        return None
-    return SPEC.activity_slot(name)
+def choose_action(pool, weights, rng, recent):
+    """Personality affects selection, never the right to animate concurrently."""
+    recent = set(recent)
+    choices = [(a, w) for a, w in zip(pool, weights) if visual_key(a) not in recent]
+    choices = choices or list(zip(pool, weights))
+    if not choices:
+        raise ValueError("empty animation pool")
+    return rng.choices([a for a, _ in choices], [w for _, w in choices])[0]
 
 
-def slot_of(char, tick):
-    """Which activity class `char` may use on `tick` (0-3, or None)."""
-    if SPEC is None:
-        return None
-    phase = SPEC.SLOT_PHASE.get(char, 0)
-    return int((tick // SPEC.SLOT_TICKS + phase) % 4)
-
-
-class ActionCoordinator:
-    """Reserve visual actions across the crew and enforce short cooldowns."""
-
-    def __init__(self, tick=0):
-        self.active = {}
-        self.global_recent = collections.deque(maxlen=4)
-        self.tick = tick
-
-    def choose(self, owner, pool, weights, rng, recent):
-        # The owner's old action no longer needs to reserve its slot.
-        self.active.pop(owner, None)
-        busy = set(self.active.values())
-        recent = set(recent)
-
-        def candidates(avoid_recent=True, avoid_global=True, avoid_slot=True):
-            out = []
-            open_slot = slot_of(getattr(owner, "name", None), self.tick)
-            for action, weight in zip(pool, weights):
-                key = visual_key(action)
-                if key in busy or (avoid_recent and key in recent):
-                    continue
-                if avoid_global and key in self.global_recent:
-                    continue
-                # A grouped activity is only offered during its own slot, and
-                # the slots are disjoint per character, so two mascots cannot
-                # start the same *kind* of animation together either.
-                slot = activity_slot(action.name)
-                if avoid_slot and slot is not None and slot != open_slot:
-                    continue
-                out.append((action, weight))
-            return out
-
-        choices = (candidates() or candidates(avoid_global=False)
-                   or candidates(avoid_recent=False, avoid_global=False)
-                   or candidates(avoid_recent=False, avoid_global=False,
-                                 avoid_slot=False))
-        if not choices:
-            # Only possible for a tiny custom pack with fewer distinct actions
-            # than mascots; degrade gracefully rather than stopping the runner.
-            choices = list(zip(pool, weights))
-        action = rng.choices([a for a, _w in choices],
-                             [w for _a, w in choices])[0]
-        key = visual_key(action)
-        self.active[owner] = key
-        self.global_recent.append(key)
-        return action
+def pump_schedule(coordinator, mascots):
+    """Grant at most one lease, after all owners have advanced this update."""
+    lease = coordinator.pump()
+    if lease is not None:
+        next(m for m in mascots if m.name == lease.request.owner).begin(lease)
+    return lease
 
 
 class Mascot:
@@ -178,40 +127,50 @@ class Mascot:
         if not self.pool:
             raise ValueError(f"{ch.name}: no animated floor actions to play")
         self.weights = [action_weight(ch, a) for a in self.pool]
-        self.coordinator = coordinator
+        self.coordinator = coordinator or ActionCoordinator([ch.name])
+        self.coordinator.register(ch.name)
         self.recent = collections.deque(maxlen=4)
         self.screen_w = screen_w
-        self.x = float(x)                      # anchor x on screen
+        self.x = float(x)
         self.look_right = False
+        self.idle_pose = (ch.actions.get("Stand") or ch.actions.get("Idle")
+                          or self.pool[0]).poses[0]
         self.action = None
+        self.lease = None
         self.index = 0
         self.left = 0
-        self.pose = None
-        self.dirty = False                     # frame changed since last draw
+        self.elapsed = 0.0
+        self.pose = self.idle_pose
+        self.dirty = True
         self.frame_w = frame_w or (lambda _pose: 160)
         self.started = collections.Counter()
-        self._start_next()
+        self.finished = collections.Counter()
+        self.blocked = False
+        self._request_next()
+        pump_schedule(self.coordinator, [self])
 
-    # -- scheduling -------------------------------------------------------
-    def _start_next(self):
-        if self.action is not None:
-            self.recent.append(visual_key(self.action))
-        if self.coordinator:
-            self.action = self.coordinator.choose(
-                self, self.pool, self.weights, self.rng, self.recent)
-        else:
-            choices = [(a, w) for a, w in zip(self.pool, self.weights)
-                       if visual_key(a) not in self.recent]
-            choices = choices or list(zip(self.pool, self.weights))
-            self.action = self.rng.choices([a for a, _w in choices],
-                                           [w for _a, w in choices])[0]
-        self.started[self.action.name] += 1
-        self.index = 0
-        self.pose = self.action.poses[0]
+    def _request_next(self):
+        action = choose_action(self.pool, self.weights, self.rng, self.recent)
+        return self.coordinator.request(self.name, action)
+
+    def request(self, action=None):
+        """Public request API: append, never interrupt or start immediately."""
+        if action is not None and action not in self.pool:
+            raise ValueError(f"{self.name}: action is not playable: {action}")
+        return self.coordinator.request(self.name, action)
+
+    def begin(self, lease):
+        if self.lease is not None or lease.request.owner != self.name:
+            raise RuntimeError("cannot overlap an owner's playback")
+        action = lease.request.payload
+        if action is None or not action.poses:
+            raise ValueError("a lease must contain a finite pose list")
+        self.lease, self.action = lease, action
+        self.index, self.elapsed, self.blocked = 0, 0.0, False
+        self.pose = action.poses[0]
         self.left = self.pose.duration
-        moving = any(p.velocity[0] for p in self.action.poses)
-        if moving:
-            # walk away from the nearer wall, otherwise pick at random
+        self.started[action.name] += 1
+        if any(p.velocity[0] for p in action.poses):
             if self.x < self.screen_w * 0.2:
                 self.look_right = True
             elif self.x > self.screen_w * 0.8:
@@ -220,38 +179,49 @@ class Mascot:
                 self.look_right = self.rng.random() < 0.5
         self.dirty = True
 
-    def advance(self, ticks):
-        """Advance a fractional number of 40ms ticks.
+    def _finish(self):
+        # Freeze FIRST. Only then acknowledge the final pose's actual expiry.
+        action, lease = self.action, self.lease
+        self.recent.append(visual_key(action))
+        self.finished[action.name] += 1
+        self.action, self.lease = None, None
+        self.pose, self.index, self.left = self.idle_pose, 0, 0
+        self.dirty = True
+        self.coordinator.complete(self.name, lease.token,
+                                  frame_count=len(action.poses),
+                                  elapsed_ticks=self.elapsed)
+        self._request_next()
 
-        Frame boundaries remain faithful to the XML, while velocity is applied
-        proportionally on each 60Hz render update.  A stock run therefore moves
-        in ~3px visual increments rather than 8-18px jumps.
-        """
+    def advance(self, ticks):
+        """Consume exact pose durations; inactive figures cannot move or tick."""
         ticks = max(0.0, float(ticks))
-        while ticks > 1e-9:
+        if self.lease is None:
+            return
+        while ticks > 1e-9 and self.lease is not None:
             chunk = min(ticks, float(self.left))
             dx = self.pose.velocity[0] * (-1 if self.look_right else 1) * chunk
-            if dx:
+            if dx and not self.blocked:
                 target = self.x + dx
-                new_x = min(max(target, 0.0), float(self.screen_w))
-                if abs(new_x - target) > 1e-9:  # hit edge: finish this action
-                    self.left = 0
-                self.x = new_x
+                self.x = min(max(target, 0.0), float(self.screen_w))
+                # A wall stops translation, not the performance. Never skip the
+                # remaining poses just to give another character the stage.
+                self.blocked = abs(self.x - target) > 1e-9
             self.left -= chunk
+            self.elapsed += chunk
             ticks -= chunk
             if self.left > 1e-9:
                 continue
             self.index += 1
             if self.index >= len(self.action.poses):
-                self._start_next()
+                self._finish()
             else:
                 self.pose = self.action.poses[self.index]
                 self.left = self.pose.duration
                 self.dirty = True
 
     def step(self):
-        """Advance one logical host tick (headless simulation compatibility)."""
         self.advance(1.0)
+        pump_schedule(self.coordinator, [self])
 
     # -- drawing helpers --------------------------------------------------
     def anchor_on_window(self):
@@ -264,58 +234,36 @@ class Mascot:
 
 def simulate(args, chars):
     master = random.Random(args.seed)
-    coordinator = ActionCoordinator()
-    mascots = []
-    for c in chars:
-        rng = random.Random(master.getrandbits(64))
-        mascots.append(Mascot(c, rng, master.uniform(0, args.screen_w),
-                              args.screen_w, coordinator=coordinator))
-    out_of_bounds = 0
-    simultaneous_duplicates = 0
-    simultaneous_classes = 0
-    repeats = 0
-    frame_changes = [0] * len(mascots)
-    previous = [None] * len(mascots)
+    coordinator = ActionCoordinator([ch.name for ch in chars])
+    mascots = [Mascot(c, random.Random(master.getrandbits(64)),
+                      master.uniform(0, args.screen_w), args.screen_w,
+                      coordinator=coordinator) for c in chars]
+    violations = inactive_changes = 0
+    changes = [0] * len(mascots)
     for _ in range(args.simulate):
         coordinator.tick += 1
-        started_now = []
-        for i, m in enumerate(mascots):
+        before = [(m.x, m.pose, m.index, m.lease) for m in mascots]
+        for m in mascots:
             m.dirty = False
-            before = m.started.copy()
-            m.step()
-            is_new = sum(m.started.values()) != sum(before.values())
-            if is_new:
-                started_now.append(m)
-                # Same character immediately replaying the same animation is
-                # the other half of "they repeat animations too many times".
-                if previous[i] is not None and m.action.name == previous[i]:
-                    repeats += 1
-                previous[i] = m.action.name
-            if m.dirty:
-                frame_changes[i] += 1
-            if not (0 <= m.x <= args.screen_w):
-                out_of_bounds += 1
-        keys = [visual_key(m.action) for m in mascots]
-        simultaneous_duplicates += len(keys) - len(set(keys))
-        # Two characters *starting* the same activity class on the same tick is
-        # what reads as "they all do it together".
-        classes = [activity_slot(m.action.name) for m in started_now]
-        grouped = [c for c in classes if c is not None]
-        simultaneous_classes += len(grouped) - len(set(grouped))
+            m.advance(1.0)
+        pump_schedule(coordinator, mascots)
+        active = [m for m in mascots if m.lease is not None]
+        violations += max(0, len(active) - 1)
+        for i, m in enumerate(mascots):
+            changes[i] += bool(m.dirty)
+            # Only a mascot that was already inactive before this tick counts.
+            # The completing owner may legitimately move during its final tick.
+            if before[i][3] is None and m.lease is None and m.x != before[i][0]:
+                inactive_changes += 1
     seconds = args.simulate * TICK_MS / 1000
-    print(f"simulated {seconds:.0f}s of {len(mascots)} characters "
-          f"({args.simulate} ticks x {TICK_MS} ms)")
-    for m, changes in zip(mascots, frame_changes):
-        top = ", ".join(f"{n} x{c}" for n, c in m.started.most_common(4))
-        print(f"  {m.name:7s} {changes / seconds:5.1f} frame changes/s "
-              f"| {sum(m.started.values())} actions | {top}")
-    print(f"out-of-bounds positions: {out_of_bounds}")
-    print(f"simultaneous duplicate animations: {simultaneous_duplicates}")
-    print(f"simultaneous same-class animations: {simultaneous_classes}")
-    print(f"back-to-back repeats: {repeats}")
-    ok = (out_of_bounds == 0 and simultaneous_duplicates == 0
-          and simultaneous_classes == 0 and repeats == 0)
-    return 0 if ok else 1
+    print(f"simulated {seconds:.0f}s of {len(mascots)} characters")
+    for m, count in zip(mascots, changes):
+        print(f"  {m.name:7s} {sum(m.started.values()):4d} granted | "
+              f"{sum(m.finished.values()):4d} completed | {count:5d} frame changes")
+    print(f"simultaneous active animations: {violations}")
+    print(f"inactive character translation: {inactive_changes}")
+    print(f"queued requests: {len(coordinator.queue)}")
+    return 0 if violations == inactive_changes == 0 else 1
 
 
 def prepare_desktop():
@@ -437,6 +385,8 @@ def run_desktop(args, chars):
                    coordinator)
         mascots.append(m)
         sprites.append(Sprite())
+    # Construction only queues; grant the first turn after the crew exists.
+    pump_schedule(coordinator, mascots)
 
     def place(m, sprite):
         ax, ay = m.anchor_on_window()
@@ -463,9 +413,11 @@ def run_desktop(args, chars):
         elapsed = min(100.0, max(1.0, float(now - last_ms)))
         last_ms = now
         coordinator.tick += max(1, int(round(elapsed / TICK_MS)))
-        for m, s in zip(mascots, sprites):
+        for m in mascots:
             m.dirty = False
             m.advance(elapsed / TICK_MS)
+        pump_schedule(coordinator, mascots)
+        for m, s in zip(mascots, sprites):
             if m.dirty:
                 draw(m, s)
             place(m, s)

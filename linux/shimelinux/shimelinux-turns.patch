@@ -1,0 +1,728 @@
+diff --git a/src/main/kotlin/com/group_finity/mascot/Manager.kt b/src/main/kotlin/com/group_finity/mascot/Manager.kt
+index 3a5aa93..7bcfe82 100644
+--- a/src/main/kotlin/com/group_finity/mascot/Manager.kt
++++ b/src/main/kotlin/com/group_finity/mascot/Manager.kt
+@@ -42,6 +42,9 @@ private val logger: Logger = Logger.getLogger(Manager::class.java.name)
+  * @author Bujju
+  */
+ class Manager {
++    /** One stage for every image set and every kind of behavior. */
++    val turns = TurnCoordinator<Mascot>()
++
+     private val mascots = mutableListOf<Mascot>()
+     private val added = linkedSetOf<Mascot>()
+     private val removed = linkedSetOf<Mascot>()
+@@ -94,15 +97,39 @@ class Manager {
+             mascots.removeAll(removed)
+             removed.clear()
+ 
++            for (mascot in mascots) mascot.enqueueInitialBehavior()
++
++            // A behavior may dispose its owner during tick/init.  Snapshot the
++            // list so removal cannot invalidate an in-progress iteration.
++            val ticking = mascots.toList()
++
+             // Update mascots
+-            for (mascot in mascots) {
++            for (mascot in ticking) {
+                 mascot.tick()
+             }
+ 
+             // Animate mascots
+-            for (mascot in mascots) {
++            for (mascot in ticking) {
+                 mascot.apply()
+             }
++            // The final pose has now reached the window.  Freeze its owner
++            // before acknowledging completion and pumping the next request.
++            for (mascot in ticking) {
++                mascot.acknowledgeCompletedTurn()
++            }
++
++            // Completion installed and applied a stationary idle above.  Only
++            // now initialize the next FIFO request; its first pose ticks next.
++            if (!isPaused) {
++                turns.pump { lease ->
++                    try {
++                        lease.request.owner.startTurn(lease)
++                    } catch (e: Exception) {
++                        logger.log(Level.SEVERE, e) { "Failed to initialize a queued behavior" }
++                        lease.request.owner.dispose()
++                    }
++                }
++            }
+         }
+ 
+         if (isExitOnLastRemoved && mascots.isEmpty()) {
+@@ -118,7 +145,14 @@ class Manager {
+             added.add(mascot)
+             removed.remove(mascot)
+         }
+-        mascot.manager = this
++        mascot.attach(this)
++        // Enqueue only when the mascot enters the active list.  A mascot added
++        // and removed before the next tick must not leave an orphan request.
++        synchronized(mascots) {
++            if (mascot in added && mascot !in removed) {
++                mascot.enqueueInitialBehavior()
++            }
++        }
+     }
+ 
+     /**
+@@ -129,7 +163,11 @@ class Manager {
+             added.remove(mascot)
+             removed.add(mascot)
+         }
++        turns.cancel(mascot, "removed")
+         mascot.manager = null
++        synchronized(mascots) {
++            if (mascot !in added) mascots.remove(mascot)
++        }
+     }
+ 
+     /**
+diff --git a/src/main/kotlin/com/group_finity/mascot/Mascot.kt b/src/main/kotlin/com/group_finity/mascot/Mascot.kt
+index 4a2f34a..acb58c3 100644
+--- a/src/main/kotlin/com/group_finity/mascot/Mascot.kt
++++ b/src/main/kotlin/com/group_finity/mascot/Mascot.kt
+@@ -23,6 +23,8 @@
+ package com.group_finity.mascot
+ 
+ import com.group_finity.mascot.behavior.Behavior
++import com.group_finity.mascot.behavior.StationaryIdle
++import com.group_finity.mascot.behavior.UserBehavior
+ import com.group_finity.mascot.environment.MascotEnvironment
+ import com.group_finity.mascot.exception.CantBeAliveException
+ import com.group_finity.mascot.hotspot.Hotspot
+@@ -86,10 +88,120 @@ class Mascot(var imageSet: String) {
+     /**
+      * Handles the mascot's long-term behavior by triggering actions.
+      */
+-    var behavior: Behavior? = null
++    private var activeBehavior: Behavior? = null
++    var behavior: Behavior?
++        get() = activeBehavior
+         set(value) {
+-            field = value?.also { it.init(this) }
++            if (value == null) {
++                manager?.turns?.cancel(this, "cleared")
++                turnToken = null
++                completedTurnToken = null
++                activeBehavior = null
++                return
++            }
++            val currentManager = manager
++            if (currentManager == null) {
++                // Main creates the first behavior before adding the mascot.
++                // It is queued by Manager.add, never initialized early.
++                initialBehavior = value
++            } else if (initialBehavior != null) {
++                // Not in the manager's active list yet: latest initial wins.
++                initialBehavior = value
++            } else {
++                // A natural successor is queued while the final pose is still
++                // being applied.  Do not turn that completion into a cancel.
++                // Any other assignment is an explicit replacement of this
++                // owner's active/queued work; peers are never disturbed.
++                if (completedTurnToken == null) {
++                    currentManager.turns.cancel(this, "replaced") { enterIdle() }
++                }
++                currentManager.turns.request(this, value)
++            }
++        }
++
++    private var initialBehavior: Behavior? = null
++    private var turnToken: Long? = null
++    private var completedTurnToken: Long? = null
++    private var completedTurnTicks: Long = 0
++
++    /** Called once by Manager.add; preserves the existing creation order. */
++    internal fun attach(manager: Manager) {
++        this.manager = manager
++    }
++
++    internal fun enqueueInitialBehavior() {
++        val initial = initialBehavior ?: return
++        initialBehavior = null
++        manager?.turns?.request(this, initial)
++    }
++
++    /** Called only by the manager after every owner has applied its frame. */
++    internal fun startTurn(lease: TurnCoordinator.Lease<Mascot>) {
++        val next = lease.request.payload as Behavior
++        turnToken = lease.token
++        completedTurnToken = null
++        completedTurnTicks = 0
++        activeBehavior = next
++        try {
++            next.init(this)
++        } catch (error: Throwable) {
++            turnToken = null
++            manager?.turns?.cancel(this, "start-failed")
++            throw error
+         }
++    }
++
++    /** A release can arrive after FIFO grant but before Dragged's first tick. */
++    private fun cancelUnstartedDrag() {
++        if (isDragging) return
++        val currentManager = manager ?: return
++        val isDragged: (TurnCoordinator.Request<Mascot>) -> Boolean = {
++            (it.payload as? Behavior)?.behaviorName == UserBehavior.BEHAVIOURNAME_DRAGGED
++        }
++        currentManager.turns.cancelQueued(this, isDragged)
++        val lease = currentManager.turns.active
++        if (lease != null && lease.request.owner === this && isDragged(lease.request)) {
++            turnToken = null
++            completedTurnToken = null
++            currentManager.turns.cancel(this, "drag-released-before-start") { enterIdle() }
++        }
++    }
++
++    /** Coordinator-owned idle is not a queued animation. */
++    internal fun enterIdle() {
++        turnToken = null
++        completedTurnToken = null
++        // Keep the completed pose until Manager.apply has installed the idle.
++        // Its single, zero-velocity pose then becomes visible on that same tick.
++        activeBehavior = StationaryIdle.deferred(this)
++        isDragging = false
++        cursorPosition = null
++        sound = null
++    }
++
++    /** Exact action-playback completion, not a timer or affordance heuristic. */
++    internal fun finishTurn(source: Behavior, elapsedTicks: Long, reason: String? = null) {
++        if (behavior !== source) return
++        val token = turnToken ?: return
++        if (manager == null) return
++        if (reason == null && elapsedTicks > 0) {
++            // Do not replace the final pose before Manager.apply().  The manager
++            // acknowledges this completion after applying it, then grants FIFO.
++            completedTurnToken = token
++            completedTurnTicks = elapsedTicks
++        } else {
++            turnToken = null
++            manager?.turns?.cancel(this, reason ?: "empty") { enterIdle() }
++        }
++    }
++
++    internal fun acknowledgeCompletedTurn() {
++        val token = completedTurnToken ?: return
++        val ticks = completedTurnTicks
++        completedTurnToken = null
++        turnToken = null
++        manager?.turns?.complete(this, token, ticks) { enterIdle() }
++    }
+ 
+     /**
+      * Increments with each [tick].
+@@ -211,6 +323,7 @@ class Mascot(var imageSet: String) {
+                     if (!isPaused) {
+                         try {
+                             behavior?.mouseReleased(e)
++                            cancelUnstartedDrag()
+                         } catch (e: CantBeAliveException) {
+                             logger.log(Level.SEVERE, e) { "Fatal Error" }
+                             Main.showError(localize("SevereShimejiErrorErrorMessage"), e)
+@@ -390,9 +503,7 @@ class Mascot(var imageSet: String) {
+             time++
+         }
+ 
+-        val behaviorName = behavior.toString().substring(14, behavior.toString().length - 1)
+-            .replace(Regex("([a-z])(IE)?([A-Z])"), "$1 $2 $3")
+-            .replace("  ", " ")
++        val behaviorName = behavior?.behaviorName ?: "None"
+ 
+         debugWindow?.set(
+             behaviorName,
+@@ -414,6 +525,9 @@ class Mascot(var imageSet: String) {
+      * Displays the [image], updates the [bounds], and plays the [sound].
+      */
+     fun apply() {
++        // Initialize a deferred idle only after the preceding animated frame
++        // has been visible for its complete duration.
++        (behavior as? StationaryIdle)?.initialize()
+         if (isAnimating) {
+             val image = image
+             if (image != null) {
+@@ -471,9 +585,15 @@ class Mascot(var imageSet: String) {
+         }
+ 
+         isAnimating = false
++        manager?.remove(this)
++        turnToken = null
++        completedTurnToken = null
++        initialBehavior = null
++        activeBehavior = null
++        cursorPosition = null
++        hotspots.clear()
+         window.dispose()
+         affordances.clear()
+-        manager?.remove(this)
+     }
+ 
+     private fun refreshCursor(position: Point) {
+diff --git a/src/main/kotlin/com/group_finity/mascot/TurnCoordinator.kt b/src/main/kotlin/com/group_finity/mascot/TurnCoordinator.kt
+new file mode 100644
+index 0000000..7deee71
+--- /dev/null
++++ b/src/main/kotlin/com/group_finity/mascot/TurnCoordinator.kt
+@@ -0,0 +1,145 @@
++/*
++ * Global animation turn coordination for ShimeLinux.
++ * SPDX-License-Identifier: BSD-3-Clause (the ShimeLinux project license).
++ */
++package com.group_finity.mascot
++
++import java.util.ArrayDeque
++
++/**
++ * One process-wide stage, independent of image set and behavior type.
++ *
++ * The coordinator never guesses completion from a wall-clock timeout.  The
++ * behavior adapter calls [complete] only after its action reports hasNext() ==
++ * false after the final pose tick.  [cancel] is the separate, explicit path for
++ * disposal, removal, lost ground and release from a drag.  A cancelled token can
++ * never complete a later lease.
++ *
++ * All mutation is synchronized because behavior requests can originate on the
++ * Swing event thread while the manager timer is ticking.  [pump] is deliberately
++ * called by the manager after every mascot has applied its frame: the completing
++ * mascot's stationary idle is visible before the next behavior is initialized.
++ */
++class TurnCoordinator<O : Any> {
++    data class Request<O : Any>(val id: Long, val owner: O, val payload: Any)
++    data class Lease<O : Any>(val token: Long, val request: Request<O>)
++    data class Event<O : Any>(
++        val kind: String,
++        val owner: O?,
++        val requestId: Long?,
++        val token: Long?,
++        val ticks: Long,
++    )
++
++    private val pending = ArrayDeque<Request<O>>()
++    private val log = ArrayDeque<Event<O>>()
++    private var sequence = 0L
++    private var tokens = 0L
++
++    var active: Lease<O>? = null
++        @Synchronized get
++        private set
++    var completed = 0L
++        private set
++    var cancelled = 0L
++        private set
++    var maxActive = 0
++        private set
++    var overlaps = 0
++        private set
++
++    val queueSize: Int
++        @Synchronized get() = pending.size
++
++    @Synchronized
++    fun request(owner: O, payload: Any): Request<O> {
++        val request = Request(++sequence, owner, payload)
++        pending.addLast(request)
++        note("queued", owner, request.id, null, 0)
++        return request
++    }
++
++    /** Grant at most one request.  Initialization happens only after the lease exists. */
++    @Synchronized
++    fun pump(start: (Lease<O>) -> Unit): Lease<O>? {
++        if (active != null || pending.isEmpty()) return null
++        val request = pending.removeFirst()
++        val lease = Lease(++tokens, request)
++        active = lease
++        if (active != null) maxActive = 1
++        note("started", request.owner, request.id, lease.token, 0)
++        try {
++            start(lease)
++        } catch (error: Throwable) {
++            // The owner adapter normally disposes itself and cancels.  If it
++            // cannot, fail closed rather than leaving a poisoned active token.
++            if (active?.token == lease.token) {
++                active = null
++                cancelled++
++                note("start-failed", request.owner, request.id, lease.token, 0)
++            }
++            throw error
++        }
++        return lease
++    }
++
++    /** Natural completion.  The owner is frozen before another request can start. */
++    @Synchronized
++    fun complete(owner: O, token: Long, elapsedTicks: Long, enterIdle: () -> Unit) {
++        val lease = active
++        require(lease != null && lease.token == token && lease.request.owner === owner) {
++            "stale or foreign animation completion"
++        }
++        require(elapsedTicks > 0) { "completion requires actual playback" }
++        enterIdle()
++        active = null
++        completed++
++        note("completed", owner, lease.request.id, token, elapsedTicks)
++    }
++
++    /** Explicit interruption/removal; never reported as natural completion. */
++    @Synchronized
++    fun cancel(owner: O, reason: String, enterIdle: (() -> Unit)? = null) {
++        val before = pending.size
++        pending.removeAll { it.owner === owner }
++        val lease = active
++        if (lease != null && lease.request.owner === owner) {
++            enterIdle?.invoke()
++            active = null
++            cancelled++
++            note(reason, owner, lease.request.id, lease.token, 0)
++        } else if (before != pending.size) {
++            note("$reason-queued", owner, null, null, 0)
++        }
++    }
++
++    /** Cancel a queued interaction without disturbing the active performer. */
++    @Synchronized
++    fun cancelQueued(owner: O, predicate: (Request<O>) -> Boolean): Int {
++        val matches = pending.filter { it.owner === owner && predicate(it) }
++        pending.removeAll { it.owner === owner && predicate(it) }
++        for (request in matches) note("cancelled-queued", owner, request.id, null, 0)
++        return matches.size
++    }
++
++    @Synchronized
++    fun snapshot(): Map<String, Any?> = mapOf(
++        "active" to active?.let {
++            mapOf("token" to it.token, "owner" to it.request.owner.toString(),
++                  "request" to it.request.id, "payload" to it.request.payload.toString())
++        },
++        "queue" to pending.map {
++            mapOf("id" to it.id, "owner" to it.owner.toString(), "payload" to it.payload.toString())
++        },
++        "completed" to completed,
++        "cancelled" to cancelled,
++        "maxActive" to maxActive,
++        "overlaps" to overlaps,
++        "events" to log.toList(),
++    )
++
++    private fun note(kind: String, owner: O?, requestId: Long?, token: Long?, ticks: Long) {
++        log.addLast(Event(kind, owner, requestId, token, ticks))
++        while (log.size > 256) log.removeFirst()
++    }
++}
+diff --git a/src/main/kotlin/com/group_finity/mascot/behavior/Behavior.kt b/src/main/kotlin/com/group_finity/mascot/behavior/Behavior.kt
+index ff435bc..b0d2243 100644
+--- a/src/main/kotlin/com/group_finity/mascot/behavior/Behavior.kt
++++ b/src/main/kotlin/com/group_finity/mascot/behavior/Behavior.kt
+@@ -33,6 +33,10 @@ import java.awt.event.MouseEvent
+  * @author Bujju
+  */
+ interface Behavior {
++    /** Stable request name used by the global turn coordinator. */
++    val behaviorName: String
++        get() = javaClass.simpleName
++
+     /**
+      * Initializes the behavior for the given [mascot].
+      */
+diff --git a/src/main/kotlin/com/group_finity/mascot/behavior/StationaryIdle.kt b/src/main/kotlin/com/group_finity/mascot/behavior/StationaryIdle.kt
+new file mode 100644
+index 0000000..5818c61
+--- /dev/null
++++ b/src/main/kotlin/com/group_finity/mascot/behavior/StationaryIdle.kt
+@@ -0,0 +1,73 @@
++/*
++ * Stationary waiting idle for ShimeLinux global animation turns.
++ * SPDX-License-Identifier: BSD-3-Clause (the ShimeLinux project license).
++ */
++package com.group_finity.mascot.behavior
++
++import com.group_finity.mascot.Mascot
++import com.group_finity.mascot.Main
++import com.group_finity.mascot.exception.LostGroundException
++import com.group_finity.mascot.exception.VariableException
++import java.awt.event.MouseEvent
++import javax.swing.SwingUtilities
++
++/**
++ * Displays exactly one idle pose and then holds it indefinitely.
++ *
++ * Construction is deliberately deferred until Mascot.apply(), after the last
++ * animated pose has been displayed.  This behavior is installed outside the
++ * queue.  It never advances an action, translates the anchor, plays a sound, or
++ * requests a turn while another mascot is active.
++ */
++class StationaryIdle private constructor(private val mascot: Mascot) : Behavior {
++    private var initialized = false
++    override val behaviorName: String = "Idle"
++
++    fun initialize() {
++        if (initialized) return
++        initialized = true
++        val configuration = Main.getConfiguration(mascot.imageSet)
++        val idleName = listOf("WaitIdle", "Idle", "Stand").firstOrNull(configuration::hasAction)
++        if (idleName != null) {
++            try {
++                val action = configuration.buildAction(idleName, emptyMap())
++                action.init(mascot)
++                if (action.hasNext()) action.next()
++            } catch (_: LostGroundException) {
++                // Initial spawn can be above the work area.  The first granted
++                // Fall restores the mascot; do not bypass the queue here.
++            } catch (_: VariableException) {
++                // Fail closed: no animation request is made from idle setup.
++            }
++        }
++        mascot.affordances.clear()
++        mascot.hotspots.clear()
++        mascot.sound = null
++        mascot.isDragging = false
++    }
++
++    override fun init(mascot: Mascot) {
++        // Mascot.apply owns one-time initialization, not the behavior setter.
++    }
++
++    override fun next() {
++        // Intentionally stationary.  In particular, do not call action.next().
++    }
++
++    override fun mousePressed(e: MouseEvent) {
++        if (SwingUtilities.isLeftMouseButton(e)) {
++            val configuration = Main.getConfiguration(mascot.imageSet)
++            mascot.behavior = configuration.buildBehavior(UserBehavior.BEHAVIOURNAME_DRAGGED, mascot)
++        }
++    }
++
++    override fun mouseReleased(e: MouseEvent) {
++        // UserBehavior handles release once a queued drag has actually started.
++    }
++
++    override fun toString() = "Behavior[name=$behaviorName]"
++
++    companion object {
++        fun deferred(mascot: Mascot) = StationaryIdle(mascot)
++    }
++}
+diff --git a/src/main/kotlin/com/group_finity/mascot/behavior/UserBehavior.kt b/src/main/kotlin/com/group_finity/mascot/behavior/UserBehavior.kt
+index dcb9d85..56c7dd8 100644
+--- a/src/main/kotlin/com/group_finity/mascot/behavior/UserBehavior.kt
++++ b/src/main/kotlin/com/group_finity/mascot/behavior/UserBehavior.kt
+@@ -26,6 +26,7 @@ import com.group_finity.mascot.Main
+ import com.group_finity.mascot.Mascot
+ import com.group_finity.mascot.action.Action
+ import com.group_finity.mascot.action.ActionBase
++import com.group_finity.mascot.action.InstantAction
+ import com.group_finity.mascot.config.Configuration
+ import com.group_finity.mascot.environment.MascotEnvironment
+ import com.group_finity.mascot.exception.BehaviorInstantiationException
+@@ -55,6 +56,11 @@ class UserBehavior(
+      * The mascot affected by the behavior.
+      */
+     private lateinit var mascot: Mascot
++    private var playedTicks = 0L
++    private var terminalReported = false
++
++    override val behaviorName: String
++        get() = name
+ 
+     /**
+      * The environment that the behavior takes place within.
+@@ -71,22 +77,36 @@ class UserBehavior(
+         try {
+             action.init(mascot)
+             if (!action.hasNext()) {
+-                try {
+-                    mascot.behavior = configuration.buildNextBehavior(name, mascot)
+-                } catch (e: BehaviorInstantiationException) {
+-                    throw CantBeAliveException(localize("FailedInitializeFollowingBehaviorErrorMessage"), e)
+-                }
++                // InstantAction applies its effect during init, even though it
++                // has no pose ticks.  A non-instant action that is already
++                // exhausted/ineffective is an empty turn, not playback.
++                terminalReported = true
++                if (action is InstantAction) mascot.finishTurn(this, 1)
++                else mascot.finishTurn(this, 0, "empty")
++                requestNext()
+             }
+         } catch (e: VariableException) {
+             throw CantBeAliveException(localize("VariableEvaluationErrorMessage"), e)
+         }
+     }
+ 
++    private fun requestNext() {
++        try {
++            val next = configuration.buildNextBehavior(name, mascot)
++            // No successor is a normal return to idle, not an interruption.
++            if (next != null) mascot.behavior = next
++        } catch (e: BehaviorInstantiationException) {
++            throw CantBeAliveException(localize("FailedInitializeFollowingActionsErrorMessage"), e)
++        }
++    }
++
+     @Synchronized
+     override fun next() {
++        if (terminalReported) return // final pose is awaiting Manager.apply/ack
+         try {
+             if (action.hasNext()) {
+                 action.next()
++                playedTicks++
+             }
+ 
+             var hotspotResult = HotspotResult.INACTIVE
+@@ -121,6 +141,7 @@ class UserBehavior(
+                         logger.info { "Out of the screen bounds ($mascot, $this)" }
+ 
+                         mascot.resetAnchor()
++                        mascot.finishTurn(this, playedTicks, "out-of-bounds")
+ 
+                         try {
+                             mascot.behavior = configuration.buildBehavior(BEHAVIOURNAME_FALL)
+@@ -128,19 +149,22 @@ class UserBehavior(
+                             throw CantBeAliveException(localize("FailedFallingActionInitializeErrorMessage"), e)
+                         }
+                     }
+-                } else {
+-                    logger.info { "Completed behavior ($mascot, $this)" }
+-
+-                    try {
+-                        mascot.behavior = configuration.buildNextBehavior(name, mascot)
+-                    } catch (e: BehaviorInstantiationException) {
+-                        throw CantBeAliveException(localize("FailedInitializeFollowingActionsErrorMessage"), e)
+-                    }
+                 }
+             }
++
++            // Check after this tick's pose/hotspot work.  Manager.apply displays
++            // the final pose before acknowledging the lease; nested actions
++            // produce one completion for the whole behavior, not per child.
++            if (mascot.behavior === this && !action.hasNext()) {
++                logger.info { "Completed behavior ($mascot, $this)" }
++                terminalReported = true
++                mascot.finishTurn(this, playedTicks)
++                requestNext()
++            }
+         } catch (_: LostGroundException) {
+             mascot.cursorPosition = null
+             mascot.isDragging = false
++            mascot.finishTurn(this, playedTicks, "lost-ground")
+ 
+             try {
+                 mascot.behavior = configuration.buildBehavior(configuration.schema.getString(BEHAVIOURNAME_FALL))
+@@ -205,6 +229,7 @@ class UserBehavior(
+ 
+             if (mascot.isDragging) {
+                 mascot.isDragging = false
++                mascot.finishTurn(this, playedTicks, "drag-released")
+ 
+                 try {
+                     mascot.behavior = configuration.buildBehavior(configuration.schema.getString(BEHAVIOURNAME_THROWN))
+diff --git a/src/test/kotlin/TurnCoordinatorTest.kt b/src/test/kotlin/TurnCoordinatorTest.kt
+new file mode 100644
+index 0000000..281e8c4
+--- /dev/null
++++ b/src/test/kotlin/TurnCoordinatorTest.kt
+@@ -0,0 +1,98 @@
++/* SPDX-License-Identifier: BSD-3-Clause (the ShimeLinux project license). */
++import com.group_finity.mascot.TurnCoordinator
++import kotlin.test.Test
++import kotlin.test.assertEquals
++import kotlin.test.assertFailsWith
++import kotlin.test.assertNull
++import kotlin.test.assertTrue
++
++class TurnCoordinatorTest {
++    private class Owner(val name: String) {
++        var idle = 0
++        var started = mutableListOf<Any>()
++        override fun toString() = name
++    }
++
++    @Test fun fifoAcrossOwnersAndTypes() {
++        val c = TurnCoordinator<Owner>()
++        val a = Owner("Blue"); val b = Owner("Orange"); val d = Owner("Green")
++        c.request(a, "Walk"); c.request(b, "Dragged"); c.request(d, "FightCombo")
++        val first = c.pump { it.request.owner.started += it.request.payload }!!
++        assertNull(c.pump { error("must not overlap") })
++        assertEquals(listOf<Any>("Walk"), a.started)
++        assertEquals(emptyList(), b.started)
++        c.complete(a, first.token, 12) { a.idle++ }
++        assertEquals(1, a.idle)
++        val second = c.pump { it.request.owner.started += it.request.payload }!!
++        assertEquals("Dragged", second.request.payload)
++        c.cancel(b, "drag-released") { b.idle++ }
++        val third = c.pump { it.request.owner.started += it.request.payload }!!
++        assertEquals("FightCombo", third.request.payload)
++        assertEquals(1, c.maxActive)
++        assertEquals(0, c.overlaps)
++    }
++
++    @Test fun staleAndForeignCompletionCannotReleaseStage() {
++        val c = TurnCoordinator<Owner>()
++        val a = Owner("A"); val b = Owner("B")
++        val lease = c.run { request(a, "Wave"); pump {} }!!
++        assertFailsWith<IllegalArgumentException> { c.complete(b, lease.token, 1) {} }
++        assertFailsWith<IllegalArgumentException> { c.complete(a, lease.token + 1, 1) {} }
++        assertFailsWith<IllegalArgumentException> { c.complete(a, lease.token, 0) {} }
++        c.cancel(a, "removed")
++        c.request(b, "Run")
++        val next = c.pump {}!!
++        assertFailsWith<IllegalArgumentException> { c.complete(a, lease.token, 5) {} }
++        c.complete(b, next.token, 5) {}
++        assertEquals(1, c.completed)
++        assertEquals(1, c.cancelled)
++    }
++
++    @Test fun multipleExplicitRequestsKeepTheirOrder() {
++        val c = TurnCoordinator<Owner>()
++        val a = Owner("A")
++        c.request(a, "Wave"); c.request(a, "Jump"); c.request(a, "Run")
++        for (name in listOf("Wave", "Jump", "Run")) {
++            val lease = c.pump {}!!
++            assertEquals(name, lease.request.payload)
++            c.complete(a, lease.token, 3) {}
++        }
++        assertEquals(3, c.completed)
++        assertEquals(0, c.queueSize)
++    }
++
++    @Test fun removalCancelsQueuedRequestsAndActiveLease() {
++        val c = TurnCoordinator<Owner>()
++        val a = Owner("A"); val b = Owner("B")
++        c.request(a, "Walk"); c.request(a, "Wave"); c.request(b, "Run")
++        c.pump {}
++        c.cancel(a, "disposed")
++        assertEquals(1, c.queueSize)
++        assertNull(c.active)
++        val lease = c.pump {}!!
++        assertEquals(b, lease.request.owner)
++    }
++
++    @Test fun releasedBeforeDragStartsCancelsOnlyThatQueuedRequest() {
++        val c = TurnCoordinator<Owner>()
++        val a = Owner("A"); val b = Owner("B")
++        c.request(b, "Walk")
++        c.request(a, "Dragged")
++        c.request(a, "Wave")
++        assertEquals(1, c.cancelQueued(a) { it.payload == "Dragged" })
++        val first = c.pump {}!!
++        assertEquals(b, first.request.owner)
++        c.complete(b, first.token, 2) {}
++        assertEquals("Wave", c.pump {}!!.request.payload)
++    }
++
++    @Test fun failedInitializationDoesNotPoisonTheQueue() {
++        val c = TurnCoordinator<Owner>()
++        val a = Owner("A"); val b = Owner("B")
++        c.request(a, "Broken"); c.request(b, "Wave")
++        assertFailsWith<IllegalStateException> { c.pump { error("bad action") } }
++        assertNull(c.active)
++        assertEquals("Wave", c.pump {}!!.request.payload)
++        assertTrue(c.snapshot()["events"].toString().contains("start-failed"))
++    }
++}

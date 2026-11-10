@@ -55,6 +55,7 @@ FAMILY_ANCHOR = {
 #   durations per-pose durations in 40ms Shimeji ticks; ints or Shimeji-ee
 #             expressions, e.g. "${6+Math.random()*4}"
 #   velocity  optional per-pose "vx,vy" (Move actions)
+#   duration  optional whole-action Duration cap (ticks), important for Move
 #   embed     optional dict of extra attributes (Embedded actions)
 #   plays     pose order, as 1-based indexes into frames (defaults to 1..n)
 #   compat    also emit as this XML action name (shared art, e.g. GrabWall)
@@ -136,12 +137,12 @@ _add("Falling", prefix="fall", frames=48, family="air", type="Embedded", border=
 _add("GrabCeiling", prefix="hang", frames=16, family="ceiling", type="Stay", border="Ceiling",
      durations=[2] * 16,
      phase={"Blue": 0, "Orange": 4, "Yellow": 8, "Green": 12}, regen=True)
-# 0.42px/tick: the ceiling grip has to sweep exactly the sprite's own velocity
-# to stay glued to the surface, and a reference-length arm can only travel
-# ~12px along the ceiling line per stance. Climbing the ceiling is therefore
-# deliberately slower than climbing a wall.
+# ShimeLinux and Shijima parse Velocity as integer pixels per 40ms tick.
+# The ceiling grip sweeps 18px over 36 planted ticks (0.5px/tick); alternate
+# 0 and -1 so the average exactly matches the rig without a fractional XML
+# value (which ShimeLinux rejects at configuration-load time).
 _add("ClimbCeiling", prefix="swing", frames=48, family="ceiling", type="Move", border="Ceiling",
-     durations=[1] * 48, velocity=["-0.42,0"] * 48,
+     durations=[1] * 48, velocity=(["0,0", "-1,0"] * 24),
      phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36}, regen=True)
 _add("GrabWall", prefix="wall_hold", anim="wall_hold", frames=16, family="wall", type="Stay",
      border="Wall", durations=[2] * 16,
@@ -180,6 +181,16 @@ _add("Victory", prefix="victory", frames=7, family="floor", type="Animate", bord
 _add("Idle", prefix="idle", frames=8, family="floor", type="Animate", border="Floor",
      durations=[3] * 8,
      phase={"Blue": 0, "Orange": 2, "Yellow": 4, "Green": 6}, regen=True)
+# Reference locomotion replaces the stock filled-head walk/run/dance art.
+# Walk/Run remain host Move actions so the anchor translates at the XML velocity.
+_add("Walk", prefix="walk", frames=6, family="floor", type="Move", border="Floor",
+     durations=[2] * 6, velocity=["-3,0"] * 6, duration=48, regen=True)
+_add("Run", prefix="run", frames=11, family="floor", type="Move", border="Floor",
+     durations=[1] * 11, velocity=["-8,0"] * 11, duration=33, regen=True)
+_add("Dance", prefix="dance", frames=8, family="floor", type="Animate", border="Floor",
+     durations=[2, 2, 3, 3, 2, 3, 2, 3], regen=True)
+_add("Jump", prefix="jump", frames=8, family="floor", type="Animate", border="Floor",
+     durations=[4, 2, 2, 3, 3, 2, 4, 5], regen=True)
 
 # A real low-to-the-floor crawl (separate from wall/ceiling crawling).  It is a
 # finite moving Animate action so it can be selected directly as a behaviour;
@@ -220,14 +231,16 @@ FLOOR_ONLY_GATE = "#{mascot.environment.floor.isOn(mascot.anchor)}"
 CURSOR_NEAR = ("${Math.abs(mascot.anchor.x - mascot.environment.cursor.x) < 300 "
                "&& Math.abs(mascot.anchor.y - mascot.environment.cursor.y) < 300}")
 
-# ShimeLinux 1.4.0's Shimeji-ee-compatible script context exposes the current
-# `mascot`/`action`, environment, Math helpers, and population counts. Its
-# manager does not expose a stable peer identity or shared animation state, so
-# do not invent a cross-mascot condition; desynchronize with independent pools,
-# weights, and tempo profiles instead.
+# ShimeLinux exposes the current `mascot`/`action`, environment and Math
+# helpers to Nashorn.  Global turn coordination lives in tools/host_coord.py
+# and is wired into the XML by patch_xml.py; these weights now feed the
+# central FIFO turn selector instead of independent fail-open time slots.
 # name -> (base frequency, gate, condition)
 BEHAVIORS = [
     ("Idle",         18, "floor", None),        # animated breathing / weight shift
+    ("Walk",         24, "floor", None),        # reference walk cycle
+    ("Run",          12, "floor", None),        # reference run cycle
+    ("Jump",         10, "floor", None),        # anticipation / landing
     ("Crawl",        14, "floor_only", None),   # active floor locomotion
     ("Dance",        10, "floor_only", None),   # only on the real work-area floor
     ("Wave",         20, "floor", None),

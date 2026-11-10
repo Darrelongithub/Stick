@@ -43,8 +43,14 @@ B_END = "\t\t<!-- AVA:generated:behaviors:end -->"
 
 # Elements this script owns: anything a previous *unmarked* run of the tool
 # (or the original handwritten patch) left behind.
-REMOVABLE_ACTIONS = set(SPEC.ACTIONS) | set(SPEC.SEQUENCES)
-REMOVABLE_BEHAVIORS = set(SPEC.ACTIONS) | set(SPEC.SEQUENCES) | {"Dance", "Trip"}
+HOST_ACTIONS = {"WaitIdle"}
+# Remove the superseded XML-script experiment when re-patching older trees.
+OLD_HOST_ACTIONS = {"AvaTurn", "AvaRelease", "AvaRested", "WaitTurn"}
+OLD_HOST_BEHAVIORS = {"AvaTurn", "WaitTurn"}
+REQUIRED_HOST_BEHAVIORS = {"Fall", "Dragged", "Thrown", "ChaseMouse"}
+REMOVABLE_ACTIONS = set(SPEC.ACTIONS) | set(SPEC.SEQUENCES) | HOST_ACTIONS | OLD_HOST_ACTIONS
+REMOVABLE_BEHAVIORS = (set(SPEC.ACTIONS) | set(SPEC.SEQUENCES)
+                       | OLD_HOST_BEHAVIORS | {"Dance", "Trip"})
 
 
 def read(path):
@@ -112,6 +118,24 @@ def strip_elements(raw, tag, names):
                 end += 1
             raw = raw[:m.start()] + raw[end:]
     return raw
+
+
+def remove_legacy_coordinator_attributes(raw):
+    """Remove injected JS without erasing genuine stock affordances/gates.
+
+    Earlier builds also decorated stock actions (not just generated blocks).
+    Their force conditions have no meaning in the native coordinator.  Restore
+    the ordinary action gate; only the five injected Hug affordances are removed.
+    """
+    attr = re.compile(r'\s+(Condition|Affordance)="([^"]*avaCoord[^"]*)"')
+
+    def clean(match):
+        key, value = match.groups()
+        if key == "Affordance":
+            return ""
+        return ' Condition="true"' if "return f('force'" in value else ""
+
+    return attr.sub(clean, raw)
 
 
 def fix_dance(raw):
@@ -268,6 +292,8 @@ def smooth_stock_motion(raw, char):
             re.S)
 
         def tune(match):
+            if name in SPEC.ACTIONS:
+                return match.group(1)   # generated reference cycle owns its timing
             body = re.sub(r'Velocity="-?\d+,0"', f'Velocity="{vx},0"', match.group(1))
             return re.sub(r'Duration="\d+"', f'Duration="{duration}"', body)
 
@@ -392,6 +418,8 @@ def action_xml(name, eol, char):
         attrs.append(f'BorderType="{spec["border"]}"')
     if spec.get("loop"):
         attrs.append(f'Loop="{spec["loop"]}"')
+    if spec.get("duration") is not None:
+        attrs.append(f'Duration="{spec["duration"]}"')
     for k, v in (spec.get("embed") or {}).items():
         attrs.append(f'{k}="{v}"')
     head = "\t\t<Action " + " ".join(attrs) + ">"
@@ -429,17 +457,51 @@ def sequence_xml(name, eol):
     return eol.join(lines)
 
 
+def turn_candidates(char):
+    """Weighted autonomous pool for the central FIFO selector."""
+    weights = {n: SPEC.freq(n, char) for n, _f, _g, _c in SPEC.BEHAVIORS}
+    for sig, freq in SPEC.signature_behaviors(char):
+        weights[sig] = freq
+    names = [n for n, w in weights.items() if w > 0 and n in generated_names(char)]
+    random.Random("ava-turn-pool-" + char).shuffle(names)
+    return [(n, weights[n]) for n in names]
+
+
+def host_actions_xml(eol):
+    """One static pose for the patched ShimeLinux idle behavior.
+
+    The host installs this outside the turn queue and never advances it while
+    another mascot owns the stage.  It is not a timed animation.
+    """
+    idle = SPEC.frame_names("Idle")[0]
+    anchor = SPEC.FAMILY_ANCHOR["floor"]
+    return eol.join([
+        '\t\t<Action Name="WaitIdle" Type="Animate">',
+        '\t\t\t<Animation>',
+        f'\t\t\t\t<Pose Image="/{idle}" ImageAnchor="{anchor}" Velocity="0,0" Duration="1" />',
+        '\t\t\t</Animation>',
+        '\t\t</Action>',
+    ])
+
+
 def behavior_xml(name, char, eol):
+    """Normal ShimeLinux behavior; the patched host gates every request.
+
+    Keep the environmental gate in XML, but no global state lives in scripts.
+    The host coordinator intercepts autonomous, menu, hotspot and drag/throw
+    requests before their actions can initialize or render.
+    """
     freq = SPEC.freq(name, char)
     signature_defaults = dict(SPEC.signature_behaviors(char))
     if name in signature_defaults:
         freq = freq or signature_defaults[name]
-    # A move that is only offered during its activity slot is available a
-    # quarter of the time, so its weight is raised to keep it about as common
-    # as it was while still being spread across the crew (see SLOT_TICKS).
-    if SPEC.activity_slot(name) is not None:
-        freq = max(1, int(round(freq * SPEC.SLOT_FREQ_SCALE)))
-    cond = SPEC.behaviour_condition(name, char)
+    gate = next((g for n, _f, g, _c in SPEC.BEHAVIORS if n == name), None)
+    if gate == "floor":
+        cond = SPEC.FLOOR_GATE
+    elif gate == "floor_only":
+        cond = SPEC.FLOOR_ONLY_GATE
+    else:
+        cond = None
     cond_attr = f' Condition="{esc(cond)}"' if cond else ""
     return f'\t\t<Behavior Name="{name}" Frequency="{freq}"{cond_attr} />'
 
@@ -462,9 +524,38 @@ def behavior_names(char):
 
 
 # ---------------------------------------------------------------- drivers
+def disable_stock_autonomy(raw, char):
+    """Only rebuilt reference actions are selected autonomously.
+
+    Stock routes remain available to the host and explicit menu requests; the
+    native coordinator still gates those requests.  Their zero frequency keeps
+    unreconstructed stock art out of the autonomous reference repertoire.
+    """
+    allowed = set(generated_names(char)) | REQUIRED_HOST_BEHAVIORS
+
+    def zero(m):
+        tag = m.group(0)
+        name = re.search(r'\bName="([^"]+)"', tag)
+        if not name or name.group(1) in allowed:
+            return tag
+        tag = re.sub(r'\bFrequency="\d+"', 'Frequency="0"', tag)
+        if "Hidden=" not in tag:
+            insert = ' Hidden="true"'
+            if tag.endswith("/>"):
+                tag = tag[:-2] + insert + "/>"
+            else:
+                tag = tag[:-1] + insert + ">"
+        return tag
+
+    raw = re.sub(r"<Behavior\b[^>]*>", zero, raw)
+    raw = re.sub(r"<BehaviorReference\b[^>]*/>", zero, raw)
+    return raw
+
+
 def patch_actions(path, char):
     raw = read(path)
     eol = eol_of(raw)
+    raw = remove_legacy_coordinator_attributes(raw)
     raw = disable_breeding(raw)
     raw = strip_block(raw, A_START, A_END)
     # sequences are ours too - strip them, or re-running duplicates them
@@ -473,6 +564,7 @@ def patch_actions(path, char):
     block = [A_START] + [action_xml(n, eol, char)
                          for n in SPEC.generated_actions_for(char)]
     block += [sequence_xml(n, eol) for n in SPEC.SEQUENCES]
+    block += [host_actions_xml(eol)]
     block += [A_END]
     if "</ActionList>" not in raw:
         raise SystemExit(f"REFUSING to patch {path}: no </ActionList>")
@@ -492,6 +584,7 @@ def patch_actions(path, char):
 def patch_behaviors(path, char):
     raw = read(path)
     eol = eol_of(raw)
+    raw = remove_legacy_coordinator_attributes(raw)
     raw = strip_block(raw, B_START, B_END)
     raw = strip_elements(raw, "Behavior", {n for n in REMOVABLE_BEHAVIORS
                                            if n not in ("Dance", "Trip")})
@@ -504,9 +597,10 @@ def patch_behaviors(path, char):
     if "</BehaviorList>" not in raw:
         raise SystemExit(f"REFUSING to patch {path}: no </BehaviorList>")
     raw = insert_before_line(raw, "</BehaviorList>", eol.join(block), eol)
+    raw = disable_stock_autonomy(raw, char)
     write(path, raw)
-    print(f"  {path}: {len(behavior_names(char))} behaviours "
-          f"(breeding off)")
+    print(f"  {path}: {len(behavior_names(char))} coordinated behaviours "
+          f"(breeding off, stock autonomy off)")
 
 
 def patch_char(char):

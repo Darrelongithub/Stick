@@ -20,11 +20,12 @@ filled).  So Orange alone reads bigger while it walks, runs, sits, dances,
 bounces or hugs, and snaps back to normal on its next generated move.
 
 The fix is to normalise a character's original-pack frames - and only the ones
-whose measured scale is off, so a character's own variant art (Yellow's
-reading pose, Green's dancing, ...) is left exactly as drawn, because those are
-the right size already.  Frames are re-rendered from the shared original,
-recoloured to the character's own body colour, so the result is pixel-identical
-in proportion to every other animation the character can play.
+whose measured scale is off, so a character's own variant art is left exactly
+as drawn.  This is a *scale* repair for legacy stock art, not a head-style
+conversion: the autonomous reference repertoire is generated hollow-headed art,
+while required host interactions may still use the pack's filled-head stock
+frames.  Frames are re-rendered from the shared original and recoloured to the
+character's own body colour.
 
 Usage
     python3 tools/normalize_stock_art.py           # measure, then fix in place
@@ -67,7 +68,10 @@ SCALE_TOLERANCE = 0.06
 # was drawn on a 128x137 canvas with its anchor on the bottom row (64,137);
 # the shared original is 128x128 anchored at (64,128).  Replacing the art
 # makes the old anchor sink the figure 9px below the floor line.
-ANCHOR_FIXES = {"Orange": {"Dance": "64,128"}}
+# Dance is now generated reference art with its own 160x160 anchor.  Do not
+# rewrite it back to the legacy stock anchor.  Keep this hook for genuinely
+# stock actions only.
+ANCHOR_FIXES = {}
 
 NS = "{http://www.group-finity.com/Mascot}"
 
