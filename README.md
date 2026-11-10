@@ -1,3 +1,9 @@
+> **Reference-motion rework:** this branch restores the pre-PR-9 pack and adds
+> eight single-pass actions extracted from `output.mp4` for the four existing
+> figures. Each returns to roaming instead of replaying itself. No native FIFO
+> host patch is needed. [Changes and verification](docs/reference-rework.md).
+> [One-pass movement preview](docs/video-actions-once.gif).
+
 # Stick — AvA Shimeji 4-Pack (Blue / Orange / Yellow / Green)
 
 Animation vs Animator style desktop buddies for **Shimeji-ee on Linux**, with a
@@ -8,18 +14,19 @@ class support for **Hyprland**.
 
 Recently rebuilt:
 
-* **The crew no longer acts in unison.** Every character gets a permanent
-  quarter-cycle offset and activity class for unpatched hosts, and the
-  **ShimeLinux patch** adds a native global FIFO stage so only one character
-  performs *any* animation at a time — menu, drag, fall and image set included.
-  See [Nobody does it at the same time](#nobody-does-it-at-the-same-time) and
-  [ShimeLinux native turns](#shimelinux-one-performer-at-a-time-native-patch).
+* **The crew no longer acts in unison.** Every character now gets a permanent
+  quarter-cycle offset, and the watch-me moves are split into four activity
+  classes, so at any instant exactly one character may dance, crawl, fight or
+  potion-brew — never all four. Nothing is remapped as "already running", so
+  the whole repertoire stays available; see
+  [Nobody does it at the same time](#nobody-does-it-at-the-same-time).
 * **Nobody replays the same move twice in a row.** Every behaviour this pack
   generates refuses to start while the character is still finishing it, which
   is what used to produce wave → wave → wave.
 * **One figure scale for all four.** Orange's original-pack art was drawn
-  ~1.10× larger than the other three, so Orange got bigger on
-  Walk/Run/Sit/Dance and shrank again on the next move. Its stock frames are now the shared originals in Orange's own
+  ~1.10× larger with a 37 px hollow head where the other three use a 24 px
+  filled one, so Orange got bigger on Walk/Run/Sit/Dance and shrank again on
+  the next move. Its stock frames are now the shared originals in Orange's own
   colour. `tools/normalize_stock_art.py` measures this and refuses to guess.
 * **The crawl is a crawl again, not a spider.** The old rig stretched the
   shoulder line almost horizontally with straight 30 px limbs splayed off both
@@ -345,10 +352,6 @@ mid-air or mimes a guitar while hanging from the ceiling.
 
 ### Nobody does it at the same time
 
-This is the XML-level desynchronisation for stock Shimeji-ee / Shijima-Qt hosts
-that cannot coordinate peers natively. The patched ShimeLinux host below is
-stricter: it queues *all* animation requests globally, not just activity classes.
-
 Four mascots that each pick from the same weighted pool will, sooner or later,
 crawl at the same time — and four identical crawls read as one insect, not a
 crew. Shimeji-ee gives a behaviour condition the mascot as `mascot` (a Nashorn
@@ -375,11 +378,8 @@ All four mascots are ticked by the same timer, so the classes are disjoint: at
 any instant exactly one character may perform, one may be quiet, one may act and
 one may do a hobby. The classes rotate every 10 seconds (`SLOT_TICKS`), so every
 character still gets the whole repertoire — just never at the same moment as a
-crew mate. Idle, Walk, Run and Stretch are deliberately *not* classed in the XML: four
-stickmen walking about should look alive, not queued. The native ShimeLinux
-patch does queue Walk/Run too (only its stationary waiting idle is exempt), and
-Walk/Run now carry finite `Duration` caps so a target-driven Move cannot hold
-the global stage forever.
+crew mate. Idle, Walk, Run and Stretch are deliberately *not* classed: four
+stickmen walking about should look alive, not queued.
 
 Alongside that, each behaviour refuses to start while the character is still
 sitting in it (`mascot.getBehavior().toString() != 'Behavior(Dance)'`), which
@@ -388,32 +388,6 @@ kills the wave → wave → wave repeat. Both rules are wrapped in
 desynchronising rather than the behaviour. The built-in Python runner applies
 the same class rules and reports `simultaneous same-class animations` and
 `back-to-back repeats` in `--simulate`, both of which are 0.
-
-### ShimeLinux: one performer at a time (native patch)
-
-`linux/shimelinux/` contains a source patch for
-[ShimeLinux](https://github.com/BujjuIsABee/shimelinux) pinned to upstream
-`b131465`. It adds a process-wide `TurnCoordinator<Mascot>`:
-
-- one active lease across **all image sets and behavior types**;
-- FIFO requests from natural successors, menus, drag, throw and fall recovery;
-- completion acknowledged only after the final pose is applied, then the
-  completing mascot enters a stationary idle before the next lease starts;
-- explicit cancel paths for disposal/removal, lost ground, out-of-bounds and
-  drag release (including release before a queued drag is granted);
-- no menu/drag/fall bypass and no timeout-based "probably finished" guessing.
-
-```bash
-python3 linux/shimelinux/install.py --source ~/src/shimelinux
-python3 linux/shimelinux/install.py --source ~/src/shimelinux --install-pack --activate
-```
-
-Headless core verification (1200 ticks, all four image sets): **22 completed,
-10 cancelled, overlaps=0, idleMovement=0, pauseViolations=0**. Details and limits
-are in [`docs/verification.md`](docs/verification.md) and
-[`linux/shimelinux/README.md`](linux/shimelinux/README.md).
-
-![Native playback contact sheet](docs/native-playback.png)
 
 ### One figure scale
 
@@ -537,10 +511,9 @@ Hyprland session**.
 ## Regression checks
 
 ```bash
-python3 -m pytest -q                      # or: python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tests -v   # stdlib only; fake desktop commands
 python3 tools/validate.py                 # needs Pillow; includes anti-cloning checks
 python3 runner/ava_runner.py --simulate 10000 --seed 42
-python3 tools/review_animations.py        # rendered audit -> docs/animation-audit.md
 ```
 
 Tests cover Hyprland rule/version boundaries, Lua autostart, repeated

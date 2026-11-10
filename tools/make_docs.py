@@ -26,18 +26,6 @@ def frame(char, name):
     return Image.open(os.path.join(ROOT, "AVA Shimejis", char, name)).convert("RGBA")
 
 
-def head_frame(char, name):
-    """Original uploaded pack frame from git HEAD, for before/after sheets."""
-    import subprocess
-    from io import BytesIO
-    try:
-        data = subprocess.run(["git", "show", f"HEAD:AVA Shimejis/{char}/{name}"],
-                              cwd=ROOT, capture_output=True, check=True).stdout
-    except Exception:
-        return None
-    return Image.open(BytesIO(data)).convert("RGBA")
-
-
 def checker(w, h, size=8, c1=(58, 60, 68), c2=(46, 48, 56)):
     im = Image.new("RGB", (w, h), c1)
     d = ImageDraw.Draw(im)
@@ -144,6 +132,10 @@ def before_after():
              ("Green", "hang01.png", "128x216 - hung 211px below the ceiling anchor (2.3x everyone else)"),
              ("Blue", "lay01.png", "130x128 - art cut on BOTH sides, so lying down looked beheaded"),
              ("Orange", "wall_climb01.png", "128x152 - legs sank 16px under the anchor: feet chopped at the screen bottom")]
+    before = "/tmp/orig_pack"
+    if not os.path.isdir(before):
+        print("docs/before-after.png skipped: pre-change frames not in /tmp/orig_pack")
+        return
     S, PAD, CAP, LBL = 1.4, 16, 34, 18
     CELL = int(160 * S)
     W = PAD + len(pairs) * (CELL + PAD)
@@ -155,11 +147,10 @@ def before_after():
            "AFTER  -  regenerated, art 16px clear of every edge", fill=(150, 245, 170))
     for i, (ch, fn, note) in enumerate(pairs):
         x = PAD + i * (CELL + PAD)
-        for row in (0, 1):
+        for row, src in ((0, os.path.join(before, ch, fn)),
+                         (1, os.path.join(ROOT, "AVA Shimejis", ch, fn))):
             y = PAD + LBL + row * (CELL + PAD + LBL)
-            im = head_frame(ch, fn) if row == 0 else frame(ch, fn)
-            if im is None:
-                continue
+            im = Image.open(src).convert("RGBA")
             w, h = im.size
             sc = min(1.0, (CELL - 4) / max(w, h))
             nw, nh = max(1, int(w * sc)), max(1, int(h * sc))
@@ -196,6 +187,10 @@ def crew_proportions():
     Needs the pre-change frames in /tmp/orig_pack (same convention as
     before_after), because the whole point is the comparison.
     """
+    before = "/tmp/orig_pack"
+    if not os.path.isdir(before):
+        print("docs/crew-proportions.png skipped: pre-change frames not in /tmp/orig_pack")
+        return
     rows = [("stand01.png", "standing"), ("walk01.png", "walking"),
             ("run01.png", "running"), ("dance01.png", "dancing")]
     S, PAD, LBL, CAP = 1.6, 18, 24, 34
@@ -210,10 +205,11 @@ def crew_proportions():
     d.text((PAD, y2 - 20), "AFTER  -  one figure scale for all four", fill=(150, 245, 170))
     for i, (name, label) in enumerate(rows):
         x = PAD + i * (CELL + PAD)
-        for row in (0, 1):
-            im = head_frame("Orange", name) if row == 0 else frame("Orange", name)
-            if im is None:
+        for row, folder in ((0, before), (1, ROOT)):
+            path = os.path.join(folder, "AVA Shimejis", "Orange", name)
+            if not os.path.isfile(path):
                 continue
+            im = Image.open(path).convert("RGBA")
             if im.size != (160, 160):
                 canvas = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
                 canvas.alpha_composite(im, (16, 16))
@@ -229,6 +225,10 @@ def crew_proportions():
 
 def crawl_rebuild():
     """The old four-legged crawl next to the rebuilt one."""
+    before = "/tmp/orig_pack"
+    if not os.path.isdir(before):
+        print("docs/crawl-rebuild.png skipped: pre-change frames not in /tmp/orig_pack")
+        return
     picks = [1, 9, 17, 25, 33, 41]
     S, PAD, LBL = 1.3, 16, 26
     cellw = int(160 * S)
@@ -239,13 +239,12 @@ def crawl_rebuild():
     d.text((PAD, 6), "BEFORE  -  head dragging, four splayed limbs", fill=(255, 130, 130))
     d.text((PAD, PAD + LBL + cellw + 6), "AFTER  -  head up, short back, folded limbs",
            fill=(150, 245, 170))
-    for row in (0, 1):
+    for row, folder in ((0, before), (1, ROOT)):
         top = PAD + LBL + row * (cellw + LBL + 6)
         for i, index in enumerate(picks):
             name = f"crawl{index:02d}.png"
-            im = head_frame("Blue", name) if row == 0 else frame("Blue", name)
-            if im is None:
-                continue
+            path = os.path.join(folder, "AVA Shimejis", "Blue", name)
+            im = Image.open(path).convert("RGBA")
             if im.size != (160, 160):
                 canvas = Image.new("RGBA", (160, 160), (0, 0, 0, 0))
                 canvas.alpha_composite(im, (16, 16))
@@ -256,7 +255,7 @@ def crawl_rebuild():
 
 # The old Falling rig is in git history; read it straight out of the object
 # store so the before/after sheet does not depend on a scratch directory.
-FALL_BEFORE_REVS = ("HEAD",)
+FALL_BEFORE_REVS = ("03f6510", "43c2e92")
 
 
 def _git_frame(rev, name):
