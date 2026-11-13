@@ -63,7 +63,13 @@
 					mascot.environment.activeIE.leftBorder.isOn(mascot.anchor) ) : (
 					mascot.environment.workArea.leftBorder.isOn(mascot.anchor) || 
 					mascot.environment.activeIE.rightBorder.isOn(mascot.anchor) ) }">
-			<Behavior Name="HoldOntoWall" Frequency="100" Hidden="true"  Condition="#{(function(){try{return String(mascot.getBehavior()) != 'Behavior(HoldOntoWall)' &amp;&amp; String(mascot.getBehavior()) != 'Behavior[name=HoldOntoWall]';}catch(ex){return true;}})()}" />
+			<Behavior Name="HoldOntoWall" Frequency="100" Hidden="true"  Condition="#{(function(){try{return String(mascot.getBehavior()) != 'Behavior(HoldOntoWall)' &amp;&amp; String(mascot.getBehavior()) != 'Behavior[name=HoldOntoWall]';}catch(ex){return true;}})()}">
+				<NextBehaviorList Add="false">
+					<BehaviorReference Name="ClimbAlongWall" Frequency="40" Condition="#{(function(){try{return (mascot.lookRight ? mascot.environment.workArea.rightBorder.isOn(mascot.anchor) : mascot.environment.workArea.leftBorder.isOn(mascot.anchor)) &amp;&amp; mascot.anchor.y &gt; mascot.environment.workArea.top+64;}catch(ex){return true;}})()}" />
+					<BehaviorReference Name="ClimbHalfwayAlongWall" Frequency="40" Condition="#{(function(){try{return (mascot.lookRight ? mascot.environment.workArea.rightBorder.isOn(mascot.anchor) : mascot.environment.workArea.leftBorder.isOn(mascot.anchor)) &amp;&amp; mascot.anchor.y &gt; mascot.environment.workArea.top+64;}catch(ex){return true;}})()}" />
+					<BehaviorReference Name="FallFromWall" Frequency="20" Condition="#{(function(){try{return !mascot.environment.floor.isOn(mascot.anchor);}catch(ex){return true;}})()}" />
+				</NextBehaviorList>
+			</Behavior>
 			<Behavior Name="FallFromWall" Frequency="50" Condition="${!mascot.environment.floor.isOn(mascot.anchor)}" Hidden="true" />
 		</Condition>
 		

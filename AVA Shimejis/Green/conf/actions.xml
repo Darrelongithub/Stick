@@ -1039,7 +1039,7 @@
 		</Action>
 
 		<Action Name="ClimbHalfwayAlongWall" Type="Sequence" Loop="false">
-			<ActionReference Name="ClimbWall" TargetY="${mascot.environment.workArea.top+64 + Math.random()*(mascot.environment.workArea.height-128)}" />
+			<ActionReference Name="ClimbWall" TargetY="${mascot.anchor.y-(mascot.anchor.y-mascot.environment.workArea.top-64)*(0.25+Math.random()*0.5)}" />
 		</Action>
 
 		<Action Name="ClimbAlongWall" Type="Sequence" Loop="false">
