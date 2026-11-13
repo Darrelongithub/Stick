@@ -60,6 +60,17 @@ def check_xml(char, failures):
         failures.append(f"{char}: behaviors.xml is not well-formed XML: {exc}")
         return None, None
 
+    # ShimeLinux AnimationBuilder uses Integer.parseInt for literal pose vectors.
+    # Float velocities can pass XML parsing but abort loading the entire pack.
+    import re
+    for pose in a_root.iter():
+        if local(pose.tag) != "Pose":
+            continue
+        for attr in ("Velocity", "ImageAnchor"):
+            value = pose.get(attr)
+            if value is not None and not re.fullmatch(r"[+-]?\d+,[+-]?\d+", value):
+                failures.append(f"{char}: non-integer {attr}={value!r} in pose {pose.get('Image')}")
+
     actions = [e.get("Name") for e in a_root.iter()
                if local(e.tag) == "Action" and e.get("Name")]
     action_set = set(actions)
@@ -181,6 +192,7 @@ def check_frames(char, a_root, failures, report, advisories):
                 advisories[(action, img, "/".join(bad))] += 1
     for action in SPEC.generated_actions_for(char):
         want_anchor = SPEC.anchor(action)
+        source_anchors = {img: anc for img, anc, _, _ in SPEC.poses(action, char)} if SPEC.ACTIONS[action].get('source_authored') else {}
         want_files = SPEC.frame_names(action)
         for f in want_files:
             if not os.path.exists(os.path.join(base, f)):
@@ -194,7 +206,8 @@ def check_frames(char, a_root, failures, report, advisories):
         if not poses:
             failures.append(f"{char}: {action} has no poses")
         for p in poses:
-            if p.get("ImageAnchor") != want_anchor:
+            expected_anchor = source_anchors.get((p.get('Image') or '').lstrip('/'), want_anchor)
+            if p.get("ImageAnchor") != expected_anchor:
                 failures.append(f'{char}: {action} pose {p.get("Image")} anchor '
                                 f'{p.get("ImageAnchor")} != spec {want_anchor}')
             img = (p.get("Image") or "").lstrip("/")
@@ -238,6 +251,8 @@ def check_generator(failures):
         failures.append(f"cannot import tools/stickgen.py: {exc}")
         return
     for action in SPEC.generated_actions():
+        if SPEC.ACTIONS[action].get('source_authored'):
+            continue
         want = SPEC.ACTIONS[action]["frames"]
         got = len(stickgen.anim_frames(action))
         if got != want:

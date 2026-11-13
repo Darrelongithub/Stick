@@ -1981,6 +1981,8 @@ def main(out_root="AVA Shimejis", only=None, preview_dir="preview/new", prune=Fa
             else:
                 print(f"{char}: WARNING {len(stale)} stale frame(s): {names}")
         for action in SPEC.generated_actions_for(char):
+            if SPEC.ACTIONS[action].get('source_authored'):
+                continue  # Do not overwrite imported climbing with procedural IK.
             frames = anim_frames(action)
             names = SPEC.frame_names(action)
             if len(frames) != len(names):

@@ -12,6 +12,7 @@ import math
 import numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
+from motion_smoothing import stabilize
 
 ROOT = Path(__file__).resolve().parents[1]
 CLIPS = [
@@ -81,6 +82,13 @@ def main():
             sprite.save(dest/filename); frames.append(filename)
             bg=Image.new('RGBA',(160,160),'#202630'); bg.alpha_composite(sprite)
             preview.append(bg.convert('RGB').resize((320,320),Image.Resampling.NEAREST))
+        source_sprites = [Image.open(dest/name).convert('RGBA') for name in frames]
+        cleaned = stabilize(source_sprites)
+        preview = []
+        for name, sprite in zip(frames, cleaned):
+            sprite.save(dest/name)
+            bg = Image.new('RGBA', (160,160), '#202630'); bg.alpha_composite(sprite)
+            preview.append(bg.convert('RGB').resize((320,320), Image.Resampling.LANCZOS))
         out = ROOT/'preview/reference/finished';out.mkdir(parents=True,exist_ok=True)
         # No loop extension: a fresh viewer plays this once and leaves the last pose.
         preview[0].save(out/f'{char}-{name}.gif',save_all=True,append_images=preview[1:],duration=40)

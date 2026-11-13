@@ -136,12 +136,9 @@ _add("Falling", prefix="fall", frames=48, family="air", type="Embedded", border=
 _add("GrabCeiling", prefix="hang", frames=16, family="ceiling", type="Stay", border="Ceiling",
      durations=[2] * 16,
      phase={"Blue": 0, "Orange": 4, "Yellow": 8, "Green": 12}, regen=True)
-# 0.42px/tick: the ceiling grip has to sweep exactly the sprite's own velocity
-# to stay glued to the surface, and a reference-length arm can only travel
-# ~12px along the ceiling line per stance. Climbing the ceiling is therefore
-# deliberately slower than climbing a wall.
+# Integer-only ShimeLinux poses: 28px grip travel over 28 planted ticks.
 _add("ClimbCeiling", prefix="swing", frames=48, family="ceiling", type="Move", border="Ceiling",
-     durations=[1] * 48, velocity=["-0.42,0"] * 48,
+     durations=[1] * 48, velocity=["-1,0"] * 48,
      phase={"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36}, regen=True)
 _add("GrabWall", prefix="wall_hold", anim="wall_hold", frames=16, family="wall", type="Stay",
      border="Wall", durations=[2] * 16,
@@ -503,6 +500,8 @@ def poses(action, char=None):
     the choreography remains internally consistent.
     """
     a = ACTIONS[action]
+    if a.get('source_authored'):
+        return [tuple(p) for p in _CLASSIC[char or 'Blue']['actions'][action]]
     names = frame_names(action)
     durations = a["durations"]
     vel = a.get("velocity") or ["0,0"] * len(names)
@@ -537,6 +536,8 @@ TEMPO_PROFILES = {
 
 def duration_for(action, char, index, duration):
     """Return a stable, subtle personality timing accent for one pose."""
+    if ACTIONS.get(action, {}).get('source_authored'):
+        return duration
     if not isinstance(duration, int) or duration < 3:
         return duration
     period, offset = TEMPO_PROFILES[char]
@@ -586,6 +587,20 @@ def self_check():
                 problems.append(f"{char}: signature {sig} has no behaviour")
     if problems:
         raise AssertionError("ava_common spec is inconsistent:\n  " + "\n  ".join(problems))
+
+
+# Source-authored edge actions must never be overwritten by the procedural rig.
+import json as _json
+from pathlib import Path as _Path
+_CLASSIC = _json.loads((_Path(__file__).with_name('classic_climbing.json')).read_text())
+for _name in ('ClimbWall', 'ClimbCeiling', 'GrabWall', 'GrabCeiling'):
+    _poses = _CLASSIC['Blue']['actions'][_name]
+    _old = ACTIONS[_name]
+    ACTIONS[_name] = dict(prefix=_old['prefix'], frames=len(_poses),
+                         files=[p[0] for p in _poses],
+                         family=_old['family'], type=_old['type'], border=_old['border'],
+                         durations=[p[3] for p in _poses], source_authored=True,
+                         regen=True, two_animations=(_name == 'ClimbWall'))
 
 
 SLUG_RE = re.compile(r"[^a-z0-9]+")
