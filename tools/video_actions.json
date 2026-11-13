@@ -314,5 +314,6 @@
       "tick_ms": 40,
       "loop": false
     }
-  ]
+  ],
+  "smoothing": "flow-aligned neighbouring silhouette cleanup, strength .15; endpoints and timing unchanged"
 }

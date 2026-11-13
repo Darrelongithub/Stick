@@ -1,3 +1,8 @@
+> **Climbing correction on this branch:** climbing now uses the original
+> Skittlq Windows pack artwork, replacing the rejected procedural rigs.
+> [Source, adaptations and verification](docs/source-climbing.md) ·
+> [One-pass pose preview](docs/source-climbing.gif).
+
 > **Reference-motion rework:** this branch restores the pre-PR-9 pack and adds
 > eight single-pass actions extracted from `output.mp4` for the four existing
 > figures. Each returns to roaming instead of replaying itself. No native FIFO

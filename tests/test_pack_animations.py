@@ -16,54 +16,27 @@ class MascotAnimationRegressionTests(unittest.TestCase):
     def action(self, root, name):
         return root.find(f'.//m:Action[@Name="{name}"]', NS)
 
-    def test_climb_poses_are_smooth_phased_and_reverse_when_descending(self):
-        phase = {"Blue": 0, "Orange": 12, "Yellow": 24, "Green": 36}
+    def test_climbing_uses_authored_source_and_descends_correctly(self):
+        import json
+        adapted = json.loads((ROOT / 'tools/classic_climbing.json').read_text())
         for char in CHARS:
             with self.subTest(char=char):
                 base, actions, _ = self.read_pack(char)
-                wall = self.action(actions, "ClimbWall")
-                animations = wall.findall("m:Animation", NS)
-                self.assertEqual(len(animations), 2)
-                up, down = [[p for p in animation.findall("m:Pose", NS)]
-                            for animation in animations]
-                self.assertEqual(len(up), 48)
-                self.assertEqual(len(down), 48)
-                natural = [f"/wall_climb{i:02}.png" for i in range(1, 49)]
-                offset = phase[char]
-                expected = natural[offset:] + natural[:offset]
-                self.assertEqual([p.get("Image") for p in up], expected)
-                self.assertEqual([p.get("Image") for p in down], expected[::-1])
-                self.assertEqual({p.get("Velocity") for p in up}, {"0,-1"})
-                self.assertEqual({p.get("Velocity") for p in down}, {"0,1"})
-                self.assertEqual({p.get("Duration") for p in up + down}, {"1"})
-
-                ceiling = self.action(actions, "ClimbCeiling")
-                poses = ceiling.findall(".//m:Pose", NS)
-                self.assertEqual(len(poses), 48)
-                natural = [f"/swing{i:02}.png" for i in range(1, 49)]
-                expected = natural[offset:] + natural[:offset]
-                self.assertEqual([p.get("Image") for p in poses], expected)
-                # The ceiling grip sweeps only as far as a reference-length arm
-                # can reach along the ceiling line, so the ceiling climb is
-                # slower than the wall climb.  Velocity and pose travel must
-                # still agree, or planted hands skate.
-                self.assertEqual({p.get("Velocity") for p in poses}, {"-0.42,0"})
-                self.assertEqual({p.get("Duration") for p in poses}, {"1"})
-
-                # Waiting for the next edge route must remain animated too.
-                for hold_name, prefix in (("GrabCeiling", "hang"),
-                                          ("GrabWall", "wall_hold")):
-                    hold = self.action(actions, hold_name).findall(".//m:Pose", NS)
-                    self.assertEqual(len(hold), 16)
-                    self.assertEqual(len({p.get("Image") for p in hold}), 16)
-                    self.assertEqual({p.get("Duration") for p in hold}, {"2"})
-                    self.assertTrue(all(p.get("Image", "").startswith(f"/{prefix}")
-                                        for p in hold))
-                    self.assertTrue(all((base / p.get("Image").lstrip("/")).is_file()
-                                        for p in hold))
-
-                for pose in wall.findall(".//m:Pose", NS) + poses:
-                    self.assertTrue((base / pose.get("Image").lstrip("/")).is_file())
+                wall = self.action(actions, 'ClimbWall')
+                up, down = [animation.findall('m:Pose', NS) for animation in wall.findall('m:Animation', NS)]
+                self.assertEqual(len(up), 15)
+                self.assertEqual(len(down), 15)
+                self.assertEqual([p.get('Image') for p in down], [p.get('Image') for p in up][::-1])
+                self.assertEqual([int(p.get('Velocity').split(',')[1]) for p in down],
+                                 [-int(p.get('Velocity').split(',')[1]) for p in up][::-1])
+                for name in ('ClimbWall', 'ClimbCeiling', 'GrabWall', 'GrabCeiling'):
+                    node = self.action(actions, name)
+                    actual = node.findall('m:Animation', NS)[0].findall('m:Pose', NS)
+                    expected = adapted[char]['actions'][name]
+                    self.assertEqual([(p.get('Image').lstrip('/'), p.get('ImageAnchor'),
+                                       p.get('Velocity'), int(p.get('Duration'))) for p in actual],
+                                     [tuple(p) for p in expected])
+                    self.assertTrue(all((base / p.get('Image').lstrip('/')).exists() for p in actual))
 
     def test_climb_sequences_use_supported_random_function_calls(self):
         for char in CHARS:

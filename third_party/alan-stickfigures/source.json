@@ -1,0 +1,342 @@
+{
+  "repository": "https://github.com/Skittlq/alan-beckers-stickfigures-unofficial",
+  "commit": "6e32aeb3956912c1d7d8396d885cb2b61be63193",
+  "characters": {
+    "Blue": {
+      "ClimbWall": [
+        {
+          "Image": "/wall_climb01.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb02.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb03.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb04.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "4"
+        },
+        {
+          "Image": "/wall_climb05.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-2",
+          "Duration": "2"
+        }
+      ],
+      "ClimbCeiling": [
+        {
+          "Image": "/swing01.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-6,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing02.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing03.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing04.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing05.png",
+          "ImageAnchor": "64,2",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing06.png",
+          "ImageAnchor": "64,4",
+          "Velocity": "-12,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing07.png",
+          "ImageAnchor": "64,8",
+          "Velocity": "-10,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing08.png",
+          "ImageAnchor": "64,6",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        }
+      ]
+    },
+    "Orange": {
+      "ClimbWall": [
+        {
+          "Image": "/wall_climb01.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb02.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb03.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb04.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "4"
+        },
+        {
+          "Image": "/wall_climb05.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-2",
+          "Duration": "2"
+        }
+      ],
+      "ClimbCeiling": [
+        {
+          "Image": "/swing01.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-6,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing02.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing03.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing04.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing05.png",
+          "ImageAnchor": "64,2",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing06.png",
+          "ImageAnchor": "64,4",
+          "Velocity": "-12,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing07.png",
+          "ImageAnchor": "64,8",
+          "Velocity": "-10,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing08.png",
+          "ImageAnchor": "64,6",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        }
+      ]
+    },
+    "Yellow": {
+      "ClimbWall": [
+        {
+          "Image": "/wall_climb01.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb02.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb03.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb04.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "4"
+        },
+        {
+          "Image": "/wall_climb05.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-2",
+          "Duration": "2"
+        }
+      ],
+      "ClimbCeiling": [
+        {
+          "Image": "/swing01.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-6,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing02.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing03.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing04.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing05.png",
+          "ImageAnchor": "64,2",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing06.png",
+          "ImageAnchor": "64,4",
+          "Velocity": "-12,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing07.png",
+          "ImageAnchor": "64,8",
+          "Velocity": "-10,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing08.png",
+          "ImageAnchor": "64,6",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        }
+      ]
+    },
+    "Green": {
+      "ClimbWall": [
+        {
+          "Image": "/wall_climb01.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb02.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb03.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "3"
+        },
+        {
+          "Image": "/wall_climb04.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-4",
+          "Duration": "4"
+        },
+        {
+          "Image": "/wall_climb05.png",
+          "ImageAnchor": "0,128",
+          "Velocity": "0,-2",
+          "Duration": "2"
+        }
+      ],
+      "ClimbCeiling": [
+        {
+          "Image": "/swing01.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-6,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing02.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing03.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing04.png",
+          "ImageAnchor": "64,0",
+          "Velocity": "-4,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing05.png",
+          "ImageAnchor": "64,2",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing06.png",
+          "ImageAnchor": "64,4",
+          "Velocity": "-12,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing07.png",
+          "ImageAnchor": "64,8",
+          "Velocity": "-10,0",
+          "Duration": "2"
+        },
+        {
+          "Image": "/swing08.png",
+          "ImageAnchor": "64,6",
+          "Velocity": "-8,0",
+          "Duration": "2"
+        }
+      ]
+    }
+  }
+}
