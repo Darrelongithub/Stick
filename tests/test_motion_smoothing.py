@@ -19,7 +19,7 @@ class SmoothingContractTests(unittest.TestCase):
             for action in ('ClimbWall','ClimbCeiling'):
                 original=source['characters'][char][action]
                 poses=entry['actions'][action]
-                self.assertEqual(sum(int(p['Duration']) for p in original),len(poses))
+                self.assertEqual(sum(int(p['Duration']) for p in original)*entry.get('playback_slowdown',1),len(poses))
                 self.assertEqual({p[3] for p in poses},{1})
                 for axis in (0,1):
                     def scaled(v):

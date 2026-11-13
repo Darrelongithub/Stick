@@ -1,84 +1,86 @@
 {
   "Blue": {
     "scale": 1.0,
+    "playback_slowdown": 2,
+    "interpolation": "none; original silhouettes",
     "actions": {
       "ClimbWall": [
         [
           "wall_climb_smooth01.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth02.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth03.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth04.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth05.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth06.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth07.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth08.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth09.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth10.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth11.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth12.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth13.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
@@ -92,103 +94,289 @@
           "16,144",
           "0,-2",
           1
+        ],
+        [
+          "wall_climb_smooth16.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth17.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth18.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth19.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth20.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth21.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth22.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth23.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth24.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth25.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth26.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth27.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth28.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth29.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth30.png",
+          "16,144",
+          "0,-1",
+          1
         ]
       ],
       "ClimbCeiling": [
         [
           "swing_smooth01.png",
           "80,16",
-          "-6,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth02.png",
           "80,16",
-          "-6,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth03.png",
           "80,16",
-          "-4,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth04.png",
           "80,16",
-          "-4,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth05.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth06.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth07.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth08.png",
-          "80,17",
-          "-4,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth09.png",
-          "80,18",
-          "-8,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth10.png",
-          "80,19",
-          "-8,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth11.png",
-          "80,20",
-          "-12,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth12.png",
-          "80,22",
-          "-12,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth13.png",
-          "80,24",
-          "-10,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth14.png",
-          "80,23",
-          "-10,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth15.png",
-          "80,22",
-          "-8,0",
+          "80,17",
+          "-2,0",
           1
         ],
         [
           "swing_smooth16.png",
+          "80,18",
+          "-2,0",
+          1
+        ],
+        [
+          "swing_smooth17.png",
+          "80,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth18.png",
+          "80,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth19.png",
           "80,19",
-          "-8,0",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth20.png",
+          "80,20",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth21.png",
+          "80,20",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth22.png",
+          "80,21",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth23.png",
+          "80,22",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth24.png",
+          "80,23",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth25.png",
+          "80,24",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth26.png",
+          "80,24",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth27.png",
+          "80,23",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth28.png",
+          "80,22",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth29.png",
+          "80,22",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth30.png",
+          "80,20",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth31.png",
+          "80,19",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth32.png",
+          "80,18",
+          "-4,0",
           1
         ]
       ],
@@ -216,19 +404,19 @@
           "source": "wall_climb01.png"
         },
         {
-          "file": "wall_climb_smooth04.png",
+          "file": "wall_climb_smooth07.png",
           "source": "wall_climb02.png"
         },
         {
-          "file": "wall_climb_smooth07.png",
+          "file": "wall_climb_smooth13.png",
           "source": "wall_climb03.png"
         },
         {
-          "file": "wall_climb_smooth10.png",
+          "file": "wall_climb_smooth19.png",
           "source": "wall_climb04.png"
         },
         {
-          "file": "wall_climb_smooth14.png",
+          "file": "wall_climb_smooth27.png",
           "source": "wall_climb05.png"
         }
       ],
@@ -238,31 +426,31 @@
           "source": "swing01.png"
         },
         {
-          "file": "swing_smooth03.png",
+          "file": "swing_smooth05.png",
           "source": "swing02.png"
         },
         {
-          "file": "swing_smooth05.png",
+          "file": "swing_smooth09.png",
           "source": "swing03.png"
         },
         {
-          "file": "swing_smooth07.png",
+          "file": "swing_smooth13.png",
           "source": "swing04.png"
         },
         {
-          "file": "swing_smooth09.png",
+          "file": "swing_smooth17.png",
           "source": "swing05.png"
         },
         {
-          "file": "swing_smooth11.png",
+          "file": "swing_smooth21.png",
           "source": "swing06.png"
         },
         {
-          "file": "swing_smooth13.png",
+          "file": "swing_smooth25.png",
           "source": "swing07.png"
         },
         {
-          "file": "swing_smooth15.png",
+          "file": "swing_smooth29.png",
           "source": "swing08.png"
         }
       ]
@@ -270,96 +458,188 @@
   },
   "Orange": {
     "scale": 0.8421052631578947,
+    "playback_slowdown": 2,
+    "interpolation": "none; original silhouettes",
     "actions": {
       "ClimbWall": [
         [
           "wall_climb_smooth01.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth02.png",
           "16,124",
-          "0,-3",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth03.png",
           "16,124",
-          "0,-3",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth04.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth05.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth06.png",
           "16,124",
-          "0,-3",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth07.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth08.png",
           "16,124",
-          "0,-3",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth09.png",
           "16,124",
-          "0,-3",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth10.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth11.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth12.png",
           "16,124",
-          "0,-3",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth13.png",
           "16,124",
-          "0,-3",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth14.png",
           "16,124",
-          "0,-2",
+          "0,-1",
           1
         ],
         [
           "wall_climb_smooth15.png",
           "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth16.png",
+          "16,124",
           "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth17.png",
+          "16,124",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth18.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth19.png",
+          "16,124",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth20.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth21.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth22.png",
+          "16,124",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth23.png",
+          "16,124",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth24.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth25.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth26.png",
+          "16,124",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth27.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth28.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth29.png",
+          "16,124",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth30.png",
+          "16,124",
+          "0,-1",
           1
         ]
       ],
@@ -367,13 +647,13 @@
         [
           "swing_smooth01.png",
           "70,16",
-          "-5,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth02.png",
           "70,16",
-          "-5,0",
+          "-3,0",
           1
         ],
         [
@@ -385,79 +665,175 @@
         [
           "swing_smooth04.png",
           "70,16",
-          "-3,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth05.png",
           "70,16",
-          "-3,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth06.png",
           "70,16",
-          "-3,0",
+          "-1,0",
           1
         ],
         [
           "swing_smooth07.png",
           "70,16",
-          "-3,0",
+          "-1,0",
           1
         ],
         [
           "swing_smooth08.png",
-          "70,17",
-          "-3,0",
+          "70,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth09.png",
-          "70,18",
-          "-7,0",
+          "70,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth10.png",
-          "70,19",
-          "-7,0",
+          "70,16",
+          "-1,0",
           1
         ],
         [
           "swing_smooth11.png",
-          "70,19",
-          "-10,0",
+          "70,16",
+          "-1,0",
           1
         ],
         [
           "swing_smooth12.png",
-          "70,21",
-          "-10,0",
+          "70,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth13.png",
-          "70,23",
-          "-8,0",
+          "70,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth14.png",
-          "70,22",
-          "-8,0",
+          "70,16",
+          "-1,0",
           1
         ],
         [
           "swing_smooth15.png",
-          "70,21",
-          "-7,0",
+          "70,17",
+          "-1,0",
           1
         ],
         [
           "swing_smooth16.png",
+          "70,17",
+          "-2,0",
+          1
+        ],
+        [
+          "swing_smooth17.png",
+          "70,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth18.png",
+          "70,18",
+          "-3,0",
+          1
+        ],
+        [
+          "swing_smooth19.png",
           "70,19",
-          "-7,0",
+          "-3,0",
+          1
+        ],
+        [
+          "swing_smooth20.png",
+          "70,19",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth21.png",
+          "70,19",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth22.png",
+          "70,20",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth23.png",
+          "70,21",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth24.png",
+          "70,22",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth25.png",
+          "70,23",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth26.png",
+          "70,22",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth27.png",
+          "70,22",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth28.png",
+          "70,21",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth29.png",
+          "70,21",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth30.png",
+          "70,20",
+          "-3,0",
+          1
+        ],
+        [
+          "swing_smooth31.png",
+          "70,19",
+          "-3,0",
+          1
+        ],
+        [
+          "swing_smooth32.png",
+          "70,17",
+          "-4,0",
           1
         ]
       ],
@@ -485,19 +861,19 @@
           "source": "wall_climb01.png"
         },
         {
-          "file": "wall_climb_smooth04.png",
+          "file": "wall_climb_smooth07.png",
           "source": "wall_climb02.png"
         },
         {
-          "file": "wall_climb_smooth07.png",
+          "file": "wall_climb_smooth13.png",
           "source": "wall_climb03.png"
         },
         {
-          "file": "wall_climb_smooth10.png",
+          "file": "wall_climb_smooth19.png",
           "source": "wall_climb04.png"
         },
         {
-          "file": "wall_climb_smooth14.png",
+          "file": "wall_climb_smooth27.png",
           "source": "wall_climb05.png"
         }
       ],
@@ -507,31 +883,31 @@
           "source": "swing01.png"
         },
         {
-          "file": "swing_smooth03.png",
+          "file": "swing_smooth05.png",
           "source": "swing02.png"
         },
         {
-          "file": "swing_smooth05.png",
+          "file": "swing_smooth09.png",
           "source": "swing03.png"
         },
         {
-          "file": "swing_smooth07.png",
+          "file": "swing_smooth13.png",
           "source": "swing04.png"
         },
         {
-          "file": "swing_smooth09.png",
+          "file": "swing_smooth17.png",
           "source": "swing05.png"
         },
         {
-          "file": "swing_smooth11.png",
+          "file": "swing_smooth21.png",
           "source": "swing06.png"
         },
         {
-          "file": "swing_smooth13.png",
+          "file": "swing_smooth25.png",
           "source": "swing07.png"
         },
         {
-          "file": "swing_smooth15.png",
+          "file": "swing_smooth29.png",
           "source": "swing08.png"
         }
       ]
@@ -539,84 +915,86 @@
   },
   "Yellow": {
     "scale": 1.0,
+    "playback_slowdown": 2,
+    "interpolation": "none; original silhouettes",
     "actions": {
       "ClimbWall": [
         [
           "wall_climb_smooth01.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth02.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth03.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth04.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth05.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth06.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth07.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth08.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth09.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth10.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth11.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth12.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth13.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
@@ -630,103 +1008,289 @@
           "16,144",
           "0,-2",
           1
+        ],
+        [
+          "wall_climb_smooth16.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth17.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth18.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth19.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth20.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth21.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth22.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth23.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth24.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth25.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth26.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth27.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth28.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth29.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth30.png",
+          "16,144",
+          "0,-1",
+          1
         ]
       ],
       "ClimbCeiling": [
         [
           "swing_smooth01.png",
           "80,16",
-          "-6,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth02.png",
           "80,16",
-          "-6,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth03.png",
           "80,16",
-          "-4,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth04.png",
           "80,16",
-          "-4,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth05.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth06.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth07.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth08.png",
-          "80,17",
-          "-4,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth09.png",
-          "80,18",
-          "-8,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth10.png",
-          "80,19",
-          "-8,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth11.png",
-          "80,20",
-          "-12,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth12.png",
-          "80,22",
-          "-12,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth13.png",
-          "80,24",
-          "-10,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth14.png",
-          "80,23",
-          "-10,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth15.png",
-          "80,22",
-          "-8,0",
+          "80,17",
+          "-2,0",
           1
         ],
         [
           "swing_smooth16.png",
+          "80,18",
+          "-2,0",
+          1
+        ],
+        [
+          "swing_smooth17.png",
+          "80,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth18.png",
+          "80,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth19.png",
           "80,19",
-          "-8,0",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth20.png",
+          "80,20",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth21.png",
+          "80,20",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth22.png",
+          "80,21",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth23.png",
+          "80,22",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth24.png",
+          "80,23",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth25.png",
+          "80,24",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth26.png",
+          "80,24",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth27.png",
+          "80,23",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth28.png",
+          "80,22",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth29.png",
+          "80,22",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth30.png",
+          "80,20",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth31.png",
+          "80,19",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth32.png",
+          "80,18",
+          "-4,0",
           1
         ]
       ],
@@ -754,19 +1318,19 @@
           "source": "wall_climb01.png"
         },
         {
-          "file": "wall_climb_smooth04.png",
+          "file": "wall_climb_smooth07.png",
           "source": "wall_climb02.png"
         },
         {
-          "file": "wall_climb_smooth07.png",
+          "file": "wall_climb_smooth13.png",
           "source": "wall_climb03.png"
         },
         {
-          "file": "wall_climb_smooth10.png",
+          "file": "wall_climb_smooth19.png",
           "source": "wall_climb04.png"
         },
         {
-          "file": "wall_climb_smooth14.png",
+          "file": "wall_climb_smooth27.png",
           "source": "wall_climb05.png"
         }
       ],
@@ -776,31 +1340,31 @@
           "source": "swing01.png"
         },
         {
-          "file": "swing_smooth03.png",
+          "file": "swing_smooth05.png",
           "source": "swing02.png"
         },
         {
-          "file": "swing_smooth05.png",
+          "file": "swing_smooth09.png",
           "source": "swing03.png"
         },
         {
-          "file": "swing_smooth07.png",
+          "file": "swing_smooth13.png",
           "source": "swing04.png"
         },
         {
-          "file": "swing_smooth09.png",
+          "file": "swing_smooth17.png",
           "source": "swing05.png"
         },
         {
-          "file": "swing_smooth11.png",
+          "file": "swing_smooth21.png",
           "source": "swing06.png"
         },
         {
-          "file": "swing_smooth13.png",
+          "file": "swing_smooth25.png",
           "source": "swing07.png"
         },
         {
-          "file": "swing_smooth15.png",
+          "file": "swing_smooth29.png",
           "source": "swing08.png"
         }
       ]
@@ -808,84 +1372,86 @@
   },
   "Green": {
     "scale": 1.0,
+    "playback_slowdown": 2,
+    "interpolation": "none; original silhouettes",
     "actions": {
       "ClimbWall": [
         [
           "wall_climb_smooth01.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth02.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth03.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth04.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth05.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth06.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth07.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth08.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth09.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth10.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth11.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth12.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
           "wall_climb_smooth13.png",
           "16,144",
-          "0,-4",
+          "0,-2",
           1
         ],
         [
@@ -899,103 +1465,289 @@
           "16,144",
           "0,-2",
           1
+        ],
+        [
+          "wall_climb_smooth16.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth17.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth18.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth19.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth20.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth21.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth22.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth23.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth24.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth25.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth26.png",
+          "16,144",
+          "0,-2",
+          1
+        ],
+        [
+          "wall_climb_smooth27.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth28.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth29.png",
+          "16,144",
+          "0,-1",
+          1
+        ],
+        [
+          "wall_climb_smooth30.png",
+          "16,144",
+          "0,-1",
+          1
         ]
       ],
       "ClimbCeiling": [
         [
           "swing_smooth01.png",
           "80,16",
-          "-6,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth02.png",
           "80,16",
-          "-6,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth03.png",
           "80,16",
-          "-4,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth04.png",
           "80,16",
-          "-4,0",
+          "-3,0",
           1
         ],
         [
           "swing_smooth05.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth06.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth07.png",
           "80,16",
-          "-4,0",
+          "-2,0",
           1
         ],
         [
           "swing_smooth08.png",
-          "80,17",
-          "-4,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth09.png",
-          "80,18",
-          "-8,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth10.png",
-          "80,19",
-          "-8,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth11.png",
-          "80,20",
-          "-12,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth12.png",
-          "80,22",
-          "-12,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth13.png",
-          "80,24",
-          "-10,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth14.png",
-          "80,23",
-          "-10,0",
+          "80,16",
+          "-2,0",
           1
         ],
         [
           "swing_smooth15.png",
-          "80,22",
-          "-8,0",
+          "80,17",
+          "-2,0",
           1
         ],
         [
           "swing_smooth16.png",
+          "80,18",
+          "-2,0",
+          1
+        ],
+        [
+          "swing_smooth17.png",
+          "80,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth18.png",
+          "80,18",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth19.png",
           "80,19",
-          "-8,0",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth20.png",
+          "80,20",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth21.png",
+          "80,20",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth22.png",
+          "80,21",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth23.png",
+          "80,22",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth24.png",
+          "80,23",
+          "-6,0",
+          1
+        ],
+        [
+          "swing_smooth25.png",
+          "80,24",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth26.png",
+          "80,24",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth27.png",
+          "80,23",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth28.png",
+          "80,22",
+          "-5,0",
+          1
+        ],
+        [
+          "swing_smooth29.png",
+          "80,22",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth30.png",
+          "80,20",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth31.png",
+          "80,19",
+          "-4,0",
+          1
+        ],
+        [
+          "swing_smooth32.png",
+          "80,18",
+          "-4,0",
           1
         ]
       ],
@@ -1023,19 +1775,19 @@
           "source": "wall_climb01.png"
         },
         {
-          "file": "wall_climb_smooth04.png",
+          "file": "wall_climb_smooth07.png",
           "source": "wall_climb02.png"
         },
         {
-          "file": "wall_climb_smooth07.png",
+          "file": "wall_climb_smooth13.png",
           "source": "wall_climb03.png"
         },
         {
-          "file": "wall_climb_smooth10.png",
+          "file": "wall_climb_smooth19.png",
           "source": "wall_climb04.png"
         },
         {
-          "file": "wall_climb_smooth14.png",
+          "file": "wall_climb_smooth27.png",
           "source": "wall_climb05.png"
         }
       ],
@@ -1045,31 +1797,31 @@
           "source": "swing01.png"
         },
         {
-          "file": "swing_smooth03.png",
+          "file": "swing_smooth05.png",
           "source": "swing02.png"
         },
         {
-          "file": "swing_smooth05.png",
+          "file": "swing_smooth09.png",
           "source": "swing03.png"
         },
         {
-          "file": "swing_smooth07.png",
+          "file": "swing_smooth13.png",
           "source": "swing04.png"
         },
         {
-          "file": "swing_smooth09.png",
+          "file": "swing_smooth17.png",
           "source": "swing05.png"
         },
         {
-          "file": "swing_smooth11.png",
+          "file": "swing_smooth21.png",
           "source": "swing06.png"
         },
         {
-          "file": "swing_smooth13.png",
+          "file": "swing_smooth25.png",
           "source": "swing07.png"
         },
         {
-          "file": "swing_smooth15.png",
+          "file": "swing_smooth29.png",
           "source": "swing08.png"
         }
       ]

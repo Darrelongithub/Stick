@@ -24,8 +24,8 @@ class MascotAnimationRegressionTests(unittest.TestCase):
                 base, actions, _ = self.read_pack(char)
                 wall = self.action(actions, 'ClimbWall')
                 up, down = [animation.findall('m:Pose', NS) for animation in wall.findall('m:Animation', NS)]
-                self.assertEqual(len(up), 15)
-                self.assertEqual(len(down), 15)
+                self.assertEqual(len(up), 30)
+                self.assertEqual(len(down), 30)
                 self.assertEqual([p.get('Image') for p in down], [p.get('Image') for p in up][::-1])
                 self.assertEqual([int(p.get('Velocity').split(',')[1]) for p in down],
                                  [-int(p.get('Velocity').split(',')[1]) for p in up][::-1])

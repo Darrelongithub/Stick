@@ -81,6 +81,19 @@ def check_xml(char, failures):
         if count > 1:
             failures.append(f"{char}: action names collide case-insensitively: {name}")
 
+    # A Stay action never finishes merely because its pose durations elapsed.
+    # A finite sequence must cap such a reference (the Bonk->Stand deadlock).
+    definitions = {e.get('Name'): e for e in a_root.iter() if local(e.tag) == 'Action'}
+    for sequence in definitions.values():
+        if sequence.get('Type') != 'Sequence' or sequence.get('Loop') == 'true':
+            continue
+        for ref in sequence:
+            if local(ref.tag) != 'ActionReference':
+                continue
+            target = definitions.get(ref.get('Name'))
+            if target is not None and target.get('Type') == 'Stay' and not ref.get('Duration'):
+                failures.append(f"{char}: finite sequence {sequence.get('Name')} has unbounded Stay reference {ref.get('Name')}")
+
     behaviors = [e.get("Name") for e in b_root.iter()
                  if local(e.tag) == "Behavior" and e.get("Name")]
     behavior_set = set(behaviors)

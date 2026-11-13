@@ -507,22 +507,38 @@
 		</Action>
 		<Action Name="ClimbCeiling" Type="Move" BorderType="Ceiling">
 			<Animation>
-				<Pose Image="/swing_smooth01.png" ImageAnchor="80,16" Velocity="-6,0" Duration="1" />
-				<Pose Image="/swing_smooth02.png" ImageAnchor="80,16" Velocity="-6,0" Duration="1" />
-				<Pose Image="/swing_smooth03.png" ImageAnchor="80,16" Velocity="-4,0" Duration="1" />
-				<Pose Image="/swing_smooth04.png" ImageAnchor="80,16" Velocity="-4,0" Duration="1" />
-				<Pose Image="/swing_smooth05.png" ImageAnchor="80,16" Velocity="-4,0" Duration="1" />
-				<Pose Image="/swing_smooth06.png" ImageAnchor="80,16" Velocity="-4,0" Duration="1" />
-				<Pose Image="/swing_smooth07.png" ImageAnchor="80,16" Velocity="-4,0" Duration="1" />
-				<Pose Image="/swing_smooth08.png" ImageAnchor="80,17" Velocity="-4,0" Duration="1" />
-				<Pose Image="/swing_smooth09.png" ImageAnchor="80,18" Velocity="-8,0" Duration="1" />
-				<Pose Image="/swing_smooth10.png" ImageAnchor="80,19" Velocity="-8,0" Duration="1" />
-				<Pose Image="/swing_smooth11.png" ImageAnchor="80,20" Velocity="-12,0" Duration="1" />
-				<Pose Image="/swing_smooth12.png" ImageAnchor="80,22" Velocity="-12,0" Duration="1" />
-				<Pose Image="/swing_smooth13.png" ImageAnchor="80,24" Velocity="-10,0" Duration="1" />
-				<Pose Image="/swing_smooth14.png" ImageAnchor="80,23" Velocity="-10,0" Duration="1" />
-				<Pose Image="/swing_smooth15.png" ImageAnchor="80,22" Velocity="-8,0" Duration="1" />
-				<Pose Image="/swing_smooth16.png" ImageAnchor="80,19" Velocity="-8,0" Duration="1" />
+				<Pose Image="/swing_smooth01.png" ImageAnchor="80,16" Velocity="-3,0" Duration="1" />
+				<Pose Image="/swing_smooth02.png" ImageAnchor="80,16" Velocity="-3,0" Duration="1" />
+				<Pose Image="/swing_smooth03.png" ImageAnchor="80,16" Velocity="-3,0" Duration="1" />
+				<Pose Image="/swing_smooth04.png" ImageAnchor="80,16" Velocity="-3,0" Duration="1" />
+				<Pose Image="/swing_smooth05.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth06.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth07.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth08.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth09.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth10.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth11.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth12.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth13.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth14.png" ImageAnchor="80,16" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth15.png" ImageAnchor="80,17" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth16.png" ImageAnchor="80,18" Velocity="-2,0" Duration="1" />
+				<Pose Image="/swing_smooth17.png" ImageAnchor="80,18" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth18.png" ImageAnchor="80,18" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth19.png" ImageAnchor="80,19" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth20.png" ImageAnchor="80,20" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth21.png" ImageAnchor="80,20" Velocity="-6,0" Duration="1" />
+				<Pose Image="/swing_smooth22.png" ImageAnchor="80,21" Velocity="-6,0" Duration="1" />
+				<Pose Image="/swing_smooth23.png" ImageAnchor="80,22" Velocity="-6,0" Duration="1" />
+				<Pose Image="/swing_smooth24.png" ImageAnchor="80,23" Velocity="-6,0" Duration="1" />
+				<Pose Image="/swing_smooth25.png" ImageAnchor="80,24" Velocity="-5,0" Duration="1" />
+				<Pose Image="/swing_smooth26.png" ImageAnchor="80,24" Velocity="-5,0" Duration="1" />
+				<Pose Image="/swing_smooth27.png" ImageAnchor="80,23" Velocity="-5,0" Duration="1" />
+				<Pose Image="/swing_smooth28.png" ImageAnchor="80,22" Velocity="-5,0" Duration="1" />
+				<Pose Image="/swing_smooth29.png" ImageAnchor="80,22" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth30.png" ImageAnchor="80,20" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth31.png" ImageAnchor="80,19" Velocity="-4,0" Duration="1" />
+				<Pose Image="/swing_smooth32.png" ImageAnchor="80,18" Velocity="-4,0" Duration="1" />
 			</Animation>
 		</Action>
 		<Action Name="GrabWall" Type="Stay" BorderType="Wall">
@@ -532,38 +548,68 @@
 		</Action>
 		<Action Name="ClimbWall" Type="Move" BorderType="Wall">
 			<Animation Condition="#{TargetY &lt; mascot.anchor.y}">
-				<Pose Image="/wall_climb_smooth01.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth02.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth03.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth04.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth05.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth06.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth07.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth08.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth09.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth10.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth11.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth12.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
-				<Pose Image="/wall_climb_smooth13.png" ImageAnchor="16,144" Velocity="0,-4" Duration="1" />
+				<Pose Image="/wall_climb_smooth01.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth02.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth03.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth04.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth05.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth06.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth07.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth08.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth09.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth10.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth11.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth12.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth13.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
 				<Pose Image="/wall_climb_smooth14.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
 				<Pose Image="/wall_climb_smooth15.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth16.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth17.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth18.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth19.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth20.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth21.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth22.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth23.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth24.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth25.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth26.png" ImageAnchor="16,144" Velocity="0,-2" Duration="1" />
+				<Pose Image="/wall_climb_smooth27.png" ImageAnchor="16,144" Velocity="0,-1" Duration="1" />
+				<Pose Image="/wall_climb_smooth28.png" ImageAnchor="16,144" Velocity="0,-1" Duration="1" />
+				<Pose Image="/wall_climb_smooth29.png" ImageAnchor="16,144" Velocity="0,-1" Duration="1" />
+				<Pose Image="/wall_climb_smooth30.png" ImageAnchor="16,144" Velocity="0,-1" Duration="1" />
 			</Animation>
 			<Animation Condition="#{TargetY &gt;= mascot.anchor.y}">
+				<Pose Image="/wall_climb_smooth30.png" ImageAnchor="16,144" Velocity="0,1" Duration="1" />
+				<Pose Image="/wall_climb_smooth29.png" ImageAnchor="16,144" Velocity="0,1" Duration="1" />
+				<Pose Image="/wall_climb_smooth28.png" ImageAnchor="16,144" Velocity="0,1" Duration="1" />
+				<Pose Image="/wall_climb_smooth27.png" ImageAnchor="16,144" Velocity="0,1" Duration="1" />
+				<Pose Image="/wall_climb_smooth26.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth25.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth24.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth23.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth22.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth21.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth20.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth19.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth18.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth17.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth16.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
 				<Pose Image="/wall_climb_smooth15.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
 				<Pose Image="/wall_climb_smooth14.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
-				<Pose Image="/wall_climb_smooth13.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth12.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth11.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth10.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth09.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth08.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth07.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth06.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth05.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth04.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth03.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth02.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
-				<Pose Image="/wall_climb_smooth01.png" ImageAnchor="16,144" Velocity="0,4" Duration="1" />
+				<Pose Image="/wall_climb_smooth13.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth12.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth11.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth10.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth09.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth08.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth07.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth06.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth05.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth04.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth03.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth02.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
+				<Pose Image="/wall_climb_smooth01.png" ImageAnchor="16,144" Velocity="0,2" Duration="1" />
 			</Animation>
 		</Action>
 		<Action Name="Sprawl" Type="Stay" BorderType="Floor">
@@ -783,7 +829,7 @@
 		</Action>
 		<Action Name="Bonk" Type="Sequence" Loop="false">
 			<ActionReference Name="Hurt" />
-			<ActionReference Name="Stand" />
+			<ActionReference Name="Idle" />
 		</Action>
 		<!-- AVA:generated:actions:end -->
 		<!-- AVA:video:actions:start -->
@@ -920,7 +966,7 @@
 
 		<Action Name="FallFromWall" Type="Sequence" Loop="false">
 			<ActionReference Name="Offset" X="${mascot.lookRight ? -1 : 1}" />
-			<ActionReference Name="Stand" />
+			<ActionReference Name="Stand"  Duration="12" />
 		</Action>
 
 		<Action Name="HoldOntoCeiling" Type="Sequence" Loop="false">
@@ -929,7 +975,7 @@
 
 		<Action Name="FallFromCeiling" Type="Sequence" Loop="false">
 			<ActionReference Name="Offset" Y="1" />
-			<ActionReference Name="Stand" />
+			<ActionReference Name="Stand"  Duration="12" />
 		</Action>
 
 		<Action Name="WalkAlongWorkAreaFloor" Type="Sequence" Loop="false">
@@ -1176,7 +1222,7 @@
 
 		<Action Name="Dancing" Type="Animate">
 			<ActionReference Name="Dance" />
-			<ActionReference Name="Stand" />
+			<ActionReference Name="Stand"  Duration="12" />
 		</Action>
 	</ActionList>
 
