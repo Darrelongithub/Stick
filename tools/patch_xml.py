@@ -483,6 +483,11 @@ def patch_actions(path, char):
     raw = re.sub(r'<ActionReference\b(?=[^>]*\bName="Stand")(?=[^>]*?/>)(?![^>]*\bDuration=)([^>]*?)/>',
                  r'<ActionReference\1 Duration="12" />', raw)
     raw = fix_crawl_sequence_expressions(raw)
+    # A partial ascent must be above the CURRENT position, not a random point
+    # across the entire screen (which can send a recently thrown mascot down).
+    partial = re.compile(r'(<Action\b(?=[^>]*\bName="ClimbHalfwayAlongWall")[^>]*>.*?</Action>)', re.S)
+    target = "${mascot.anchor.y-(mascot.anchor.y-mascot.environment.workArea.top-64)*(0.25+Math.random()*0.5)}"
+    raw = partial.sub(lambda m: re.sub(r'TargetY="[^"]*"', 'TargetY="'+target+'"', m.group(0)), raw)
     raw = retime_dance(raw, char)
     raw = smooth_stock_motion(raw, char)
     raw = shorten_long_rests(raw)
@@ -491,6 +496,37 @@ def patch_actions(path, char):
     write(path, raw)
     print(f"  {path}: {len(SPEC.generated_actions_for(char))} actions, "
           f"{len(SPEC.SEQUENCES)} sequences")
+
+
+# Full / partial / release: each mascot can choose every route, but not with
+# identical preferences. These are relative weights, not a fixed choreography.
+WALL_ROUTE_WEIGHTS = {
+    "Blue": (65, 25, 10), "Orange": (45, 40, 15),
+    "Yellow": (55, 35, 10), "Green": (40, 40, 20),
+}
+
+
+def wall_route_successors(raw, char, eol):
+    """Choose a route after grabbing, rather than reentering the global pool.
+
+    Only work-area walls can use these work-area targets. A window wall can
+    still release; floor contacts fall back to the normal behavior chooser.
+    """
+    wall = ("(mascot.lookRight ? "
+            "mascot.environment.workArea.rightBorder.isOn(mascot.anchor) : "
+            "mascot.environment.workArea.leftBorder.isOn(mascot.anchor))"
+            " && mascot.anchor.y > mascot.environment.workArea.top+64")
+    airborne = "!mascot.environment.floor.isOn(mascot.anchor)"
+    pattern = re.compile(r'<Behavior\b(?=[^>]*\bName="HoldOntoWall")[^>]*?(?:/>|>.*?</Behavior>)', re.S)
+    def replace(match):
+        opening = match.group(0).split('>', 1)[0].rstrip('/ ') + '>'
+        lines = [opening, '\t\t\t\t<NextBehaviorList Add="false">']
+        for name, weight in zip(('ClimbAlongWall', 'ClimbHalfwayAlongWall', 'FallFromWall'), WALL_ROUTE_WEIGHTS[char]):
+            condition = airborne if name == 'FallFromWall' else wall
+            lines.append(f'\t\t\t\t\t<BehaviorReference Name="{name}" Frequency="{weight}" Condition="{esc(SPEC._js(condition))}" />')
+        lines.extend(['\t\t\t\t</NextBehaviorList>', '\t\t\t</Behavior>'])
+        return eol.join(lines)
+    return pattern.sub(replace, raw)
 
 
 def patch_behaviors(path, char):
@@ -519,6 +555,8 @@ def patch_behaviors(path, char):
             ending = '/>' if tag.endswith('/>') else '>'
             return tag[:-len(ending)]+' Condition="'+guard+'" '+ending
         raw = opening.sub(guard_stock, raw)
+
+    raw = wall_route_successors(raw, char, eol)
 
     block = ([B_START]
              + [behavior_xml(n, char, eol) for n in behavior_names(char)]
