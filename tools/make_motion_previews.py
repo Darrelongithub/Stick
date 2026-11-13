@@ -9,20 +9,22 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def preview_climbing():
     data=json.loads((ROOT/'tools/classic_climbing.json').read_text());frames=[]
-    for tick in range(16):
-        sheet=Image.new('RGBA',(800,450),'#252b34');d=ImageDraw.Draw(sheet)
+    for tick in range(max(len(entry['actions']['ClimbCeiling']) for entry in data.values())):
+        sheet=Image.new('RGBA',(1200,450),'#252b34');d=ImageDraw.Draw(sheet)
         for col,(char,entry) in enumerate(data.items()):
-            x=col*200;d.text((x+8,5),char,fill='white')
+            x=col*300;d.text((x+8,5),char,fill='white')
             for row,action in enumerate(['ClimbWall','ClimbCeiling']):
                 poses=entry['actions'][action]
                 timeline=[p for p in poses for _ in range(p[3])]
                 name,anchor,_,_=timeline[min(tick,len(timeline)-1)]
+                travel=[tuple(map(int,p[2].split(','))) for p in timeline[:min(tick,len(timeline))]]
+                dx=sum(v[0] for v in travel);dy=sum(v[1] for v in travel)
                 ax,ay=map(int,anchor.split(','))
                 im=Image.open(ROOT/'AVA Shimejis'/char/name).convert('RGBA')
                 if row==0:
-                    d.line((x+24,25,x+24,215),fill='#8998a8',width=2);pos=(x+24-ax,205-ay)
+                    d.line((x+24,25,x+24,215),fill='#8998a8',width=2);pos=(x+24-ax+dx,205-ay+dy)
                 else:
-                    d.line((x+8,250,x+190,250),fill='#8998a8',width=2);pos=(x+105-ax,250-ay)
+                    d.line((x+8,250,x+290,250),fill='#8998a8',width=2);pos=(x+180-ax+dx,250-ay+dy)
                 sheet.alpha_composite(im,pos)
         frames.append(sheet.convert('RGB'))
     frames[0].save(ROOT/'docs/source-climbing.gif',save_all=True,append_images=frames[1:],duration=40)

@@ -480,6 +480,8 @@ def patch_actions(path, char):
     # generated actions go into the FIRST <ActionList> (the files have two,
     # and Shimeji-ee rejects duplicate action names).
     raw = insert_before_line(raw, "</ActionList>", eol.join(block), eol)
+    raw = re.sub(r'<ActionReference\b(?=[^>]*\bName="Stand")(?=[^>]*?/>)(?![^>]*\bDuration=)([^>]*?)/>',
+                 r'<ActionReference\1 Duration="12" />', raw)
     raw = fix_crawl_sequence_expressions(raw)
     raw = retime_dance(raw, char)
     raw = smooth_stock_motion(raw, char)
@@ -500,6 +502,24 @@ def patch_behaviors(path, char):
     raw = fix_dance(raw)
     raw = disable_breeding(raw)
     raw = retune_stock_behaviors(raw, char)
+    # Apply the same host-compatible repeat guard to stationary edge waits and
+    # stock Dance, which are not part of the generated behavior block.
+    for stock_name in ("HoldOntoWall", "HoldOntoCeiling"):
+        opening = re.compile(r'<Behavior\b(?=[^>]*\bName="'+stock_name+r'")[^>]*>')
+        def guard_stock(match):
+            tag = match.group(0)
+            guard = esc(SPEC._js(SPEC.repeat_condition(stock_name)))
+            previous = re.search(r'\sCondition="([^"]*)"', tag)
+            if previous:
+                # Existing Dance has its own guard/gate. The generator rebuilds
+                # it on every run; edge waits originally have no condition.
+                if "Behavior[name=" in previous.group(1):
+                    return tag
+                return tag.replace(previous.group(0), ' Condition="'+guard+'"')
+            ending = '/>' if tag.endswith('/>') else '>'
+            return tag[:-len(ending)]+' Condition="'+guard+'" '+ending
+        raw = opening.sub(guard_stock, raw)
+
     block = ([B_START]
              + [behavior_xml(n, char, eol) for n in behavior_names(char)]
              + [B_END])

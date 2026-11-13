@@ -202,7 +202,7 @@ _add("JumpRope", prefix="jumprope", frames=24, family="floor", type="Animate",
 # ---- sequences (no frames of their own) --------------------------------------
 SEQUENCES = {
     "BattleRage": ["FightCombo", "SwordPractice", "CursorSlash"],
-    "Bonk": ["Hurt", "Stand"],
+    "Bonk": ["Hurt", "Idle"],
 }
 
 # ---------------------------------------------------------------- behaviours
@@ -432,7 +432,8 @@ def repeat_condition(action):
     own NextBehavior list is absent, which is what makes one character replay
     the same animation back to back.
     """
-    return f"mascot.getBehavior().toString() != 'Behavior({action})'"
+    return (f"String(mascot.getBehavior()) != 'Behavior({action})' && "
+            f"String(mascot.getBehavior()) != 'Behavior[name={action}]'")
 
 
 def behaviour_condition(action, char):

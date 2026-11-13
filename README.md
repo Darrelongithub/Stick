@@ -1,3 +1,8 @@
+> **ShimeLinux stall correction:** Bonk no longer ends in an indefinite Stand.
+> Repeat guards now recognize native behavior names. Climbing uses clean
+> original silhouettes instead of raster-warped limbs, with slower traversal.
+> [Details and limitations](docs/autonomous-recovery.md).
+
 > **Climbing correction on this branch:** climbing now uses the original
 > Skittlq Windows pack artwork, replacing the rejected procedural rigs.
 > [Source, adaptations and verification](docs/source-climbing.md) ·

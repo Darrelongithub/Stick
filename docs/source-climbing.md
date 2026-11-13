@@ -1,3 +1,12 @@
+> **Latest correction:** raster-warped in-betweens described below have been
+> removed after further visual feedback. Climbing now uses undeformed original
+> silhouettes at half the traversal speed, with unchanged cycle displacement.
+> The preview now includes cumulative XML movement. See
+> [current recovery and climbing notes](autonomous-recovery.md).
+>
+> The remaining text records the earlier interpolation implementation, not the
+> current rendering method.
+
 # Original Windows stickfigure climbing, with in-betweens
 
 Source: https://github.com/Skittlq/alan-beckers-stickfigures-unofficial

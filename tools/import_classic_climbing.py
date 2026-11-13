@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Adapt original artwork with motion-compensated in-betweens at native 25Hz.
+"""Adapt undeformed source artwork at restrained integer-safe traversal speed.
 
-Exact source poses remain at their original tick boundaries. Duration, integer
-velocity and total displacement are unchanged; no skeleton is regenerated.
+Original silhouettes are held at twice the source duration; integer movement
+is distributed across ticks to retain cycle displacement. No raster morphing.
 """
 import json
 import shutil
 from pathlib import Path
 from PIL import Image
-from motion_smoothing import tween
 
 ROOT=Path(__file__).resolve().parents[1]
 SOURCE=ROOT/'third_party/alan-stickfigures'
@@ -40,14 +39,18 @@ def main():
                 vx,vy=map(int,p['Velocity'].split(','))
                 def velocity(v):
                     return (1 if v>0 else -1)*max(1,round(abs(v)*scale)) if v else 0
-                duration=int(p['Duration'])
+                source_duration=int(p['Duration'])
+                duration=source_duration*2
                 for tick in range(duration):
                     amount=tick/duration
-                    image=tween(adapted_images[source_name],adapted_images[following['Image'].lstrip('/')],amount)
+                    image=adapted_images[source_name]  # no raster warping of thin limbs
                     filename=f'{prefix}_smooth{len(adapted)+1:02d}.png'
                     image.save(dest/filename)
                     anchor=f'{16+round((x+(nx-x)*amount)*scale)},{16+round((y+(ny-y)*amount)*scale)}'
-                    adapted.append((filename,anchor,f'{velocity(vx)},{velocity(vy)}',1))
+                    def distributed(v):
+                        total=velocity(v)*source_duration
+                        return round(total*(tick+1)/duration)-round(total*tick/duration)
+                    adapted.append((filename,anchor,f'{distributed(vx)},{distributed(vy)}',1))
                     if tick==0:keyframes.append({'file':filename,'source':source_name})
             cd[name]=adapted;keys[name]=keyframes
         for hold,move,index,prefix in [('GrabWall','ClimbWall',0,'wall_hold'),('GrabCeiling','ClimbCeiling',2,'hang')]:
@@ -55,12 +58,12 @@ def main():
             x,y=map(int,source_pose['ImageAnchor'].split(','))
             filename=prefix+'01.png';adapted_images[source_pose['Image'].lstrip('/')].save(dest/filename)
             cd[hold]=[(filename,f'{16+round(x*scale)},{16+round(y*scale)}','0,0',12)]
-        result[char]={'scale':scale,'actions':cd,'keyframes':keys}
+        result[char]={'scale':scale,'playback_slowdown':2,'interpolation':'none; original silhouettes', 'actions':cd,'keyframes':keys}
         keep={p[0] for poses in cd.values() for p in poses}
         for prefix in ['wall_climb','swing','wall_hold','hang']:
             for path in dest.glob(prefix+'*.png'):
                 if path.name not in keep:path.unlink()
     (ROOT/'tools/classic_climbing.json').write_text(json.dumps(result,indent=2)+'\n')
-    print('Built 15 wall ticks and 16 ceiling ticks per character, with exact source key poses')
+    print('Built 30 wall ticks and 32 ceiling ticks per character, with undeformed source poses')
 
 if __name__=='__main__':main()
