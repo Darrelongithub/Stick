@@ -1,0 +1,170 @@
+{
+  "video": "output.mp4",
+  "seconds": 10.0,
+  "purpose": "Manually annotated title lineup for neutral body ratios; not movement extraction or whole-video coverage",
+  "coordinates": "source-video pixels, approximate centerline points; radius is outer radius",
+  "characters": {
+    "Blue": {
+      "crop": [
+        673.47,
+        266.94,
+        806.94,
+        642.86
+      ],
+      "head": [
+        721.22,
+        318.37
+      ],
+      "radius": 40.41,
+      "shoulder": [
+        733.47,
+        367.35
+      ],
+      "hip": [
+        742.04,
+        457.96
+      ],
+      "elbow": [
+        710.2,
+        406.53
+      ],
+      "hand": [
+        706.53,
+        443.27
+      ],
+      "knee": [
+        718.78,
+        528.98
+      ],
+      "foot": [
+        708.98,
+        624.49
+      ]
+    },
+    "Green": {
+      "crop": [
+        293.88,
+        266.94,
+        424.9,
+        642.86
+      ],
+      "head": [
+        360.0,
+        318.37
+      ],
+      "radius": 40.41,
+      "shoulder": [
+        356.33,
+        367.35
+      ],
+      "hip": [
+        356.33,
+        457.96
+      ],
+      "elbow": [
+        330.61,
+        407.76
+      ],
+      "hand": [
+        312.24,
+        449.39
+      ],
+      "knee": [
+        323.27,
+        528.98
+      ],
+      "foot": [
+        312.24,
+        624.49
+      ]
+    },
+    "Yellow": {
+      "crop": [
+        881.63,
+        266.94,
+        1000.41,
+        642.86
+      ],
+      "head": [
+        942.86,
+        318.37
+      ],
+      "radius": 40.41,
+      "shoulder": [
+        940.41,
+        367.35
+      ],
+      "hip": [
+        941.63,
+        457.96
+      ],
+      "elbow": [
+        911.02,
+        407.76
+      ],
+      "hand": [
+        900.0,
+        449.39
+      ],
+      "knee": [
+        906.12,
+        531.43
+      ],
+      "foot": [
+        904.9,
+        628.16
+      ]
+    },
+    "Orange": {
+      "crop": [
+        453.06,
+        259.59,
+        639.18,
+        642.86
+      ],
+      "head": [
+        521.63,
+        333.06
+      ],
+      "radius": 61.22,
+      "shoulder": [
+        538.78,
+        399.18
+      ],
+      "hip": [
+        549.8,
+        500.82
+      ],
+      "elbow": [
+        509.39,
+        449.39
+      ],
+      "hand": [
+        494.69,
+        488.57
+      ],
+      "knee": [
+        514.29,
+        563.27
+      ],
+      "foot": [
+        487.35,
+        624.49
+      ]
+    }
+  },
+  "limitations": [
+    "Manual approximate points, not subpixel ground truth",
+    "Orange leans and has bent limbs; use centerline lengths rather than bounding height for limb comparisons",
+    "Title lineup is one stylized pose; action shots still need separate review",
+    "Red appears in video but is not one of the four currently installed packs"
+  ],
+  "annotation_display_size": [
+    1568,
+    882
+  ],
+  "source_size": [
+    1920,
+    1080
+  ]
+}

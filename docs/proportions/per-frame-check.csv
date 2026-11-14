@@ -1,0 +1,2098 @@
+character,file,action,measurement,max_bone_error_px,status
+Blue,wave01.png,Wave,render-input centerlines,0.0,pass
+Blue,wave02.png,Wave,render-input centerlines,0.0,pass
+Blue,wave03.png,Wave,render-input centerlines,0.0,pass
+Blue,wave04.png,Wave,render-input centerlines,0.0,pass
+Blue,cheer01.png,Cheer,render-input centerlines,0.0,pass
+Blue,cheer02.png,Cheer,render-input centerlines,0.0,pass
+Blue,cheer03.png,Cheer,render-input centerlines,0.0,pass
+Blue,cheer04.png,Cheer,render-input centerlines,0.0,pass
+Blue,cheer05.png,Cheer,render-input centerlines,0.0,pass
+Blue,cheer06.png,Cheer,render-input centerlines,0.0,pass
+Blue,fight_stance01.png,FightCombo,render-input centerlines,0.0,pass
+Blue,fight_stance02.png,FightCombo,render-input centerlines,0.0,pass
+Blue,fight_punch01.png,FightCombo,render-input centerlines,0.0,pass
+Blue,fight_punch02.png,FightCombo,render-input centerlines,0.0,pass
+Blue,fight_kick01.png,FightCombo,render-input centerlines,0.0,pass
+Blue,fight_block01.png,FightCombo,render-input centerlines,0.0,pass
+Blue,sword01.png,SwordPractice,render-input centerlines,0.0,pass
+Blue,sword02.png,SwordPractice,render-input centerlines,0.0,pass
+Blue,sword03.png,SwordPractice,render-input centerlines,0.0,pass
+Blue,sword04.png,SwordPractice,render-input centerlines,0.0,pass
+Blue,sword05.png,SwordPractice,render-input centerlines,0.0,pass
+Blue,mine01.png,Mine,render-input centerlines,0.0,pass
+Blue,mine02.png,Mine,render-input centerlines,0.0,pass
+Blue,mine03.png,Mine,render-input centerlines,0.0,pass
+Blue,mine04.png,Mine,render-input centerlines,0.0,pass
+Blue,sleep01.png,Sleep,render-input centerlines,0.0,pass
+Blue,sleep02.png,Sleep,render-input centerlines,0.0,pass
+Blue,sleep03.png,Sleep,render-input centerlines,0.0,pass
+Blue,hurt01.png,Hurt,render-input centerlines,0.0,pass
+Blue,hurt02.png,Hurt,render-input centerlines,0.0,pass
+Blue,hurt03.png,Hurt,render-input centerlines,0.0,pass
+Blue,cursorslash01.png,CursorSlash,render-input centerlines,0.0,pass
+Blue,cursorslash02.png,CursorSlash,render-input centerlines,0.0,pass
+Blue,cursorslash03.png,CursorSlash,render-input centerlines,0.0,pass
+Blue,glitch01.png,GlitchOut,render-input centerlines,0.0,pass
+Blue,glitch02.png,GlitchOut,render-input centerlines,0.0,pass
+Blue,glitch03.png,GlitchOut,render-input centerlines,0.0,pass
+Blue,flip01.png,Backflip,render-input centerlines,0.0,pass
+Blue,flip02.png,Backflip,render-input centerlines,0.0,pass
+Blue,flip03.png,Backflip,render-input centerlines,0.0,pass
+Blue,flip04.png,Backflip,render-input centerlines,0.0,pass
+Blue,flip05.png,Backflip,render-input centerlines,0.0,pass
+Blue,flip06.png,Backflip,render-input centerlines,0.0,pass
+Blue,snack01.png,SnackTime,render-input centerlines,0.0,pass
+Blue,snack02.png,SnackTime,render-input centerlines,0.0,pass
+Blue,snack03.png,SnackTime,render-input centerlines,0.0,pass
+Blue,snack04.png,SnackTime,render-input centerlines,0.0,pass
+Blue,slide01.png,PowerSlide,render-input centerlines,0.0,pass
+Blue,slide02.png,PowerSlide,render-input centerlines,0.0,pass
+Blue,slide03.png,PowerSlide,render-input centerlines,0.0,pass
+Blue,slide04.png,PowerSlide,render-input centerlines,0.0,pass
+Blue,pushup01.png,PushUps,render-input centerlines,0.0,pass
+Blue,pushup02.png,PushUps,render-input centerlines,0.0,pass
+Blue,pushup03.png,PushUps,render-input centerlines,0.0,pass
+Blue,pushup04.png,PushUps,render-input centerlines,0.0,pass
+Blue,sneeze01.png,Sneeze,render-input centerlines,0.0,pass
+Blue,sneeze02.png,Sneeze,render-input centerlines,0.0,pass
+Blue,sneeze03.png,Sneeze,render-input centerlines,0.0,pass
+Blue,plane01.png,PaperPlane,render-input centerlines,0.0,pass
+Blue,plane02.png,PaperPlane,render-input centerlines,0.0,pass
+Blue,plane03.png,PaperPlane,render-input centerlines,0.0,pass
+Blue,plane04.png,PaperPlane,render-input centerlines,0.0,pass
+Blue,potion01.png,BrewPotion,render-input centerlines,0.0,pass
+Blue,potion02.png,BrewPotion,render-input centerlines,0.0,pass
+Blue,potion03.png,BrewPotion,render-input centerlines,0.0,pass
+Blue,potion04.png,BrewPotion,render-input centerlines,0.0,pass
+Blue,fall01.png,Falling,render-input centerlines,0.0,pass
+Blue,fall02.png,Falling,render-input centerlines,0.0,pass
+Blue,fall03.png,Falling,render-input centerlines,0.0,pass
+Blue,fall04.png,Falling,render-input centerlines,0.0,pass
+Blue,fall05.png,Falling,render-input centerlines,0.0,pass
+Blue,fall06.png,Falling,render-input centerlines,0.0,pass
+Blue,fall07.png,Falling,render-input centerlines,0.0,pass
+Blue,fall08.png,Falling,render-input centerlines,0.0,pass
+Blue,fall09.png,Falling,render-input centerlines,0.0,pass
+Blue,fall10.png,Falling,render-input centerlines,0.0,pass
+Blue,fall11.png,Falling,render-input centerlines,0.0,pass
+Blue,fall12.png,Falling,render-input centerlines,0.0,pass
+Blue,fall13.png,Falling,render-input centerlines,0.0,pass
+Blue,fall14.png,Falling,render-input centerlines,0.0,pass
+Blue,fall15.png,Falling,render-input centerlines,0.0,pass
+Blue,fall16.png,Falling,render-input centerlines,0.0,pass
+Blue,fall17.png,Falling,render-input centerlines,0.0,pass
+Blue,fall18.png,Falling,render-input centerlines,0.0,pass
+Blue,fall19.png,Falling,render-input centerlines,0.0,pass
+Blue,fall20.png,Falling,render-input centerlines,0.0,pass
+Blue,fall21.png,Falling,render-input centerlines,0.0,pass
+Blue,fall22.png,Falling,render-input centerlines,0.0,pass
+Blue,fall23.png,Falling,render-input centerlines,0.0,pass
+Blue,fall24.png,Falling,render-input centerlines,0.0,pass
+Blue,fall25.png,Falling,render-input centerlines,0.0,pass
+Blue,fall26.png,Falling,render-input centerlines,0.0,pass
+Blue,fall27.png,Falling,render-input centerlines,0.0,pass
+Blue,fall28.png,Falling,render-input centerlines,0.0,pass
+Blue,fall29.png,Falling,render-input centerlines,0.0,pass
+Blue,fall30.png,Falling,render-input centerlines,0.0,pass
+Blue,fall31.png,Falling,render-input centerlines,0.0,pass
+Blue,fall32.png,Falling,render-input centerlines,0.0,pass
+Blue,fall33.png,Falling,render-input centerlines,0.0,pass
+Blue,fall34.png,Falling,render-input centerlines,0.0,pass
+Blue,fall35.png,Falling,render-input centerlines,0.0,pass
+Blue,fall36.png,Falling,render-input centerlines,0.0,pass
+Blue,fall37.png,Falling,render-input centerlines,0.0,pass
+Blue,fall38.png,Falling,render-input centerlines,0.0,pass
+Blue,fall39.png,Falling,render-input centerlines,0.0,pass
+Blue,fall40.png,Falling,render-input centerlines,0.0,pass
+Blue,fall41.png,Falling,render-input centerlines,0.0,pass
+Blue,fall42.png,Falling,render-input centerlines,0.0,pass
+Blue,fall43.png,Falling,render-input centerlines,0.0,pass
+Blue,fall44.png,Falling,render-input centerlines,0.0,pass
+Blue,fall45.png,Falling,render-input centerlines,0.0,pass
+Blue,fall46.png,Falling,render-input centerlines,0.0,pass
+Blue,fall47.png,Falling,render-input centerlines,0.0,pass
+Blue,fall48.png,Falling,render-input centerlines,0.0,pass
+Blue,lay01.png,Sprawl,render-input centerlines,0.0,pass
+Blue,lay02.png,Sprawl,render-input centerlines,0.0,pass
+Blue,lay03.png,Sprawl,render-input centerlines,0.0,pass
+Blue,trip01.png,Tripping,render-input centerlines,0.0,pass
+Blue,trip02.png,Tripping,render-input centerlines,0.0,pass
+Blue,trip03.png,Tripping,render-input centerlines,0.0,pass
+Blue,trip04.png,Tripping,render-input centerlines,0.0,pass
+Blue,trip05.png,Tripping,render-input centerlines,0.0,pass
+Blue,trip06.png,Tripping,render-input centerlines,0.0,pass
+Blue,stretch01.png,Stretch,render-input centerlines,0.0,pass
+Blue,stretch02.png,Stretch,render-input centerlines,0.0,pass
+Blue,stretch03.png,Stretch,render-input centerlines,0.0,pass
+Blue,stretch04.png,Stretch,render-input centerlines,0.0,pass
+Blue,stretch05.png,Stretch,render-input centerlines,0.0,pass
+Blue,stretch06.png,Stretch,render-input centerlines,0.0,pass
+Blue,taunt01.png,Taunt,render-input centerlines,0.0,pass
+Blue,taunt02.png,Taunt,render-input centerlines,0.0,pass
+Blue,taunt03.png,Taunt,render-input centerlines,0.0,pass
+Blue,taunt04.png,Taunt,render-input centerlines,0.0,pass
+Blue,taunt05.png,Taunt,render-input centerlines,0.0,pass
+Blue,taunt06.png,Taunt,render-input centerlines,0.0,pass
+Blue,spin01.png,SpinKick,render-input centerlines,0.0,pass
+Blue,spin02.png,SpinKick,render-input centerlines,0.0,pass
+Blue,spin03.png,SpinKick,render-input centerlines,0.0,pass
+Blue,spin04.png,SpinKick,render-input centerlines,0.0,pass
+Blue,spin05.png,SpinKick,render-input centerlines,0.0,pass
+Blue,spin06.png,SpinKick,render-input centerlines,0.0,pass
+Blue,phone01.png,Phone,render-input centerlines,0.0,pass
+Blue,phone02.png,Phone,render-input centerlines,0.0,pass
+Blue,phone03.png,Phone,render-input centerlines,0.0,pass
+Blue,phone04.png,Phone,render-input centerlines,0.0,pass
+Blue,phone05.png,Phone,render-input centerlines,0.0,pass
+Blue,phone06.png,Phone,render-input centerlines,0.0,pass
+Blue,coffee01.png,Coffee,render-input centerlines,0.0,pass
+Blue,coffee02.png,Coffee,render-input centerlines,0.0,pass
+Blue,coffee03.png,Coffee,render-input centerlines,0.0,pass
+Blue,coffee04.png,Coffee,render-input centerlines,0.0,pass
+Blue,coffee05.png,Coffee,render-input centerlines,0.0,pass
+Blue,coffee06.png,Coffee,render-input centerlines,0.0,pass
+Blue,meditate01.png,Meditate,render-input centerlines,0.0,pass
+Blue,meditate02.png,Meditate,render-input centerlines,0.0,pass
+Blue,meditate03.png,Meditate,render-input centerlines,0.0,pass
+Blue,meditate04.png,Meditate,render-input centerlines,0.0,pass
+Blue,meditate05.png,Meditate,render-input centerlines,0.0,pass
+Blue,meditate06.png,Meditate,render-input centerlines,0.0,pass
+Blue,cry01.png,Cry,render-input centerlines,0.0,pass
+Blue,cry02.png,Cry,render-input centerlines,0.0,pass
+Blue,cry03.png,Cry,render-input centerlines,0.0,pass
+Blue,cry04.png,Cry,render-input centerlines,0.0,pass
+Blue,cry05.png,Cry,render-input centerlines,0.0,pass
+Blue,cry06.png,Cry,render-input centerlines,0.0,pass
+Blue,dizzy01.png,Dizzy,render-input centerlines,0.0,pass
+Blue,dizzy02.png,Dizzy,render-input centerlines,0.0,pass
+Blue,dizzy03.png,Dizzy,render-input centerlines,0.0,pass
+Blue,dizzy04.png,Dizzy,render-input centerlines,0.0,pass
+Blue,dizzy05.png,Dizzy,render-input centerlines,0.0,pass
+Blue,juggle01.png,Juggle,render-input centerlines,0.0,pass
+Blue,juggle02.png,Juggle,render-input centerlines,0.0,pass
+Blue,juggle03.png,Juggle,render-input centerlines,0.0,pass
+Blue,juggle04.png,Juggle,render-input centerlines,0.0,pass
+Blue,juggle05.png,Juggle,render-input centerlines,0.0,pass
+Blue,juggle06.png,Juggle,render-input centerlines,0.0,pass
+Blue,juggle07.png,Juggle,render-input centerlines,0.0,pass
+Blue,victory01.png,Victory,render-input centerlines,0.0,pass
+Blue,victory02.png,Victory,render-input centerlines,0.0,pass
+Blue,victory03.png,Victory,render-input centerlines,0.0,pass
+Blue,victory04.png,Victory,render-input centerlines,0.0,pass
+Blue,victory05.png,Victory,render-input centerlines,0.0,pass
+Blue,victory06.png,Victory,render-input centerlines,0.0,pass
+Blue,victory07.png,Victory,render-input centerlines,0.0,pass
+Blue,idle01.png,Idle,render-input centerlines,0.0,pass
+Blue,idle02.png,Idle,render-input centerlines,0.0,pass
+Blue,idle03.png,Idle,render-input centerlines,0.0,pass
+Blue,idle04.png,Idle,render-input centerlines,0.0,pass
+Blue,idle05.png,Idle,render-input centerlines,0.0,pass
+Blue,idle06.png,Idle,render-input centerlines,0.0,pass
+Blue,idle07.png,Idle,render-input centerlines,0.0,pass
+Blue,idle08.png,Idle,render-input centerlines,0.0,pass
+Blue,crawl01.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl02.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl03.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl04.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl05.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl06.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl07.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl08.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl09.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl10.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl11.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl12.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl13.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl14.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl15.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl16.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl17.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl18.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl19.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl20.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl21.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl22.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl23.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl24.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl25.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl26.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl27.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl28.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl29.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl30.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl31.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl32.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl33.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl34.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl35.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl36.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl37.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl38.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl39.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl40.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl41.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl42.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl43.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl44.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl45.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl46.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl47.png,Crawl,render-input centerlines,0.0,pass
+Blue,crawl48.png,Crawl,render-input centerlines,0.0,pass
+Blue,read01.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read02.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read03.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read04.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read05.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read06.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read07.png,ReadBook,render-input centerlines,0.0,pass
+Blue,read08.png,ReadBook,render-input centerlines,0.0,pass
+Blue,bounce01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,bounce02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,bounce03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,bounce04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance08.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance09.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance10.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance11.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance12.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance13.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance14.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance15.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance16.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance17.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance18.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance19.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance20.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance21.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance22.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance23.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance24.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance25.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance26.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance27.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance28.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance29.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance30.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance31.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance32.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance33.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance34.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance35.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance36.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance37.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance38.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance39.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance40.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance41.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance42.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance43.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance44.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance45.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance46.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance47.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance48.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance49.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance50.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance51.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance52.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance53.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance54.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance55.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance56.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance57.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance58.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance59.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance60.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance61.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance62.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance63.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance64.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance65.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance66.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance67.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance68.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance69.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance70.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance71.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance72.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance73.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance74.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance75.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance76.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance77.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance78.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance79.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance80.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance81.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance82.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance83.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance84.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance85.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance86.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance87.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance88.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dance89.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dangle01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dangle02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dangle03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dangle04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dangle05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,dangle06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hang01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugged_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,hugging_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,pinch07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run08.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run09.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run10.png,,raster only; joints not annotated,,UNMEASURED
+Blue,run11.png,,raster only; joints not annotated,,UNMEASURED
+Blue,sit01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,sit_legs_down01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,sit_legs_up01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,sit_up01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth31.png,,raster only; joints not annotated,,UNMEASURED
+Blue,swing_smooth32.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_001.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_002.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_003.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_004.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_005.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_006.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_007.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_008.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_009.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_010.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_011.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_012.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_013.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_014.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_015.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_016.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_017.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_018.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videolean_019.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_001.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_002.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_003.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_004.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_005.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_006.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_007.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_008.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_009.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_010.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_011.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_012.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_013.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_014.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_015.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_016.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_017.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_018.png,,raster only; joints not annotated,,UNMEASURED
+Blue,videoref_videoreach_019.png,,raster only; joints not annotated,,UNMEASURED
+Blue,walk01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,walk02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,walk03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,walk04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,walk05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,walk06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_climb_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Blue,wall_hold01.png,,raster only; joints not annotated,,UNMEASURED
+Green,wave01.png,Wave,render-input centerlines,0.0,pass
+Green,wave02.png,Wave,render-input centerlines,0.0,pass
+Green,wave03.png,Wave,render-input centerlines,0.0,pass
+Green,wave04.png,Wave,render-input centerlines,0.0,pass
+Green,cheer01.png,Cheer,render-input centerlines,0.0,pass
+Green,cheer02.png,Cheer,render-input centerlines,0.0,pass
+Green,cheer03.png,Cheer,render-input centerlines,0.0,pass
+Green,cheer04.png,Cheer,render-input centerlines,0.0,pass
+Green,cheer05.png,Cheer,render-input centerlines,0.0,pass
+Green,cheer06.png,Cheer,render-input centerlines,0.0,pass
+Green,fight_stance01.png,FightCombo,render-input centerlines,0.0,pass
+Green,fight_stance02.png,FightCombo,render-input centerlines,0.0,pass
+Green,fight_punch01.png,FightCombo,render-input centerlines,0.0,pass
+Green,fight_punch02.png,FightCombo,render-input centerlines,0.0,pass
+Green,fight_kick01.png,FightCombo,render-input centerlines,0.0,pass
+Green,fight_block01.png,FightCombo,render-input centerlines,0.0,pass
+Green,sword01.png,SwordPractice,render-input centerlines,0.0,pass
+Green,sword02.png,SwordPractice,render-input centerlines,0.0,pass
+Green,sword03.png,SwordPractice,render-input centerlines,0.0,pass
+Green,sword04.png,SwordPractice,render-input centerlines,0.0,pass
+Green,sword05.png,SwordPractice,render-input centerlines,0.0,pass
+Green,mine01.png,Mine,render-input centerlines,0.0,pass
+Green,mine02.png,Mine,render-input centerlines,0.0,pass
+Green,mine03.png,Mine,render-input centerlines,0.0,pass
+Green,mine04.png,Mine,render-input centerlines,0.0,pass
+Green,sleep01.png,Sleep,render-input centerlines,0.0,pass
+Green,sleep02.png,Sleep,render-input centerlines,0.0,pass
+Green,sleep03.png,Sleep,render-input centerlines,0.0,pass
+Green,hurt01.png,Hurt,render-input centerlines,0.0,pass
+Green,hurt02.png,Hurt,render-input centerlines,0.0,pass
+Green,hurt03.png,Hurt,render-input centerlines,0.0,pass
+Green,cursorslash01.png,CursorSlash,render-input centerlines,0.0,pass
+Green,cursorslash02.png,CursorSlash,render-input centerlines,0.0,pass
+Green,cursorslash03.png,CursorSlash,render-input centerlines,0.0,pass
+Green,glitch01.png,GlitchOut,render-input centerlines,0.0,pass
+Green,glitch02.png,GlitchOut,render-input centerlines,0.0,pass
+Green,glitch03.png,GlitchOut,render-input centerlines,0.0,pass
+Green,flip01.png,Backflip,render-input centerlines,0.0,pass
+Green,flip02.png,Backflip,render-input centerlines,0.0,pass
+Green,flip03.png,Backflip,render-input centerlines,0.0,pass
+Green,flip04.png,Backflip,render-input centerlines,0.0,pass
+Green,flip05.png,Backflip,render-input centerlines,0.0,pass
+Green,flip06.png,Backflip,render-input centerlines,0.0,pass
+Green,snack01.png,SnackTime,render-input centerlines,0.0,pass
+Green,snack02.png,SnackTime,render-input centerlines,0.0,pass
+Green,snack03.png,SnackTime,render-input centerlines,0.0,pass
+Green,snack04.png,SnackTime,render-input centerlines,0.0,pass
+Green,slide01.png,PowerSlide,render-input centerlines,0.0,pass
+Green,slide02.png,PowerSlide,render-input centerlines,0.0,pass
+Green,slide03.png,PowerSlide,render-input centerlines,0.0,pass
+Green,slide04.png,PowerSlide,render-input centerlines,0.0,pass
+Green,pushup01.png,PushUps,render-input centerlines,0.0,pass
+Green,pushup02.png,PushUps,render-input centerlines,0.0,pass
+Green,pushup03.png,PushUps,render-input centerlines,0.0,pass
+Green,pushup04.png,PushUps,render-input centerlines,0.0,pass
+Green,sneeze01.png,Sneeze,render-input centerlines,0.0,pass
+Green,sneeze02.png,Sneeze,render-input centerlines,0.0,pass
+Green,sneeze03.png,Sneeze,render-input centerlines,0.0,pass
+Green,plane01.png,PaperPlane,render-input centerlines,0.0,pass
+Green,plane02.png,PaperPlane,render-input centerlines,0.0,pass
+Green,plane03.png,PaperPlane,render-input centerlines,0.0,pass
+Green,plane04.png,PaperPlane,render-input centerlines,0.0,pass
+Green,music01.png,PlayGuitar,render-input centerlines,0.0,pass
+Green,music02.png,PlayGuitar,render-input centerlines,0.0,pass
+Green,music03.png,PlayGuitar,render-input centerlines,0.0,pass
+Green,music04.png,PlayGuitar,render-input centerlines,0.0,pass
+Green,fall01.png,Falling,render-input centerlines,0.0,pass
+Green,fall02.png,Falling,render-input centerlines,0.0,pass
+Green,fall03.png,Falling,render-input centerlines,0.0,pass
+Green,fall04.png,Falling,render-input centerlines,0.0,pass
+Green,fall05.png,Falling,render-input centerlines,0.0,pass
+Green,fall06.png,Falling,render-input centerlines,0.0,pass
+Green,fall07.png,Falling,render-input centerlines,0.0,pass
+Green,fall08.png,Falling,render-input centerlines,0.0,pass
+Green,fall09.png,Falling,render-input centerlines,0.0,pass
+Green,fall10.png,Falling,render-input centerlines,0.0,pass
+Green,fall11.png,Falling,render-input centerlines,0.0,pass
+Green,fall12.png,Falling,render-input centerlines,0.0,pass
+Green,fall13.png,Falling,render-input centerlines,0.0,pass
+Green,fall14.png,Falling,render-input centerlines,0.0,pass
+Green,fall15.png,Falling,render-input centerlines,0.0,pass
+Green,fall16.png,Falling,render-input centerlines,0.0,pass
+Green,fall17.png,Falling,render-input centerlines,0.0,pass
+Green,fall18.png,Falling,render-input centerlines,0.0,pass
+Green,fall19.png,Falling,render-input centerlines,0.0,pass
+Green,fall20.png,Falling,render-input centerlines,0.0,pass
+Green,fall21.png,Falling,render-input centerlines,0.0,pass
+Green,fall22.png,Falling,render-input centerlines,0.0,pass
+Green,fall23.png,Falling,render-input centerlines,0.0,pass
+Green,fall24.png,Falling,render-input centerlines,0.0,pass
+Green,fall25.png,Falling,render-input centerlines,0.0,pass
+Green,fall26.png,Falling,render-input centerlines,0.0,pass
+Green,fall27.png,Falling,render-input centerlines,0.0,pass
+Green,fall28.png,Falling,render-input centerlines,0.0,pass
+Green,fall29.png,Falling,render-input centerlines,0.0,pass
+Green,fall30.png,Falling,render-input centerlines,0.0,pass
+Green,fall31.png,Falling,render-input centerlines,0.0,pass
+Green,fall32.png,Falling,render-input centerlines,0.0,pass
+Green,fall33.png,Falling,render-input centerlines,0.0,pass
+Green,fall34.png,Falling,render-input centerlines,0.0,pass
+Green,fall35.png,Falling,render-input centerlines,0.0,pass
+Green,fall36.png,Falling,render-input centerlines,0.0,pass
+Green,fall37.png,Falling,render-input centerlines,0.0,pass
+Green,fall38.png,Falling,render-input centerlines,0.0,pass
+Green,fall39.png,Falling,render-input centerlines,0.0,pass
+Green,fall40.png,Falling,render-input centerlines,0.0,pass
+Green,fall41.png,Falling,render-input centerlines,0.0,pass
+Green,fall42.png,Falling,render-input centerlines,0.0,pass
+Green,fall43.png,Falling,render-input centerlines,0.0,pass
+Green,fall44.png,Falling,render-input centerlines,0.0,pass
+Green,fall45.png,Falling,render-input centerlines,0.0,pass
+Green,fall46.png,Falling,render-input centerlines,0.0,pass
+Green,fall47.png,Falling,render-input centerlines,0.0,pass
+Green,fall48.png,Falling,render-input centerlines,0.0,pass
+Green,lay01.png,Sprawl,render-input centerlines,0.0,pass
+Green,lay02.png,Sprawl,render-input centerlines,0.0,pass
+Green,lay03.png,Sprawl,render-input centerlines,0.0,pass
+Green,trip01.png,Tripping,render-input centerlines,0.0,pass
+Green,trip02.png,Tripping,render-input centerlines,0.0,pass
+Green,trip03.png,Tripping,render-input centerlines,0.0,pass
+Green,trip04.png,Tripping,render-input centerlines,0.0,pass
+Green,trip05.png,Tripping,render-input centerlines,0.0,pass
+Green,trip06.png,Tripping,render-input centerlines,0.0,pass
+Green,stretch01.png,Stretch,render-input centerlines,0.0,pass
+Green,stretch02.png,Stretch,render-input centerlines,0.0,pass
+Green,stretch03.png,Stretch,render-input centerlines,0.0,pass
+Green,stretch04.png,Stretch,render-input centerlines,0.0,pass
+Green,stretch05.png,Stretch,render-input centerlines,0.0,pass
+Green,stretch06.png,Stretch,render-input centerlines,0.0,pass
+Green,taunt01.png,Taunt,render-input centerlines,0.0,pass
+Green,taunt02.png,Taunt,render-input centerlines,0.0,pass
+Green,taunt03.png,Taunt,render-input centerlines,0.0,pass
+Green,taunt04.png,Taunt,render-input centerlines,0.0,pass
+Green,taunt05.png,Taunt,render-input centerlines,0.0,pass
+Green,taunt06.png,Taunt,render-input centerlines,0.0,pass
+Green,spin01.png,SpinKick,render-input centerlines,0.0,pass
+Green,spin02.png,SpinKick,render-input centerlines,0.0,pass
+Green,spin03.png,SpinKick,render-input centerlines,0.0,pass
+Green,spin04.png,SpinKick,render-input centerlines,0.0,pass
+Green,spin05.png,SpinKick,render-input centerlines,0.0,pass
+Green,spin06.png,SpinKick,render-input centerlines,0.0,pass
+Green,phone01.png,Phone,render-input centerlines,0.0,pass
+Green,phone02.png,Phone,render-input centerlines,0.0,pass
+Green,phone03.png,Phone,render-input centerlines,0.0,pass
+Green,phone04.png,Phone,render-input centerlines,0.0,pass
+Green,phone05.png,Phone,render-input centerlines,0.0,pass
+Green,phone06.png,Phone,render-input centerlines,0.0,pass
+Green,coffee01.png,Coffee,render-input centerlines,0.0,pass
+Green,coffee02.png,Coffee,render-input centerlines,0.0,pass
+Green,coffee03.png,Coffee,render-input centerlines,0.0,pass
+Green,coffee04.png,Coffee,render-input centerlines,0.0,pass
+Green,coffee05.png,Coffee,render-input centerlines,0.0,pass
+Green,coffee06.png,Coffee,render-input centerlines,0.0,pass
+Green,meditate01.png,Meditate,render-input centerlines,0.0,pass
+Green,meditate02.png,Meditate,render-input centerlines,0.0,pass
+Green,meditate03.png,Meditate,render-input centerlines,0.0,pass
+Green,meditate04.png,Meditate,render-input centerlines,0.0,pass
+Green,meditate05.png,Meditate,render-input centerlines,0.0,pass
+Green,meditate06.png,Meditate,render-input centerlines,0.0,pass
+Green,cry01.png,Cry,render-input centerlines,0.0,pass
+Green,cry02.png,Cry,render-input centerlines,0.0,pass
+Green,cry03.png,Cry,render-input centerlines,0.0,pass
+Green,cry04.png,Cry,render-input centerlines,0.0,pass
+Green,cry05.png,Cry,render-input centerlines,0.0,pass
+Green,cry06.png,Cry,render-input centerlines,0.0,pass
+Green,dizzy01.png,Dizzy,render-input centerlines,0.0,pass
+Green,dizzy02.png,Dizzy,render-input centerlines,0.0,pass
+Green,dizzy03.png,Dizzy,render-input centerlines,0.0,pass
+Green,dizzy04.png,Dizzy,render-input centerlines,0.0,pass
+Green,dizzy05.png,Dizzy,render-input centerlines,0.0,pass
+Green,juggle01.png,Juggle,render-input centerlines,0.0,pass
+Green,juggle02.png,Juggle,render-input centerlines,0.0,pass
+Green,juggle03.png,Juggle,render-input centerlines,0.0,pass
+Green,juggle04.png,Juggle,render-input centerlines,0.0,pass
+Green,juggle05.png,Juggle,render-input centerlines,0.0,pass
+Green,juggle06.png,Juggle,render-input centerlines,0.0,pass
+Green,juggle07.png,Juggle,render-input centerlines,0.0,pass
+Green,victory01.png,Victory,render-input centerlines,0.0,pass
+Green,victory02.png,Victory,render-input centerlines,0.0,pass
+Green,victory03.png,Victory,render-input centerlines,0.0,pass
+Green,victory04.png,Victory,render-input centerlines,0.0,pass
+Green,victory05.png,Victory,render-input centerlines,0.0,pass
+Green,victory06.png,Victory,render-input centerlines,0.0,pass
+Green,victory07.png,Victory,render-input centerlines,0.0,pass
+Green,idle01.png,Idle,render-input centerlines,0.0,pass
+Green,idle02.png,Idle,render-input centerlines,0.0,pass
+Green,idle03.png,Idle,render-input centerlines,0.0,pass
+Green,idle04.png,Idle,render-input centerlines,0.0,pass
+Green,idle05.png,Idle,render-input centerlines,0.0,pass
+Green,idle06.png,Idle,render-input centerlines,0.0,pass
+Green,idle07.png,Idle,render-input centerlines,0.0,pass
+Green,idle08.png,Idle,render-input centerlines,0.0,pass
+Green,crawl01.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl02.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl03.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl04.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl05.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl06.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl07.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl08.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl09.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl10.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl11.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl12.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl13.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl14.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl15.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl16.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl17.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl18.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl19.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl20.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl21.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl22.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl23.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl24.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl25.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl26.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl27.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl28.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl29.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl30.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl31.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl32.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl33.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl34.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl35.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl36.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl37.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl38.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl39.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl40.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl41.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl42.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl43.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl44.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl45.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl46.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl47.png,Crawl,render-input centerlines,0.0,pass
+Green,crawl48.png,Crawl,render-input centerlines,0.0,pass
+Green,jumprope01.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope02.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope03.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope04.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope05.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope06.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope07.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope08.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope09.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope10.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope11.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope12.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope13.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope14.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope15.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope16.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope17.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope18.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope19.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope20.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope21.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope22.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope23.png,JumpRope,render-input centerlines,0.0,pass
+Green,jumprope24.png,JumpRope,render-input centerlines,0.0,pass
+Green,bounce01.png,,raster only; joints not annotated,,UNMEASURED
+Green,bounce02.png,,raster only; joints not annotated,,UNMEASURED
+Green,bounce03.png,,raster only; joints not annotated,,UNMEASURED
+Green,bounce04.png,,raster only; joints not annotated,,UNMEASURED
+Green,bounce05.png,,raster only; joints not annotated,,UNMEASURED
+Green,bounce06.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance01.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance02.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance03.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance04.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance05.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance06.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance07.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance08.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance09.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance10.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance11.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance12.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance13.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance14.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance15.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance16.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance17.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance18.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance19.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance20.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance21.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance22.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance23.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance24.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance25.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance26.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance27.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance28.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance29.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance30.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance31.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance32.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance33.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance34.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance35.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance36.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance37.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance38.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance39.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance40.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance41.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance42.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance43.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance44.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance45.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance46.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance47.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance48.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance49.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance50.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance51.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance52.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance53.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance54.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance55.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance56.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance57.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance58.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance59.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance60.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance61.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance62.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance63.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance64.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance65.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance66.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance67.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance68.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance69.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance70.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance71.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance72.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance73.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance74.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance75.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance76.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance77.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance78.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance79.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance80.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance81.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance82.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance83.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance84.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance85.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance86.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance87.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance88.png,,raster only; joints not annotated,,UNMEASURED
+Green,dance89.png,,raster only; joints not annotated,,UNMEASURED
+Green,dangle01.png,,raster only; joints not annotated,,UNMEASURED
+Green,dangle02.png,,raster only; joints not annotated,,UNMEASURED
+Green,dangle03.png,,raster only; joints not annotated,,UNMEASURED
+Green,dangle04.png,,raster only; joints not annotated,,UNMEASURED
+Green,dangle05.png,,raster only; joints not annotated,,UNMEASURED
+Green,dangle06.png,,raster only; joints not annotated,,UNMEASURED
+Green,hang01.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugged_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Green,hugging_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch01.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch02.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch03.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch04.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch05.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch06.png,,raster only; joints not annotated,,UNMEASURED
+Green,pinch07.png,,raster only; joints not annotated,,UNMEASURED
+Green,run01.png,,raster only; joints not annotated,,UNMEASURED
+Green,run02.png,,raster only; joints not annotated,,UNMEASURED
+Green,run03.png,,raster only; joints not annotated,,UNMEASURED
+Green,run04.png,,raster only; joints not annotated,,UNMEASURED
+Green,run05.png,,raster only; joints not annotated,,UNMEASURED
+Green,run06.png,,raster only; joints not annotated,,UNMEASURED
+Green,run07.png,,raster only; joints not annotated,,UNMEASURED
+Green,run08.png,,raster only; joints not annotated,,UNMEASURED
+Green,run09.png,,raster only; joints not annotated,,UNMEASURED
+Green,run10.png,,raster only; joints not annotated,,UNMEASURED
+Green,run11.png,,raster only; joints not annotated,,UNMEASURED
+Green,sit01.png,,raster only; joints not annotated,,UNMEASURED
+Green,sit_legs_down01.png,,raster only; joints not annotated,,UNMEASURED
+Green,sit_legs_up01.png,,raster only; joints not annotated,,UNMEASURED
+Green,sit_up01.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth31.png,,raster only; joints not annotated,,UNMEASURED
+Green,swing_smooth32.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_001.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_002.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_003.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_004.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_005.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_006.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_007.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_008.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_009.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_010.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_011.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_012.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoraisearms_013.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_001.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_002.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_003.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_004.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_005.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_006.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_007.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_008.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_009.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_010.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_011.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_012.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_013.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_014.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_015.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_016.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_017.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_018.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_019.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_020.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_021.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_022.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_023.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_024.png,,raster only; joints not annotated,,UNMEASURED
+Green,videoref_videoreach_025.png,,raster only; joints not annotated,,UNMEASURED
+Green,walk01.png,,raster only; joints not annotated,,UNMEASURED
+Green,walk02.png,,raster only; joints not annotated,,UNMEASURED
+Green,walk03.png,,raster only; joints not annotated,,UNMEASURED
+Green,walk04.png,,raster only; joints not annotated,,UNMEASURED
+Green,walk05.png,,raster only; joints not annotated,,UNMEASURED
+Green,walk06.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_climb_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Green,wall_hold01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wave01.png,Wave,render-input centerlines,0.0,pass
+Yellow,wave02.png,Wave,render-input centerlines,0.0,pass
+Yellow,wave03.png,Wave,render-input centerlines,0.0,pass
+Yellow,wave04.png,Wave,render-input centerlines,0.0,pass
+Yellow,cheer01.png,Cheer,render-input centerlines,0.0,pass
+Yellow,cheer02.png,Cheer,render-input centerlines,0.0,pass
+Yellow,cheer03.png,Cheer,render-input centerlines,0.0,pass
+Yellow,cheer04.png,Cheer,render-input centerlines,0.0,pass
+Yellow,cheer05.png,Cheer,render-input centerlines,0.0,pass
+Yellow,cheer06.png,Cheer,render-input centerlines,0.0,pass
+Yellow,fight_stance01.png,FightCombo,render-input centerlines,0.0,pass
+Yellow,fight_stance02.png,FightCombo,render-input centerlines,0.0,pass
+Yellow,fight_punch01.png,FightCombo,render-input centerlines,0.0,pass
+Yellow,fight_punch02.png,FightCombo,render-input centerlines,0.0,pass
+Yellow,fight_kick01.png,FightCombo,render-input centerlines,0.0,pass
+Yellow,fight_block01.png,FightCombo,render-input centerlines,0.0,pass
+Yellow,sword01.png,SwordPractice,render-input centerlines,0.0,pass
+Yellow,sword02.png,SwordPractice,render-input centerlines,0.0,pass
+Yellow,sword03.png,SwordPractice,render-input centerlines,0.0,pass
+Yellow,sword04.png,SwordPractice,render-input centerlines,0.0,pass
+Yellow,sword05.png,SwordPractice,render-input centerlines,0.0,pass
+Yellow,mine01.png,Mine,render-input centerlines,0.0,pass
+Yellow,mine02.png,Mine,render-input centerlines,0.0,pass
+Yellow,mine03.png,Mine,render-input centerlines,0.0,pass
+Yellow,mine04.png,Mine,render-input centerlines,0.0,pass
+Yellow,sleep01.png,Sleep,render-input centerlines,0.0,pass
+Yellow,sleep02.png,Sleep,render-input centerlines,0.0,pass
+Yellow,sleep03.png,Sleep,render-input centerlines,0.0,pass
+Yellow,hurt01.png,Hurt,render-input centerlines,0.0,pass
+Yellow,hurt02.png,Hurt,render-input centerlines,0.0,pass
+Yellow,hurt03.png,Hurt,render-input centerlines,0.0,pass
+Yellow,cursorslash01.png,CursorSlash,render-input centerlines,0.0,pass
+Yellow,cursorslash02.png,CursorSlash,render-input centerlines,0.0,pass
+Yellow,cursorslash03.png,CursorSlash,render-input centerlines,0.0,pass
+Yellow,glitch01.png,GlitchOut,render-input centerlines,0.0,pass
+Yellow,glitch02.png,GlitchOut,render-input centerlines,0.0,pass
+Yellow,glitch03.png,GlitchOut,render-input centerlines,0.0,pass
+Yellow,flip01.png,Backflip,render-input centerlines,0.0,pass
+Yellow,flip02.png,Backflip,render-input centerlines,0.0,pass
+Yellow,flip03.png,Backflip,render-input centerlines,0.0,pass
+Yellow,flip04.png,Backflip,render-input centerlines,0.0,pass
+Yellow,flip05.png,Backflip,render-input centerlines,0.0,pass
+Yellow,flip06.png,Backflip,render-input centerlines,0.0,pass
+Yellow,snack01.png,SnackTime,render-input centerlines,0.0,pass
+Yellow,snack02.png,SnackTime,render-input centerlines,0.0,pass
+Yellow,snack03.png,SnackTime,render-input centerlines,0.0,pass
+Yellow,snack04.png,SnackTime,render-input centerlines,0.0,pass
+Yellow,slide01.png,PowerSlide,render-input centerlines,0.0,pass
+Yellow,slide02.png,PowerSlide,render-input centerlines,0.0,pass
+Yellow,slide03.png,PowerSlide,render-input centerlines,0.0,pass
+Yellow,slide04.png,PowerSlide,render-input centerlines,0.0,pass
+Yellow,pushup01.png,PushUps,render-input centerlines,0.0,pass
+Yellow,pushup02.png,PushUps,render-input centerlines,0.0,pass
+Yellow,pushup03.png,PushUps,render-input centerlines,0.0,pass
+Yellow,pushup04.png,PushUps,render-input centerlines,0.0,pass
+Yellow,sneeze01.png,Sneeze,render-input centerlines,0.0,pass
+Yellow,sneeze02.png,Sneeze,render-input centerlines,0.0,pass
+Yellow,sneeze03.png,Sneeze,render-input centerlines,0.0,pass
+Yellow,plane01.png,PaperPlane,render-input centerlines,0.0,pass
+Yellow,plane02.png,PaperPlane,render-input centerlines,0.0,pass
+Yellow,plane03.png,PaperPlane,render-input centerlines,0.0,pass
+Yellow,plane04.png,PaperPlane,render-input centerlines,0.0,pass
+Yellow,tinker01.png,Tinker,render-input centerlines,0.0,pass
+Yellow,tinker02.png,Tinker,render-input centerlines,0.0,pass
+Yellow,tinker03.png,Tinker,render-input centerlines,0.0,pass
+Yellow,tinker04.png,Tinker,render-input centerlines,0.0,pass
+Yellow,fall01.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall02.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall03.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall04.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall05.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall06.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall07.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall08.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall09.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall10.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall11.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall12.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall13.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall14.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall15.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall16.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall17.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall18.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall19.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall20.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall21.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall22.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall23.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall24.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall25.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall26.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall27.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall28.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall29.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall30.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall31.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall32.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall33.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall34.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall35.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall36.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall37.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall38.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall39.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall40.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall41.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall42.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall43.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall44.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall45.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall46.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall47.png,Falling,render-input centerlines,0.0,pass
+Yellow,fall48.png,Falling,render-input centerlines,0.0,pass
+Yellow,lay01.png,Sprawl,render-input centerlines,0.0,pass
+Yellow,lay02.png,Sprawl,render-input centerlines,0.0,pass
+Yellow,lay03.png,Sprawl,render-input centerlines,0.0,pass
+Yellow,trip01.png,Tripping,render-input centerlines,0.0,pass
+Yellow,trip02.png,Tripping,render-input centerlines,0.0,pass
+Yellow,trip03.png,Tripping,render-input centerlines,0.0,pass
+Yellow,trip04.png,Tripping,render-input centerlines,0.0,pass
+Yellow,trip05.png,Tripping,render-input centerlines,0.0,pass
+Yellow,trip06.png,Tripping,render-input centerlines,0.0,pass
+Yellow,stretch01.png,Stretch,render-input centerlines,0.0,pass
+Yellow,stretch02.png,Stretch,render-input centerlines,0.0,pass
+Yellow,stretch03.png,Stretch,render-input centerlines,0.0,pass
+Yellow,stretch04.png,Stretch,render-input centerlines,0.0,pass
+Yellow,stretch05.png,Stretch,render-input centerlines,0.0,pass
+Yellow,stretch06.png,Stretch,render-input centerlines,0.0,pass
+Yellow,taunt01.png,Taunt,render-input centerlines,0.0,pass
+Yellow,taunt02.png,Taunt,render-input centerlines,0.0,pass
+Yellow,taunt03.png,Taunt,render-input centerlines,0.0,pass
+Yellow,taunt04.png,Taunt,render-input centerlines,0.0,pass
+Yellow,taunt05.png,Taunt,render-input centerlines,0.0,pass
+Yellow,taunt06.png,Taunt,render-input centerlines,0.0,pass
+Yellow,spin01.png,SpinKick,render-input centerlines,0.0,pass
+Yellow,spin02.png,SpinKick,render-input centerlines,0.0,pass
+Yellow,spin03.png,SpinKick,render-input centerlines,0.0,pass
+Yellow,spin04.png,SpinKick,render-input centerlines,0.0,pass
+Yellow,spin05.png,SpinKick,render-input centerlines,0.0,pass
+Yellow,spin06.png,SpinKick,render-input centerlines,0.0,pass
+Yellow,phone01.png,Phone,render-input centerlines,0.0,pass
+Yellow,phone02.png,Phone,render-input centerlines,0.0,pass
+Yellow,phone03.png,Phone,render-input centerlines,0.0,pass
+Yellow,phone04.png,Phone,render-input centerlines,0.0,pass
+Yellow,phone05.png,Phone,render-input centerlines,0.0,pass
+Yellow,phone06.png,Phone,render-input centerlines,0.0,pass
+Yellow,coffee01.png,Coffee,render-input centerlines,0.0,pass
+Yellow,coffee02.png,Coffee,render-input centerlines,0.0,pass
+Yellow,coffee03.png,Coffee,render-input centerlines,0.0,pass
+Yellow,coffee04.png,Coffee,render-input centerlines,0.0,pass
+Yellow,coffee05.png,Coffee,render-input centerlines,0.0,pass
+Yellow,coffee06.png,Coffee,render-input centerlines,0.0,pass
+Yellow,meditate01.png,Meditate,render-input centerlines,0.0,pass
+Yellow,meditate02.png,Meditate,render-input centerlines,0.0,pass
+Yellow,meditate03.png,Meditate,render-input centerlines,0.0,pass
+Yellow,meditate04.png,Meditate,render-input centerlines,0.0,pass
+Yellow,meditate05.png,Meditate,render-input centerlines,0.0,pass
+Yellow,meditate06.png,Meditate,render-input centerlines,0.0,pass
+Yellow,cry01.png,Cry,render-input centerlines,0.0,pass
+Yellow,cry02.png,Cry,render-input centerlines,0.0,pass
+Yellow,cry03.png,Cry,render-input centerlines,0.0,pass
+Yellow,cry04.png,Cry,render-input centerlines,0.0,pass
+Yellow,cry05.png,Cry,render-input centerlines,0.0,pass
+Yellow,cry06.png,Cry,render-input centerlines,0.0,pass
+Yellow,dizzy01.png,Dizzy,render-input centerlines,0.0,pass
+Yellow,dizzy02.png,Dizzy,render-input centerlines,0.0,pass
+Yellow,dizzy03.png,Dizzy,render-input centerlines,0.0,pass
+Yellow,dizzy04.png,Dizzy,render-input centerlines,0.0,pass
+Yellow,dizzy05.png,Dizzy,render-input centerlines,0.0,pass
+Yellow,juggle01.png,Juggle,render-input centerlines,0.0,pass
+Yellow,juggle02.png,Juggle,render-input centerlines,0.0,pass
+Yellow,juggle03.png,Juggle,render-input centerlines,0.0,pass
+Yellow,juggle04.png,Juggle,render-input centerlines,0.0,pass
+Yellow,juggle05.png,Juggle,render-input centerlines,0.0,pass
+Yellow,juggle06.png,Juggle,render-input centerlines,0.0,pass
+Yellow,juggle07.png,Juggle,render-input centerlines,0.0,pass
+Yellow,victory01.png,Victory,render-input centerlines,0.0,pass
+Yellow,victory02.png,Victory,render-input centerlines,0.0,pass
+Yellow,victory03.png,Victory,render-input centerlines,0.0,pass
+Yellow,victory04.png,Victory,render-input centerlines,0.0,pass
+Yellow,victory05.png,Victory,render-input centerlines,0.0,pass
+Yellow,victory06.png,Victory,render-input centerlines,0.0,pass
+Yellow,victory07.png,Victory,render-input centerlines,0.0,pass
+Yellow,idle01.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle02.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle03.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle04.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle05.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle06.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle07.png,Idle,render-input centerlines,0.0,pass
+Yellow,idle08.png,Idle,render-input centerlines,0.0,pass
+Yellow,crawl01.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl02.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl03.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl04.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl05.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl06.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl07.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl08.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl09.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl10.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl11.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl12.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl13.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl14.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl15.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl16.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl17.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl18.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl19.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl20.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl21.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl22.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl23.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl24.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl25.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl26.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl27.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl28.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl29.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl30.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl31.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl32.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl33.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl34.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl35.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl36.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl37.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl38.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl39.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl40.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl41.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl42.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl43.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl44.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl45.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl46.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl47.png,Crawl,render-input centerlines,0.0,pass
+Yellow,crawl48.png,Crawl,render-input centerlines,0.0,pass
+Yellow,inspect01.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect02.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect03.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect04.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect05.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect06.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect07.png,Inspect,render-input centerlines,0.0,pass
+Yellow,inspect08.png,Inspect,render-input centerlines,0.0,pass
+Yellow,bounce01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,bounce02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,bounce03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,bounce04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance08.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance09.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance10.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance11.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance12.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance13.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance14.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance15.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance16.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance17.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance18.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance19.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance20.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance21.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance22.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance23.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance24.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance25.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance26.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance27.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance28.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance29.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance30.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance31.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance32.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance33.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance34.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance35.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance36.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance37.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance38.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance39.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance40.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance41.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance42.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance43.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance44.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance45.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance46.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance47.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance48.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance49.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance50.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance51.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance52.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance53.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance54.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance55.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance56.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance57.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance58.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance59.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance60.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance61.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance62.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance63.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance64.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance65.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance66.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance67.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance68.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance69.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance70.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance71.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance72.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance73.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance74.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance75.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance76.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance77.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance78.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance79.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance80.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance81.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance82.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance83.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance84.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance85.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance86.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance87.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance88.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance89.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance90.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance91.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance92.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance93.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance94.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance95.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance96.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance97.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dance98.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dangle01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dangle02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dangle03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dangle04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dangle05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,dangle06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hang01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugged_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,hugging_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,pinch07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run08.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run09.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run10.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,run11.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,sit01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,sit_legs_down01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,sit_legs_up01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,sit_up01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth31.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,swing_smooth32.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_001.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_002.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_003.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_004.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_005.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_006.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_007.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_008.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_009.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_010.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_011.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_012.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_013.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_014.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videolean_015.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_001.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_002.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_003.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_004.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_005.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_006.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_007.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_008.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_009.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_010.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_011.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_012.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_013.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_014.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,videoref_videostep_015.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,walk01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,walk02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,walk03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,walk04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,walk05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,walk06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_climb_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Yellow,wall_hold01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wave01.png,Wave,render-input centerlines,0.0,pass
+Orange,wave02.png,Wave,render-input centerlines,0.0,pass
+Orange,wave03.png,Wave,render-input centerlines,0.0,pass
+Orange,wave04.png,Wave,render-input centerlines,0.0,pass
+Orange,cheer01.png,Cheer,render-input centerlines,0.0,pass
+Orange,cheer02.png,Cheer,render-input centerlines,0.0,pass
+Orange,cheer03.png,Cheer,render-input centerlines,0.0,pass
+Orange,cheer04.png,Cheer,render-input centerlines,0.0,pass
+Orange,cheer05.png,Cheer,render-input centerlines,0.0,pass
+Orange,cheer06.png,Cheer,render-input centerlines,0.0,pass
+Orange,fight_stance01.png,FightCombo,render-input centerlines,0.0,pass
+Orange,fight_stance02.png,FightCombo,render-input centerlines,0.0,pass
+Orange,fight_punch01.png,FightCombo,render-input centerlines,0.0,pass
+Orange,fight_punch02.png,FightCombo,render-input centerlines,0.0,pass
+Orange,fight_kick01.png,FightCombo,render-input centerlines,0.0,pass
+Orange,fight_block01.png,FightCombo,render-input centerlines,0.0,pass
+Orange,sword01.png,SwordPractice,render-input centerlines,0.0,pass
+Orange,sword02.png,SwordPractice,render-input centerlines,0.0,pass
+Orange,sword03.png,SwordPractice,render-input centerlines,0.0,pass
+Orange,sword04.png,SwordPractice,render-input centerlines,0.0,pass
+Orange,sword05.png,SwordPractice,render-input centerlines,0.0,pass
+Orange,mine01.png,Mine,render-input centerlines,0.0,pass
+Orange,mine02.png,Mine,render-input centerlines,0.0,pass
+Orange,mine03.png,Mine,render-input centerlines,0.0,pass
+Orange,mine04.png,Mine,render-input centerlines,0.0,pass
+Orange,sleep01.png,Sleep,render-input centerlines,0.0,pass
+Orange,sleep02.png,Sleep,render-input centerlines,0.0,pass
+Orange,sleep03.png,Sleep,render-input centerlines,0.0,pass
+Orange,hurt01.png,Hurt,render-input centerlines,0.0,pass
+Orange,hurt02.png,Hurt,render-input centerlines,0.0,pass
+Orange,hurt03.png,Hurt,render-input centerlines,0.0,pass
+Orange,cursorslash01.png,CursorSlash,render-input centerlines,0.0,pass
+Orange,cursorslash02.png,CursorSlash,render-input centerlines,0.0,pass
+Orange,cursorslash03.png,CursorSlash,render-input centerlines,0.0,pass
+Orange,glitch01.png,GlitchOut,render-input centerlines,0.0,pass
+Orange,glitch02.png,GlitchOut,render-input centerlines,0.0,pass
+Orange,glitch03.png,GlitchOut,render-input centerlines,0.0,pass
+Orange,flip01.png,Backflip,render-input centerlines,0.0,pass
+Orange,flip02.png,Backflip,render-input centerlines,0.0,pass
+Orange,flip03.png,Backflip,render-input centerlines,0.0,pass
+Orange,flip04.png,Backflip,render-input centerlines,0.0,pass
+Orange,flip05.png,Backflip,render-input centerlines,0.0,pass
+Orange,flip06.png,Backflip,render-input centerlines,0.0,pass
+Orange,snack01.png,SnackTime,render-input centerlines,0.0,pass
+Orange,snack02.png,SnackTime,render-input centerlines,0.0,pass
+Orange,snack03.png,SnackTime,render-input centerlines,0.0,pass
+Orange,snack04.png,SnackTime,render-input centerlines,0.0,pass
+Orange,slide01.png,PowerSlide,render-input centerlines,0.0,pass
+Orange,slide02.png,PowerSlide,render-input centerlines,0.0,pass
+Orange,slide03.png,PowerSlide,render-input centerlines,0.0,pass
+Orange,slide04.png,PowerSlide,render-input centerlines,0.0,pass
+Orange,pushup01.png,PushUps,render-input centerlines,0.0,pass
+Orange,pushup02.png,PushUps,render-input centerlines,0.0,pass
+Orange,pushup03.png,PushUps,render-input centerlines,0.0,pass
+Orange,pushup04.png,PushUps,render-input centerlines,0.0,pass
+Orange,sneeze01.png,Sneeze,render-input centerlines,0.0,pass
+Orange,sneeze02.png,Sneeze,render-input centerlines,0.0,pass
+Orange,sneeze03.png,Sneeze,render-input centerlines,0.0,pass
+Orange,plane01.png,PaperPlane,render-input centerlines,0.0,pass
+Orange,plane02.png,PaperPlane,render-input centerlines,0.0,pass
+Orange,plane03.png,PaperPlane,render-input centerlines,0.0,pass
+Orange,plane04.png,PaperPlane,render-input centerlines,0.0,pass
+Orange,draw01.png,DrawAlive,render-input centerlines,0.0,pass
+Orange,draw02.png,DrawAlive,render-input centerlines,0.0,pass
+Orange,draw03.png,DrawAlive,render-input centerlines,0.0,pass
+Orange,draw04.png,DrawAlive,render-input centerlines,0.0,pass
+Orange,draw05.png,DrawAlive,render-input centerlines,0.0,pass
+Orange,draw06.png,DrawAlive,render-input centerlines,0.0,pass
+Orange,fall01.png,Falling,render-input centerlines,0.0,pass
+Orange,fall02.png,Falling,render-input centerlines,0.0,pass
+Orange,fall03.png,Falling,render-input centerlines,0.0,pass
+Orange,fall04.png,Falling,render-input centerlines,0.0,pass
+Orange,fall05.png,Falling,render-input centerlines,0.0,pass
+Orange,fall06.png,Falling,render-input centerlines,0.0,pass
+Orange,fall07.png,Falling,render-input centerlines,0.0,pass
+Orange,fall08.png,Falling,render-input centerlines,0.0,pass
+Orange,fall09.png,Falling,render-input centerlines,0.0,pass
+Orange,fall10.png,Falling,render-input centerlines,0.0,pass
+Orange,fall11.png,Falling,render-input centerlines,0.0,pass
+Orange,fall12.png,Falling,render-input centerlines,0.0,pass
+Orange,fall13.png,Falling,render-input centerlines,0.0,pass
+Orange,fall14.png,Falling,render-input centerlines,0.0,pass
+Orange,fall15.png,Falling,render-input centerlines,0.0,pass
+Orange,fall16.png,Falling,render-input centerlines,0.0,pass
+Orange,fall17.png,Falling,render-input centerlines,0.0,pass
+Orange,fall18.png,Falling,render-input centerlines,0.0,pass
+Orange,fall19.png,Falling,render-input centerlines,0.0,pass
+Orange,fall20.png,Falling,render-input centerlines,0.0,pass
+Orange,fall21.png,Falling,render-input centerlines,0.0,pass
+Orange,fall22.png,Falling,render-input centerlines,0.0,pass
+Orange,fall23.png,Falling,render-input centerlines,0.0,pass
+Orange,fall24.png,Falling,render-input centerlines,0.0,pass
+Orange,fall25.png,Falling,render-input centerlines,0.0,pass
+Orange,fall26.png,Falling,render-input centerlines,0.0,pass
+Orange,fall27.png,Falling,render-input centerlines,0.0,pass
+Orange,fall28.png,Falling,render-input centerlines,0.0,pass
+Orange,fall29.png,Falling,render-input centerlines,0.0,pass
+Orange,fall30.png,Falling,render-input centerlines,0.0,pass
+Orange,fall31.png,Falling,render-input centerlines,0.0,pass
+Orange,fall32.png,Falling,render-input centerlines,0.0,pass
+Orange,fall33.png,Falling,render-input centerlines,0.0,pass
+Orange,fall34.png,Falling,render-input centerlines,0.0,pass
+Orange,fall35.png,Falling,render-input centerlines,0.0,pass
+Orange,fall36.png,Falling,render-input centerlines,0.0,pass
+Orange,fall37.png,Falling,render-input centerlines,0.0,pass
+Orange,fall38.png,Falling,render-input centerlines,0.0,pass
+Orange,fall39.png,Falling,render-input centerlines,0.0,pass
+Orange,fall40.png,Falling,render-input centerlines,0.0,pass
+Orange,fall41.png,Falling,render-input centerlines,0.0,pass
+Orange,fall42.png,Falling,render-input centerlines,0.0,pass
+Orange,fall43.png,Falling,render-input centerlines,0.0,pass
+Orange,fall44.png,Falling,render-input centerlines,0.0,pass
+Orange,fall45.png,Falling,render-input centerlines,0.0,pass
+Orange,fall46.png,Falling,render-input centerlines,0.0,pass
+Orange,fall47.png,Falling,render-input centerlines,0.0,pass
+Orange,fall48.png,Falling,render-input centerlines,0.0,pass
+Orange,lay01.png,Sprawl,render-input centerlines,0.0,pass
+Orange,lay02.png,Sprawl,render-input centerlines,0.0,pass
+Orange,lay03.png,Sprawl,render-input centerlines,0.0,pass
+Orange,trip01.png,Tripping,render-input centerlines,0.0,pass
+Orange,trip02.png,Tripping,render-input centerlines,0.0,pass
+Orange,trip03.png,Tripping,render-input centerlines,0.0,pass
+Orange,trip04.png,Tripping,render-input centerlines,0.0,pass
+Orange,trip05.png,Tripping,render-input centerlines,0.0,pass
+Orange,trip06.png,Tripping,render-input centerlines,0.0,pass
+Orange,stretch01.png,Stretch,render-input centerlines,0.0,pass
+Orange,stretch02.png,Stretch,render-input centerlines,0.0,pass
+Orange,stretch03.png,Stretch,render-input centerlines,0.0,pass
+Orange,stretch04.png,Stretch,render-input centerlines,0.0,pass
+Orange,stretch05.png,Stretch,render-input centerlines,0.0,pass
+Orange,stretch06.png,Stretch,render-input centerlines,0.0,pass
+Orange,taunt01.png,Taunt,render-input centerlines,0.0,pass
+Orange,taunt02.png,Taunt,render-input centerlines,0.0,pass
+Orange,taunt03.png,Taunt,render-input centerlines,0.0,pass
+Orange,taunt04.png,Taunt,render-input centerlines,0.0,pass
+Orange,taunt05.png,Taunt,render-input centerlines,0.0,pass
+Orange,taunt06.png,Taunt,render-input centerlines,0.0,pass
+Orange,spin01.png,SpinKick,render-input centerlines,0.0,pass
+Orange,spin02.png,SpinKick,render-input centerlines,0.0,pass
+Orange,spin03.png,SpinKick,render-input centerlines,0.0,pass
+Orange,spin04.png,SpinKick,render-input centerlines,0.0,pass
+Orange,spin05.png,SpinKick,render-input centerlines,0.0,pass
+Orange,spin06.png,SpinKick,render-input centerlines,0.0,pass
+Orange,phone01.png,Phone,render-input centerlines,0.0,pass
+Orange,phone02.png,Phone,render-input centerlines,0.0,pass
+Orange,phone03.png,Phone,render-input centerlines,0.0,pass
+Orange,phone04.png,Phone,render-input centerlines,0.0,pass
+Orange,phone05.png,Phone,render-input centerlines,0.0,pass
+Orange,phone06.png,Phone,render-input centerlines,0.0,pass
+Orange,coffee01.png,Coffee,render-input centerlines,0.0,pass
+Orange,coffee02.png,Coffee,render-input centerlines,0.0,pass
+Orange,coffee03.png,Coffee,render-input centerlines,0.0,pass
+Orange,coffee04.png,Coffee,render-input centerlines,0.0,pass
+Orange,coffee05.png,Coffee,render-input centerlines,0.0,pass
+Orange,coffee06.png,Coffee,render-input centerlines,0.0,pass
+Orange,meditate01.png,Meditate,render-input centerlines,0.0,pass
+Orange,meditate02.png,Meditate,render-input centerlines,0.0,pass
+Orange,meditate03.png,Meditate,render-input centerlines,0.0,pass
+Orange,meditate04.png,Meditate,render-input centerlines,0.0,pass
+Orange,meditate05.png,Meditate,render-input centerlines,0.0,pass
+Orange,meditate06.png,Meditate,render-input centerlines,0.0,pass
+Orange,cry01.png,Cry,render-input centerlines,0.0,pass
+Orange,cry02.png,Cry,render-input centerlines,0.0,pass
+Orange,cry03.png,Cry,render-input centerlines,0.0,pass
+Orange,cry04.png,Cry,render-input centerlines,0.0,pass
+Orange,cry05.png,Cry,render-input centerlines,0.0,pass
+Orange,cry06.png,Cry,render-input centerlines,0.0,pass
+Orange,dizzy01.png,Dizzy,render-input centerlines,0.0,pass
+Orange,dizzy02.png,Dizzy,render-input centerlines,0.0,pass
+Orange,dizzy03.png,Dizzy,render-input centerlines,0.0,pass
+Orange,dizzy04.png,Dizzy,render-input centerlines,0.0,pass
+Orange,dizzy05.png,Dizzy,render-input centerlines,0.0,pass
+Orange,juggle01.png,Juggle,render-input centerlines,0.0,pass
+Orange,juggle02.png,Juggle,render-input centerlines,0.0,pass
+Orange,juggle03.png,Juggle,render-input centerlines,0.0,pass
+Orange,juggle04.png,Juggle,render-input centerlines,0.0,pass
+Orange,juggle05.png,Juggle,render-input centerlines,0.0,pass
+Orange,juggle06.png,Juggle,render-input centerlines,0.0,pass
+Orange,juggle07.png,Juggle,render-input centerlines,0.0,pass
+Orange,victory01.png,Victory,render-input centerlines,0.0,pass
+Orange,victory02.png,Victory,render-input centerlines,0.0,pass
+Orange,victory03.png,Victory,render-input centerlines,0.0,pass
+Orange,victory04.png,Victory,render-input centerlines,0.0,pass
+Orange,victory05.png,Victory,render-input centerlines,0.0,pass
+Orange,victory06.png,Victory,render-input centerlines,0.0,pass
+Orange,victory07.png,Victory,render-input centerlines,0.0,pass
+Orange,idle01.png,Idle,render-input centerlines,0.0,pass
+Orange,idle02.png,Idle,render-input centerlines,0.0,pass
+Orange,idle03.png,Idle,render-input centerlines,0.0,pass
+Orange,idle04.png,Idle,render-input centerlines,0.0,pass
+Orange,idle05.png,Idle,render-input centerlines,0.0,pass
+Orange,idle06.png,Idle,render-input centerlines,0.0,pass
+Orange,idle07.png,Idle,render-input centerlines,0.0,pass
+Orange,idle08.png,Idle,render-input centerlines,0.0,pass
+Orange,crawl01.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl02.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl03.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl04.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl05.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl06.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl07.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl08.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl09.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl10.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl11.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl12.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl13.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl14.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl15.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl16.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl17.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl18.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl19.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl20.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl21.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl22.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl23.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl24.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl25.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl26.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl27.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl28.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl29.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl30.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl31.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl32.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl33.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl34.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl35.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl36.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl37.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl38.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl39.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl40.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl41.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl42.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl43.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl44.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl45.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl46.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl47.png,Crawl,render-input centerlines,0.0,pass
+Orange,crawl48.png,Crawl,render-input centerlines,0.0,pass
+Orange,cartwheel01.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel02.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel03.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel04.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel05.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel06.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel07.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel08.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel09.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel10.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel11.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel12.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel13.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel14.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel15.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel16.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel17.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel18.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel19.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel20.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel21.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel22.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel23.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel24.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel25.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel26.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel27.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel28.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel29.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel30.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel31.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel32.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel33.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel34.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel35.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel36.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel37.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel38.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel39.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel40.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel41.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel42.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel43.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel44.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel45.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel46.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel47.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,cartwheel48.png,Cartwheel,render-input centerlines,0.0,pass
+Orange,bounce01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,bounce02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,bounce03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,bounce04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance08.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance09.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance10.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance11.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance12.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance13.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance14.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance15.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance16.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance17.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance18.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance19.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance20.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance21.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance22.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance23.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance24.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance25.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance26.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance27.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance28.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance29.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance30.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance31.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance32.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance33.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance34.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance35.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance36.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance37.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance38.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance39.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance40.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance41.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance42.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance43.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance44.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance45.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance46.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance47.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance48.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance49.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance50.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance51.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance52.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance53.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance54.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance55.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance56.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance57.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance58.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance59.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance60.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance61.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance62.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance63.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance64.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance65.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance66.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance67.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance68.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance69.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance70.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance71.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance72.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance73.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance74.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance75.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance76.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance77.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance78.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance79.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance80.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance81.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance82.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance83.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance84.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance85.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance86.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance87.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance88.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance89.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dance90.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dangle01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dangle02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dangle03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dangle04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dangle05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,dangle06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hang01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugged_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,hugging_solid08.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,pinch07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run08.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run09.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run10.png,,raster only; joints not annotated,,UNMEASURED
+Orange,run11.png,,raster only; joints not annotated,,UNMEASURED
+Orange,sit01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,sit_legs_down01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,sit_legs_up01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,sit_up01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth31.png,,raster only; joints not annotated,,UNMEASURED
+Orange,swing_smooth32.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_001.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_002.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_003.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_004.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_005.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_006.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_007.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_008.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_009.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_010.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_011.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_012.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_013.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_014.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_015.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_016.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_017.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videokneelift_018.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_001.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_002.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_003.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_004.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_005.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_006.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_007.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_008.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_009.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_010.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_011.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_012.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_013.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_014.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_015.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_016.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_017.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_018.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_019.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_020.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_021.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_022.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_023.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_024.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_025.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_026.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_027.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_028.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_029.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_030.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_031.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_032.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_033.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_034.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_035.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_036.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_037.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_038.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_039.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_040.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_041.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_042.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_043.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_044.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_045.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_046.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_047.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_048.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_049.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_050.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_051.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_052.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_053.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_054.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_055.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_056.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_057.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_058.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_059.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_060.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_061.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_062.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_063.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_064.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_065.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_066.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_067.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_068.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_069.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_070.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_071.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_072.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_073.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_074.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_075.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_076.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_077.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_078.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_079.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_080.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_081.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_082.png,,raster only; joints not annotated,,UNMEASURED
+Orange,videoref_videoleanstep_083.png,,raster only; joints not annotated,,UNMEASURED
+Orange,walk01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,walk02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,walk03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,walk04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,walk05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,walk06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth01.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth02.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth03.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth04.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth05.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth06.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth07.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth08.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth09.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth10.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth11.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth12.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth13.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth14.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth15.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth16.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth17.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth18.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth19.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth20.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth21.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth22.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth23.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth24.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth25.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth26.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth27.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth28.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth29.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_climb_smooth30.png,,raster only; joints not annotated,,UNMEASURED
+Orange,wall_hold01.png,,raster only; joints not annotated,,UNMEASURED

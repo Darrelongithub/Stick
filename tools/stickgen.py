@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ava_common as SPEC
+from character_reference import PROFILES
 
 PAD = SPEC.PAD                   # 16   slack around the authoring box
 OUT = SPEC.CANVAS                # 160  size of a rendered frame
@@ -175,14 +176,17 @@ STAND = dict(
 # rebuilds any pose onto it: each bone keeps the *direction* the artwork asked
 # for (so every gesture, kick and reach survives) but is rescaled to the length
 # here.  Poses express a pose, not a body plan.
+# Reference lineup at output.mp4 10s: median solid-head character ratios.
+# See tools/reference_proportions.json. Keep the head radius at 12px while
+# shortening the head/shoulder chain and lengthening legs relative to it.
 PROPORTIONS = {
-    "neck": math.dist(STAND["H"], STAND["N"]),            # head centre -> neck base
-    "neck-shoulder": math.dist(STAND["N"], STAND["SH"]),  # neck base -> shoulders
-    "upper arm": math.dist(STAND["SH"], STAND["EL"]),
-    "forearm": math.dist(STAND["EL"], STAND["HL"]),
-    "torso": math.dist(STAND["SH"], STAND["HIP"]),
-    "thigh": math.dist(STAND["HIP"], STAND["KL"]),
-    "shin": math.dist(STAND["KL"], STAND["FL"]),
+    "neck": 12.0,
+    "neck-shoulder": 2.7,
+    "upper arm": 13.8,
+    "forearm": 13.8,
+    "torso": 26.9,
+    "thigh": 25.9,
+    "shin": 25.9,
 }
 
 # Bones as (parent, joint, reference length) in rebuild order.
@@ -221,7 +225,7 @@ def _place(origin, direction, length):
     return (origin[0] + direction[0] * length, origin[1] + direction[1] * length)
 
 
-def normalize_pose(frame, stretch=0.0):
+def normalize_pose(frame, stretch=0.0, proportions=None):
     """Rebuild an authored pose onto the reference skeleton.
 
     Bone *directions* are kept, bone *lengths* come from PROPORTIONS.  That is
@@ -231,6 +235,7 @@ def normalize_pose(frame, stretch=0.0):
     ``stretch`` widens the torso for the few poses that legitimately imply one
     (a full-body twist), and is 0 for everything else.
     """
+    proportions = PROPORTIONS if proportions is None else proportions
     joints = dict(STAND)
     joints.update({k: tuple(v) for k, v in frame.items()
                    if k in STAND and isinstance(v, (tuple, list))})
@@ -240,7 +245,7 @@ def normalize_pose(frame, stretch=0.0):
     sh, hip = joints["SH"], joints["HIP"]
     mid = ((sh[0] + hip[0]) / 2.0, (sh[1] + hip[1]) / 2.0)
     direction = _unit(sh, hip, (0.0, 1.0))
-    torso = PROPORTIONS["torso"] * (1.0 + stretch)
+    torso = proportions["torso"] * (1.0 + stretch)
     out["SH"] = (mid[0] - direction[0] * torso / 2.0,
                  mid[1] - direction[1] * torso / 2.0)
     out["HIP"] = (mid[0] + direction[0] * torso / 2.0,
@@ -249,16 +254,16 @@ def normalize_pose(frame, stretch=0.0):
     for parent, joint in BONE_CHAIN:
         if parent == "SH" and joint == "HIP":
             continue                      # done above
-        length = PROPORTIONS[_BONE_LENGTH[(parent, joint)]]
-        direction = _unit(out[parent], joints[joint],
+        length = proportions[_BONE_LENGTH[(parent, joint)]]
+        direction = _unit(joints[parent], joints[joint],
                           _unit(STAND[parent], STAND[joint], (0.0, 1.0)))
         out[joint] = _place(out[parent], direction, length)
 
     # The far side takes its length from the near side, so a pose cannot end up
     # with one arm longer than the other.
     for near, far, near_parent, far_parent in _MIRROR:
-        length = PROPORTIONS[_BONE_LENGTH[(near_parent, near)]]
-        direction = _unit(out[far_parent], joints[far],
+        length = proportions[_BONE_LENGTH[(near_parent, near)]]
+        direction = _unit(joints[far_parent], joints[far],
                           _unit(STAND[far_parent], STAND[far], (0.0, 1.0)))
         out[far] = _place(out[far_parent], direction, length)
 
@@ -274,7 +279,18 @@ def draw_figure(d, color, dy=0, dx=0, **j):
     limb(d, [mv(g["HIP"]), mv(g["KR"]), mv(g["FR"])], LIMB_W, color)
     limb(d, [mv(g["N"]), mv(g["SH"]), mv(g["HIP"])], LIMB_W, color)
     limb(d, [mv(g["HIP"]), mv(g["KL"]), mv(g["FL"])], LIMB_W, color)
-    dot(d, mv(g["H"]), HEAD_R, color)
+    if color == BODY["Orange"]:
+        # Orange has a larger outlined head in the source, not a solid-head
+        # character with a small hole cut into the same 24px disk.
+        hx, hy = mv(g["H"])
+        radius = HEAD_R * 1.5
+        d.ellipse([_i((hx-radius, hy-radius)), _i((hx+radius, hy+radius))],
+                  fill=color + (255,))
+        inner = radius - LIMB_W
+        d.ellipse([_i((hx-inner, hy-inner)), _i((hx+inner, hy+inner))],
+                  fill=(0, 0, 0, 0))
+    else:
+        dot(d, mv(g["H"]), HEAD_R, color)
     limb(d, [mv(g["SH"]), mv(g["EL"]), mv(g["HL"])], LIMB_W, color)
     return {k: mv(v) for k, v in g.items()}
 
@@ -969,6 +985,13 @@ def FALL_FRAME(index, count=48):
 ANIMS["fall"] = [FALL_FRAME(i) for i in range(48)]
 
 
+# Legacy procedural contact solvers are retained for diagnostic tests only;
+# installed climbing uses imported source artwork, not this body plan.
+LEGACY_EDGE_PROPORTIONS = {
+    "neck": 11., "neck-shoulder": 12., "torso": 28.,
+    "upper arm": math.hypot(7,15), "forearm": math.hypot(2,14),
+    "thigh": math.hypot(5,22), "shin": math.hypot(6,21),
+}
 # ---- wall and ceiling rigs -------------------------------------------------
 # These used to be authored around a 62px arm and a 46px leg, i.e. a figure with
 # limbs roughly twice the reference length.  Once every pose is rebuilt on the
@@ -1014,8 +1037,8 @@ def WALL_CLIMB_FRAME(index, count=48, previous=None):
     shoulder = (26.0 + 1.2 * math.sin(step), 56.0 + 1.8 * math.cos(step))
     hip = (24.0 + 1.5 * math.sin(step - 0.42),
            84.0 + 1.2 * math.cos(step - 0.20))
-    neck = _lean(shoulder, 0.30, -0.95, PROPORTIONS["neck-shoulder"])
-    head = _lean(neck, 0.25, -0.97, PROPORTIONS["neck"])
+    neck = _lean(shoulder, 0.30, -0.95, LEGACY_EDGE_PROPORTIONS["neck-shoulder"])
+    head = _lean(neck, 0.25, -0.97, LEGACY_EDGE_PROPORTIONS["neck"])
 
     # Planted holds slide down 1px/tick while the sprite climbs 1px/tick; the
     # recovering limb steps away from the wall so the two never overlap.
@@ -1028,8 +1051,8 @@ def WALL_CLIMB_FRAME(index, count=48, previous=None):
     right_foot = contact_track(t, 90.0, 120.0, WALL_GRIP_X + 2.0,
                                WALL_RECOVER, axis="y", lift_sign=1)
 
-    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
-    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    upper, forearm = LEGACY_EDGE_PROPORTIONS["upper arm"], LEGACY_EDGE_PROPORTIONS["forearm"]
+    thigh, shin = LEGACY_EDGE_PROPORTIONS["thigh"], LEGACY_EDGE_PROPORTIONS["shin"]
     for root, target, upper_len, lower_len in (
             (shoulder, left_hand, upper, forearm),
             (shoulder, right_hand, upper, forearm),
@@ -1061,14 +1084,14 @@ def WALL_HOLD_FRAME(index, count=16, previous=None):
     previous = previous or {}
     shoulder = (26.0 + 1.0 * sway, 56.0 + 0.7 * math.cos(phase))
     hip = (24.0 + 1.2 * sway, 84.0 + 0.7 * math.cos(phase + 0.4))
-    neck = _lean(shoulder, 0.30, -0.95, PROPORTIONS["neck-shoulder"])
-    head = _lean(neck, 0.25, -0.97, PROPORTIONS["neck"])
+    neck = _lean(shoulder, 0.30, -0.95, LEGACY_EDGE_PROPORTIONS["neck-shoulder"])
+    head = _lean(neck, 0.25, -0.97, LEGACY_EDGE_PROPORTIONS["neck"])
 
     left_hand, right_hand = (WALL_GRIP_X, 44.0), (WALL_GRIP_X, 66.0)
     left_foot = (WALL_GRIP_X + 2.0, 92.0 + sway)
     right_foot = (WALL_GRIP_X + 2.0, 108.0 - sway)
-    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
-    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    upper, forearm = LEGACY_EDGE_PROPORTIONS["upper arm"], LEGACY_EDGE_PROPORTIONS["forearm"]
+    thigh, shin = LEGACY_EDGE_PROPORTIONS["thigh"], LEGACY_EDGE_PROPORTIONS["shin"]
     for root, target, upper_len, lower_len in (
             (shoulder, left_hand, upper, forearm),
             (shoulder, right_hand, upper, forearm),
@@ -1124,10 +1147,10 @@ def _ceiling_body(shoulder, angle):
     """
     ux, uy = math.sin(angle), math.cos(angle)
     neck = _lean(shoulder, -0.62 - 0.5 * ux, -0.78,
-                 PROPORTIONS["neck-shoulder"])
-    head = _lean(neck, -0.55, -0.83, PROPORTIONS["neck"])
-    hip = (shoulder[0] + ux * PROPORTIONS["torso"],
-           shoulder[1] + uy * PROPORTIONS["torso"])
+                 LEGACY_EDGE_PROPORTIONS["neck-shoulder"])
+    head = _lean(neck, -0.55, -0.83, LEGACY_EDGE_PROPORTIONS["neck"])
+    hip = (shoulder[0] + ux * LEGACY_EDGE_PROPORTIONS["torso"],
+           shoulder[1] + uy * LEGACY_EDGE_PROPORTIONS["torso"])
     return neck, head, hip
 
 
@@ -1144,12 +1167,12 @@ def CEILING_HOLD_FRAME(index, count=16, previous=None):
     left_hand = (CEILING_LANE[0] - 1.0 + 0.8 * math.sin(phase), CEILING_GRIP_Y)
     right_hand = (79.0 + 1.2 * math.sin(phase + 0.6),
                   shoulder[1] + 17.0 + 1.5 * math.cos(phase))
-    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    upper, forearm = LEGACY_EDGE_PROPORTIONS["upper arm"], LEGACY_EDGE_PROPORTIONS["forearm"]
     for root, target in ((shoulder, left_hand), (shoulder, right_hand)):
         _reach(root, target, upper, forearm)
 
     leg_axis = math.pi / 2 + angle
-    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    thigh, shin = LEGACY_EDGE_PROPORTIONS["thigh"], LEGACY_EDGE_PROPORTIONS["shin"]
     left_knee = polar(hip, thigh, leg_axis + 0.45)
     left_foot = polar(left_knee, shin, leg_axis + 0.20 + 0.10 * math.sin(phase))
     right_knee = polar(hip, thigh, leg_axis - 0.48)
@@ -1179,14 +1202,14 @@ def CEILING_SWING_FRAME(index, count=48, previous=None):
 
     left_hand = ceiling_hand(t, CEILING_LANE[0], CEILING_LANE[1])
     right_hand = ceiling_hand(t + 0.5, CEILING_LANE[0], CEILING_LANE[1])
-    upper, forearm = PROPORTIONS["upper arm"], PROPORTIONS["forearm"]
+    upper, forearm = LEGACY_EDGE_PROPORTIONS["upper arm"], LEGACY_EDGE_PROPORTIONS["forearm"]
     for root, target in ((shoulder, left_hand), (shoulder, right_hand)):
         _reach(root, target, upper, forearm)
 
     # Legs trail the pendulum with a delayed kick instead of dangling rigidly.
     leg_axis = math.pi / 2 + angle - 0.16 * math.sin(step - 0.70)
     pump = math.cos(step)
-    thigh, shin = PROPORTIONS["thigh"], PROPORTIONS["shin"]
+    thigh, shin = LEGACY_EDGE_PROPORTIONS["thigh"], LEGACY_EDGE_PROPORTIONS["shin"]
     left_knee = polar(hip, thigh, leg_axis + 0.24)
     left_foot = polar(left_knee, shin, leg_axis + 0.14 + 0.10 * pump)
     right_knee = polar(hip, thigh, leg_axis - 0.26)
@@ -1484,7 +1507,7 @@ def GROUND_CRAWL_FRAME(index, count=48, previous=None):
     t = index / count
     previous = previous or {}
     bob = 0.8 * math.cos(4 * math.pi * t)
-    shoulder = (54.0 + 1.2 * math.sin(2 * math.pi * t), 98.0 + bob)
+    shoulder = (54.0 + 1.2 * math.sin(2 * math.pi * t), 102.0 + bob)
     # Hips sit one thigh above the floor so the thighs are vertical and the
     # shins can lie along the floor behind them - that keeps the legs in their
     # own lane behind the body instead of folded up under the chest.
@@ -1827,7 +1850,21 @@ def check(im, anim, idx, errors, stage):
     return im
 
 def render_frame(color_rgb, anim, frame_idx):
-    fr = normalize_pose(ANIMS[anim][frame_idx])
+    authored = ANIMS[anim][frame_idx]
+    character = next((name for name, rgb in BODY.items() if rgb == color_rgb), None)
+    fr = normalize_pose(authored, proportions=PROFILES.get(character))
+    # Retarget around a planted floor contact, not around the old torso.
+    # Otherwise longer legs sink through the unchanged XML floor anchor.
+    ground_anim = any(spec.get("border") == "Floor" and
+                      anim in (spec.get("anim", spec["prefix"]) if isinstance(spec.get("anim"), (list, tuple))
+                               else (spec.get("anim", spec["prefix"]),))
+                      for spec in SPEC.ACTIONS.values())
+    authored_bottom = max(authored.get(k, STAND[k])[1] for k in ("FL", "FR"))
+    if ground_anim and not authored.get("rot") and authored_bottom >= 118:
+        shift = (max(fr[k][1] for k in ("FL", "FR"))
+                 + max(0, fr.get("dy", 0)) - min(authored_bottom, 123))
+        for key in STAND:
+            fr[key] = (fr[key][0], fr[key][1]-shift)
     fx = fr.pop("fx")
     rot = fr.pop("rot", None)
     if rot is not None:
