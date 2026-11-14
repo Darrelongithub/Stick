@@ -106,7 +106,11 @@ class FigureProportionTests(unittest.TestCase):
     def test_the_neck_is_one_short_length(self):
         """The 'why does Yellow suddenly have a long neck' bug."""
         neck = stickgen.PROPORTIONS["neck"]
-        self.assertLess(neck, stickgen.PROPORTIONS["neck-shoulder"] * 1.5)
+        # The center-to-neck segment lies inside the head; visible spacing is
+        # the full center-to-shoulder chain, not either segment in isolation.
+        ratio = (neck + stickgen.PROPORTIONS["neck-shoulder"]) / (2*stickgen.HEAD_R)
+        self.assertGreater(ratio, .58)
+        self.assertLess(ratio, .66)
         for anim, frames in stickgen.ANIMS.items():
             for index, frame in enumerate(frames):
                 pose = stickgen.normalize_pose(frame)

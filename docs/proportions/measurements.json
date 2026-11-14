@@ -1,0 +1,36 @@
+{
+  "Blue": {
+    "head_diameter_over_visible_height": 0.233,
+    "head_center_to_shoulder_in_head_diameters": 0.625,
+    "torso_in_head_diameters": 1.126,
+    "arm_centerline_in_head_diameters": 1.021,
+    "leg_centerline_in_head_diameters": 2.113
+  },
+  "Green": {
+    "head_diameter_over_visible_height": 0.233,
+    "head_center_to_shoulder_in_head_diameters": 0.608,
+    "torso_in_head_diameters": 1.121,
+    "arm_centerline_in_head_diameters": 1.156,
+    "leg_centerline_in_head_diameters": 2.159
+  },
+  "Yellow": {
+    "head_diameter_over_visible_height": 0.231,
+    "head_center_to_shoulder_in_head_diameters": 0.607,
+    "torso_in_head_diameters": 1.121,
+    "arm_centerline_in_head_diameters": 1.151,
+    "leg_centerline_in_head_diameters": 2.207
+  },
+  "Orange": {
+    "head_diameter_over_visible_height": 0.347,
+    "head_center_to_shoulder_in_head_diameters": 0.558,
+    "torso_in_head_diameters": 0.835,
+    "arm_centerline_in_head_diameters": 0.817,
+    "leg_centerline_in_head_diameters": 1.133
+  },
+  "current_generated_rig": {
+    "head_center_to_shoulder_in_head_diameters": 0.958,
+    "torso_in_head_diameters": 1.167,
+    "arm_centerline_in_head_diameters": 1.279,
+    "leg_centerline_in_head_diameters": 1.85
+  }
+}

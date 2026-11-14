@@ -1,0 +1,86 @@
+{
+  "Blue": {
+    "reference_video": "output.mp4",
+    "seconds": 10.0,
+    "master_crop": [
+      673.47,
+      266.94,
+      806.94,
+      642.86
+    ],
+    "target_lengths_px": {
+      "neck": 12.0,
+      "neck-shoulder": 2.992915010194608,
+      "torso": 27.02728373719954,
+      "upper arm": 13.532099794005301,
+      "forearm": 10.964467774801749,
+      "thigh": 22.192123063174304,
+      "shin": 28.51119767494174
+    },
+    "measured_unique_frames": 248,
+    "unmeasured_referenced_rasters": 245
+  },
+  "Green": {
+    "reference_video": "output.mp4",
+    "seconds": 10.0,
+    "master_crop": [
+      293.88,
+      266.94,
+      424.9,
+      642.86
+    ],
+    "target_lengths_px": {
+      "neck": 12.0,
+      "neck-shoulder": 2.5856871365664063,
+      "torso": 26.907201187824786,
+      "upper arm": 14.224439059232665,
+      "forearm": 13.512367871939786,
+      "thigh": 23.262882228217773,
+      "shin": 28.550791937824787
+    },
+    "measured_unique_frames": 264,
+    "unmeasured_referenced_rasters": 247
+  },
+  "Yellow": {
+    "reference_video": "output.mp4",
+    "seconds": 10.0,
+    "master_crop": [
+      881.63,
+      266.94,
+      1000.41,
+      642.86
+    ],
+    "target_lengths_px": {
+      "neck": 12.0,
+      "neck-shoulder": 2.563099251646465,
+      "torso": 26.909640044333848,
+      "upper arm": 14.83812661225549,
+      "forearm": 12.788084529027108,
+      "thigh": 24.23206435109857,
+      "shin": 28.72685769090774
+    },
+    "measured_unique_frames": 248,
+    "unmeasured_referenced_rasters": 246
+  },
+  "Orange": {
+    "reference_video": "output.mp4",
+    "seconds": 10.0,
+    "master_crop": [
+      453.06,
+      259.59,
+      639.18,
+      642.86
+    ],
+    "target_lengths_px": {
+      "neck": 18.0,
+      "neck-shoulder": 2.084011992910675,
+      "torso": 30.059488149925894,
+      "upper arm": 17.105931370331934,
+      "forearm": 12.303888638341396,
+      "thigh": 21.12246191757059,
+      "shin": 19.665739351729137
+    },
+    "measured_unique_frames": 290,
+    "unmeasured_referenced_rasters": 309
+  }
+}

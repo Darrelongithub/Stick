@@ -242,6 +242,9 @@ def main(argv=None):
             # drawings needed extra margin that the correct figure does not, and
             # keeping it would leave the two characters on different canvases.
             fixed = recolour(original, BODY[SOURCE], BODY[char])
+            if char == "Orange":
+                from normalize_orange_heads import normalize
+                fixed = normalize(fixed, name)
             if current.tobytes() == fixed.tobytes():
                 continue
             changed += 1
