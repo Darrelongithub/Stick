@@ -67,7 +67,8 @@ start_background() {
   fi
 
   say "${GOLD}Starting Coach Chess Improver on ${CYAN}$BROWSER_URL${GOLD} …${RESET}"
-  setsid npm run dev >"$LOG_FILE" 2>&1 </dev/null &
+  # npm must resolve package.json from the app, regardless of the caller's cwd.
+  setsid npm --prefix "$APP_DIR" run dev >"$LOG_FILE" 2>&1 </dev/null &
   local pid=$!
   echo "$pid" >"$PID_FILE"
 
