@@ -1,0 +1,41 @@
+{
+  "name": "darrelnxt-chess-improver",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stockfish 18 NNUE personal chess improver & mistake coach for darrelnxt",
+  "scripts": {
+    "dev": "tsx server/index.ts",
+    "build": "vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "seed": "tsx server/seedPreanalyzed.ts",
+    "analyze:all": "tsx server/analyzeAllCli.ts",
+    "test": "tsx server/selfTest.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "adm-zip": "^0.6.1",
+    "chess.js": "^1.4.0",
+    "express": "^5.3.0",
+    "lucide-react": "^1.73.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "stockfish": "18.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/adm-zip": "^0.5.8",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

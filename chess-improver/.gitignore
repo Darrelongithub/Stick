@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.cache/
+.env
+.env.*
+!.env.example
+data/analysis-cache.json
+data/user-progress.json
+data/custom-games.json
+data/learning-plan.json
+data/analyze-all-progress.json
+data/chess-server.log
+data/chess-server.pid
+screenshots/
