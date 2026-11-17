@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+# Coach Chess Improver launcher.
+# Install onto PATH with: ./chess install  (or chess-improver/bin/install-command.sh)
+set -euo pipefail
+
+SOURCE_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE_PATH")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$APP_DIR/.." && pwd)"
+DATA_DIR="$APP_DIR/data"
+
+PORT="${PORT:-5173}"
+BASE_URL="http://127.0.0.1:${PORT}"
+BROWSER_URL="http://localhost:${PORT}"
+PID_FILE="$DATA_DIR/chess-server.pid"
+LOG_FILE="$DATA_DIR/chess-server.log"
+TSX_BIN="$APP_DIR/node_modules/.bin/tsx"
+
+CYAN=$'\033[0;36m'
+GOLD=$'\033[0;33m'
+GREEN=$'\033[0;32m'
+RED=$'\033[0;31m'
+DIM=$'\033[0;90m'
+RESET=$'\033[0m'
+
+say() { printf "%b\n" "$1"; }
+
+health() {
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS --max-time 1 "$BASE_URL/api/health" >/dev/null 2>&1
+    return $?
+  fi
+  PORT="$PORT" node - <<'NODE'
+const http = require('http');
+const port = Number(process.env.PORT || 5173);
+const req = http.get({ host: '127.0.0.1', port, path: '/api/health', timeout: 1000 }, (res) => {
+  res.resume();
+  process.exit(res.statusCode === 200 ? 0 : 1);
+});
+req.on('error', () => process.exit(1));
+req.on('timeout', () => { req.destroy(); process.exit(1); });
+NODE
+}
+
+ensure_deps() {
+  if [ ! -x "$TSX_BIN" ]; then
+    say "${GOLD}First run: installing local dependencies (no external chess API needed)…${RESET}"
+    (cd "$APP_DIR" && npm install --no-audit --no-fund)
+  fi
+}
+
+start_background() {
+  if health; then
+    say "${GREEN}Chess Improver is already running:${RESET} ${CYAN}$BROWSER_URL${RESET}"
+    return 0
+  fi
+
+  ensure_deps
+  mkdir -p "$DATA_DIR"
+
+  if [ -f "$PID_FILE" ]; then
+    old_pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then
+      kill -TERM -- "-$old_pid" 2>/dev/null || kill -TERM "$old_pid" 2>/dev/null || true
+    fi
+    rm -f "$PID_FILE"
+  fi
+
+  say "${GOLD}Starting Coach Chess Improver on ${CYAN}$BROWSER_URL${GOLD} …${RESET}"
+  setsid npm run dev >"$LOG_FILE" 2>&1 </dev/null &
+  local pid=$!
+  echo "$pid" >"$PID_FILE"
+
+  for _ in $(seq 1 60); do
+    if health; then
+      say "${GREEN}✓ Started.${RESET} Open ${CYAN}$BROWSER_URL${RESET}"
+      say "${DIM}Logs: $LOG_FILE${RESET}"
+      say "${DIM}Commands: chess status | chess analyze-all | chess plan | chess stop${RESET}"
+      return 0
+    fi
+    if ! kill -0 "$pid" 2>/dev/null; then
+      break
+    fi
+    sleep 0.5
+  done
+
+  say "${RED}Server did not become healthy. Last log lines:${RESET}" >&2
+  tail -n 30 "$LOG_FILE" >&2 || true
+  return 1
+}
+
+port_pid() {
+  ss -ltnp 2>/dev/null | sed -n "s/.*:${PORT} .*pid=\([0-9]*\).*/\1/p" | head -n 1
+}
+
+stop_server() {
+  local stopped=0
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+    if [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null; then
+      kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+      sleep 1
+      kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null || true
+      stopped=1
+    fi
+    rm -f "$PID_FILE"
+  fi
+
+  local pid
+  pid="$(port_pid)"
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 1
+    kill -KILL "$pid" 2>/dev/null || true
+    stopped=1
+  fi
+
+  if [ "$stopped" -eq 1 ]; then
+    say "${GREEN}Chess Improver stopped.${RESET}"
+  else
+    say "${DIM}Chess Improver was not running.${RESET}"
+  fi
+}
+
+show_status() {
+  if ! health; then
+    say "${RED}Not running.${RESET} Start it with ${GOLD}chess${RESET}"
+    return 1
+  fi
+
+  say "${GREEN}Running:${RESET} ${CYAN}$BROWSER_URL${RESET}"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS "$BASE_URL/api/overview" 2>/dev/null | node -e "
+let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{
+  try {
+    const o=JSON.parse(s);
+    console.log('  archive games:', o.totalArchiveGames, '| drillable:', o.totalSupportedGames, '| Chess960 listed:', o.totalChess960Games);
+    console.log('  analyzed:', o.analyzedGamesCount, '| mistakes:', o.mistakeStats.totalDiscovered, '| mastered:', o.mistakeStats.mastered);
+  } catch {}
+});"
+    curl -fsS "$BASE_URL/api/admin/analyze-all/status" 2>/dev/null | node -e "
+let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{
+  try {
+    const j=JSON.parse(s);
+    if (j.running) console.log('  batch analysis:', j.percent + '%', '|', j.processed + '/' + j.total, 'games | ETA', (j.etaSeconds ?? '—') + 's');
+    else if (j.result) console.log('  full scan:', j.result.analyzedGames, 'newly analyzed,', j.result.totalMistakes, 'total mistakes');
+    else console.log('  full scan: not started');
+  } catch {}
+});"
+  fi
+}
+
+show_logs() {
+  if [ ! -f "$LOG_FILE" ]; then
+    say "${DIM}No log file yet at $LOG_FILE${RESET}"
+    return 0
+  fi
+  if [ "${1:-}" = "-f" ]; then
+    exec tail -n 80 -f "$LOG_FILE"
+  fi
+  tail -n 80 "$LOG_FILE"
+}
+
+start_analyze_all() {
+  if ! health; then
+    start_background || return 1
+  fi
+
+  say "${GOLD}Starting full-archive Stockfish analysis…${RESET}"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsS -X POST "$BASE_URL/api/admin/analyze-all" | node -e "
+let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{
+  try { const j=JSON.parse(s); console.log(j.started ? '  started' : '  already running'); }
+  catch { console.log('  request sent'); }
+});"
+  else
+    PORT="$PORT" node - <<'NODE'
+const http = require('http');
+const port = Number(process.env.PORT || 5173);
+const req = http.request({ host: '127.0.0.1', port, path: '/api/admin/analyze-all', method: 'POST' }, (res) => {
+  res.resume();
+  console.log(res.statusCode === 202 ? '  started' : '  request sent');
+});
+req.on('error', (e) => { console.error(e.message); process.exit(1); });
+req.end();
+NODE
+  fi
+  say "${GREEN}Analysis runs in the server.${RESET} Check ${GOLD}chess status${RESET} or open ${CYAN}$BROWSER_URL${RESET}"
+  say "${DIM}To wait in this terminal instead: cd chess-improver && npm run analyze:all${RESET}"
+}
+
+show_plan() {
+  local plan_file="$APP_DIR/WHAT_TO_LEARN.md"
+  if [ ! -f "$plan_file" ]; then
+    say "${DIM}No plan file yet. Start the app with ${GOLD}chess${RESET}, then run ${GOLD}chess analyze-all${RESET}.${RESET}"
+    return 0
+  fi
+  say "${CYAN}$plan_file${RESET}"
+  say "${DIM}────────────────────────────────────────────────────────────${RESET}"
+  sed -n '1,80p' "$plan_file"
+}
+
+install_command() {
+  local target_dir="/usr/local/bin"
+  if [ ! -w "$target_dir" ]; then
+    target_dir="$HOME/.local/bin"
+    mkdir -p "$target_dir"
+  fi
+
+  chmod +x "$APP_DIR/bin/chess" "$REPO_ROOT/chess" 2>/dev/null || true
+  ln -sfn "$APP_DIR/bin/chess" "$target_dir/chess"
+
+  say "${GREEN}✓ Installed ${CYAN}chess${GREEN} → ${RESET}$target_dir/chess"
+  say "${DIM}Now: cd $REPO_ROOT && chess${RESET}"
+
+  if ! printf '%s' ":$PATH:" | grep -q ":$target_dir:"; then
+    say "${GOLD}Add $target_dir to your PATH, e.g.:${RESET}"
+    say "  echo 'export PATH=\"$target_dir:\$PATH\"' >> ~/.bashrc && source ~/.bashrc"
+  fi
+}
+
+show_help() {
+  cat <<EOF
+${CYAN}Coach · darrelnxt Chess Improver${RESET}
+
+Usage: ${GOLD}chess${RESET} [command]
+
+  ${GOLD}chess${RESET}              Start the app in the background (default)
+  start               Start the app in the background
+  foreground          Start in this terminal (Ctrl+C stops it)
+  stop                Stop the server
+  restart             Stop, then start again
+  status              Show server + full-archive analysis status
+  logs [-f]           Show (or follow) server logs
+  analyze-all         Analyze every supported game with local Stockfish 18
+  plan                Print your current WHAT_TO_LEARN.md curriculum
+  install             Put the ${GOLD}chess${RESET} command on your PATH
+  help                Show this help
+
+App URL: ${CYAN}$BROWSER_URL${RESET}
+Project: ${DIM}$APP_DIR${RESET}
+No external API or key: Stockfish 18 Lite NNUE runs locally.
+EOF
+}
+
+command="${1:-start}"
+shift || true
+
+case "$command" in
+  start|"") start_background ;;
+  foreground)
+    ensure_deps
+    (cd "$APP_DIR" && exec npm run dev)
+    ;;
+  stop) stop_server ;;
+  restart)
+    stop_server
+    sleep 1
+    start_background
+    ;;
+  status) show_status ;;
+  logs) show_logs "${1:-}" ;;
+  analyze-all) start_analyze_all ;;
+  plan) show_plan ;;
+  install) install_command ;;
+  help|-h|--help) show_help ;;
+  *)
+    say "${RED}Unknown command: $command${RESET}"
+    show_help
+    exit 1
+    ;;
+esac

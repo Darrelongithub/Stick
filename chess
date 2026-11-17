@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Repo-local launcher. The `chess install` command also puts this on PATH.
+set -euo pipefail
+ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$ROOT/chess-improver/bin/chess" "$@"
