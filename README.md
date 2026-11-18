@@ -1,3 +1,8 @@
+> **ShimeLinux fullscreen / slow shutdown:** a conservative replacement for the
+> custom Hyprland watchdog is available. It verifies shutdown, fails closed on
+> detection errors, and installs disabled. It is not a confirmed fix for the
+> reported desktop freeze. [Installation and diagnostics](docs/shimelinux-watchdog.md).
+
 > **ShimeLinux stall correction:** Bonk no longer ends in an indefinite Stand.
 > Repeat guards now recognize native behavior names. Climbing uses clean
 > original silhouettes instead of raster-warped limbs, with slower traversal.
