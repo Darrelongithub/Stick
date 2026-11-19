@@ -82,19 +82,28 @@ class LifecycleTests(unittest.TestCase):
             self.assertEqual(m.engine_pids(proc), [1])
 
     def test_stop_waits_until_exit_before_success(self):
-        with patch.object(m, 'engine_pids', side_effect=[[100], [100], [100], [], [], []]), \
-             patch.object(m.os, 'kill') as kill, patch.object(m.time, 'sleep') as sleep:
+        running = [True]
+        with patch.object(m, 'engine_pids', side_effect=[[100], []]) as scan, \
+             patch.object(m, 'process_identity', side_effect=lambda pid: (pid, '123') if running[0] else None), \
+             patch.object(m, 'shutdown_snapshot') as snapshot, \
+             patch.object(m.os, 'kill') as kill, \
+             patch.object(m.time, 'sleep', side_effect=lambda _: running.__setitem__(0, False)) as sleep:
             self.assertTrue(m.stop_engines())
             kill.assert_called_once_with(100, signal.SIGTERM)
             sleep.assert_called_once()
+            self.assertEqual(scan.call_count, 2)
+            self.assertEqual([c.args[0] for c in snapshot.call_args_list], ['before-term', 'after'])
 
     def test_bounded_kill_escalation_reports_failure_if_still_present(self):
-        with patch.object(m, 'engine_pids', return_value=[100]), \
+        with patch.object(m, 'engine_pids', return_value=[100]) as scan, \
+             patch.object(m, 'process_identity', return_value=(100, '123')), \
+             patch.object(m, 'shutdown_snapshot'), \
              patch.object(m.os, 'kill') as kill, \
-             patch.object(m.time, 'monotonic', side_effect=[0, 9, 10, 13]):
+             patch.object(m.time, 'monotonic', side_effect=[0, 0, 9, 10, 13, 14]):
             self.assertFalse(m.stop_engines())
             self.assertEqual(kill.call_args_list[0].args, (100, signal.SIGTERM))
             self.assertEqual(kill.call_args_list[1].args, (100, signal.SIGKILL))
+            self.assertEqual(scan.call_count, 2)
 
 
     def test_real_process_that_ignores_term_is_killed_and_verified(self):
@@ -108,7 +117,8 @@ class LifecycleTests(unittest.TestCase):
             try:
                 self.assertEqual(child.stdout.readline().strip(), 'ready')
                 scan = m.engine_pids
-                with patch.object(m, 'engine_pids', side_effect=lambda: scan(jar=jar)):
+                with patch.object(m, 'engine_pids', side_effect=lambda: scan(jar=jar)), \
+                     patch.object(m, 'shutdown_snapshot'):
                     self.assertIn(child.pid, m.engine_pids())
                     self.assertTrue(m.stop_engines(timeout=.1))
                 child.wait(timeout=3)
@@ -187,6 +197,7 @@ class ReviewRegressionTests(unittest.TestCase):
                  patch.object(m.signal, 'signal'), patch.object(m, 'engine_pids', return_value=[]), \
                  patch.object(m, 'query_fullscreen', return_value=False), \
                  patch.object(m.Policy, 'allow', return_value=True), \
+                 patch.object(m, 'display_ready', return_value=(True, 'ready')), \
                  patch.object(m.subprocess, 'Popen', return_value=child) as launch:
                 self.assertEqual(m.manager(), 0)
                 self.assertEqual(launch.call_count, 3)
@@ -215,6 +226,7 @@ class ReviewRegressionTests(unittest.TestCase):
                  patch.object(m.signal, 'signal'), patch.object(m, 'engine_pids', return_value=[]), \
                  patch.object(m, 'query_fullscreen', return_value=False), \
                  patch.object(m.Policy, 'allow', return_value=True), \
+                 patch.object(m, 'display_ready', return_value=(True, 'ready')), \
                  patch.object(m.subprocess, 'Popen', side_effect=FileNotFoundError('java')):
                 with self.assertLogs(m.LOG, level='ERROR') as logs:
                     self.assertEqual(m.manager(), 1)
@@ -264,6 +276,92 @@ m.locked_control('start')
             self.assertNotEqual(installed.returncode, 0)
             self.assertIn('Could not inspect', installed.stderr)
             self.assertFalse((home/'.local/bin/shimeji').exists())
+
+
+class ShutdownLagTests(unittest.TestCase):
+    def test_reused_pid_is_not_signalled(self):
+        with patch.object(m, 'engine_pids', side_effect=[[100], [100]]), \
+             patch.object(m, 'process_identity', side_effect=[(100, 'old')]+[(100, 'new')]*5), \
+             patch.object(m, 'shutdown_snapshot'), patch.object(m.os, 'kill') as kill:
+            self.assertFalse(m.stop_engines())
+            kill.assert_not_called()
+
+    def test_identity_uses_start_time_and_ignores_zombies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proc = Path(directory)
+            (proc/'100').mkdir()
+            stat = proc/'100/stat'
+            for state in ('S', 'D', 'Z', 'X'):
+                stat.write_text('100 (java worker) '+state+' '+'0 '*18+'456 0 0')
+                identity = m.process_identity(100, proc)
+                self.assertEqual(identity, None if state in ('Z', 'X') else (100, '456'))
+
+    def test_snapshots_are_bounded_private_and_passive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(m, 'STATE', Path(directory)), patch.object(m.os, 'kill') as kill:
+                for stage in ('before-term', 'before-kill', 'after'):
+                    m.shutdown_snapshot(stage, [os.getpid()])
+                    m.shutdown_snapshot(stage, [os.getpid()])
+                paths = list(Path(directory).glob('shutdown-*.json'))
+                self.assertEqual(len(paths), 3)
+                for path in paths:
+                    data = json.loads(path.read_text())
+                    self.assertIn('pressure/io', data['system'])
+                    self.assertIn(str(os.getpid()), data['processes'])
+                    self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                kill.assert_not_called()
+
+
+class DisplayPreflightTests(unittest.TestCase):
+    def test_missing_display_does_not_even_invoke_native_probe(self):
+        with patch.dict(os.environ, {'DISPLAY': ''}), patch.object(m.subprocess, 'run') as run:
+            ready, reason = m.display_ready()
+            self.assertFalse(ready)
+            self.assertIn('DISPLAY', reason)
+            run.assert_not_called()
+
+    def test_probe_uses_inherited_auth_and_timeout(self):
+        with patch.dict(os.environ, {'DISPLAY': ':7', 'XAUTHORITY': '/tmp/test-auth'}), \
+             patch.object(m.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '', '')) as run:
+            self.assertTrue(m.display_ready()[0])
+            self.assertEqual(run.call_args.kwargs['timeout'], 2)
+            self.assertNotIn('env', run.call_args.kwargs)
+            self.assertEqual(run.call_args.args[0][0], sys.executable)
+
+    def test_native_probe_failure_and_timeout_stay_off(self):
+        with patch.dict(os.environ, {'DISPLAY': ':7'}):
+            for code in (1, 2, -6):
+                with patch.object(m.subprocess, 'run', return_value=subprocess.CompletedProcess([], code, '', '')):
+                    self.assertFalse(m.display_ready()[0])
+            with patch.object(m.subprocess, 'run', side_effect=subprocess.TimeoutExpired('probe', 2)):
+                self.assertFalse(m.display_ready()[0])
+
+    def test_display_retry_is_throttled_and_recovers(self):
+        gate = m.DisplayGate()
+        with patch.object(m, 'display_ready', side_effect=[(False, 'no display'), (True, 'ready')]) as probe:
+            self.assertFalse(gate.allow(0))
+            self.assertFalse(gate.allow(1))
+            self.assertFalse(gate.allow(4.9))
+            self.assertTrue(gate.allow(5))
+            self.assertEqual(probe.call_count, 2)
+
+    def test_missing_display_never_launches_java(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            jar = state/'fake.jar'
+            jar.touch()
+            event = MagicMock()
+            event.is_set.side_effect = [False, True]
+            with patch.object(m, 'STATE', state), patch.object(m, 'JAR', jar), \
+                 patch.object(m.threading, 'Event', return_value=event), \
+                 patch.object(m.signal, 'signal'), patch.object(m, 'engine_pids', return_value=[]), \
+                 patch.object(m, 'query_fullscreen', return_value=False), \
+                 patch.object(m.Policy, 'allow', return_value=True), \
+                 patch.object(m, 'display_ready', return_value=(False, 'no display')), \
+                 patch.object(m.subprocess, 'Popen') as launch:
+                self.assertEqual(m.manager(), 0)
+                launch.assert_not_called()
+                self.assertFalse((state/'disabled').exists())
 
 
 if __name__ == '__main__':
