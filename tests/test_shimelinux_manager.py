@@ -364,5 +364,33 @@ class DisplayPreflightTests(unittest.TestCase):
                 self.assertFalse((state/'disabled').exists())
 
 
+class FinalReviewTests(unittest.TestCase):
+    def test_fullscreen_change_during_display_probe_prevents_launch(self):
+        for changed_state in (True, None):
+            with self.subTest(fullscreen=changed_state), tempfile.TemporaryDirectory() as directory:
+                state = Path(directory)
+                jar = state/'fake.jar'
+                jar.touch()
+                event = MagicMock()
+                event.is_set.side_effect = [False, True]
+                with patch.object(m, 'STATE', state), patch.object(m, 'JAR', jar), \
+                     patch.object(m.threading, 'Event', return_value=event), \
+                     patch.object(m.signal, 'signal'), patch.object(m, 'engine_pids', return_value=[]), \
+                     patch.object(m, 'query_fullscreen', side_effect=[False, changed_state]), \
+                     patch.object(m.Policy, 'allow', return_value=True), \
+                     patch.object(m, 'display_ready', return_value=(True, 'ready')), \
+                     patch.object(m.subprocess, 'Popen') as launch:
+                    self.assertEqual(m.manager(), 0)
+                    launch.assert_not_called()
+
+    def test_native_probe_disables_its_own_core_dumps(self):
+        # Run only the prefix before ctypes work; do not touch a real display.
+        prefix = m.X11_PROBE.split('try:', 1)[0]
+        checked = subprocess.run([sys.executable, '-c', prefix+
+            '\nassert resource.getrlimit(resource.RLIMIT_CORE) == (0, 0)'],
+            capture_output=True, text=True, timeout=5)
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

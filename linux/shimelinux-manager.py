@@ -175,7 +175,9 @@ def stop_engines(timeout=8):
 # Run native X11 probing in a separate process. A stuck/crashing native call
 # must not take the watchdog with it. Uses the same inherited DISPLAY and
 # XAUTHORITY as Java; no guessed :0 or hard-coded authentication file.
-X11_PROBE = """import ctypes, sys
+X11_PROBE = """import ctypes, resource, sys
+# A native probe crash must not produce core dumps in a retry loop.
+resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 try:
     x11 = ctypes.CDLL('libX11.so.6')
     x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
@@ -297,6 +299,13 @@ def manager():
                 if not display_gate.allow(now):
                     end.wait(1)
                     continue
+                # Opening X11 may start Xwayland and take time. Do not use
+                # the fullscreen snapshot taken before that readiness probe.
+                launch_state = query_fullscreen()
+                if launch_state is not False:
+                    policy.allow(launch_state, time.monotonic())
+                    end.wait(1)
+                    continue
                 # Serialize launch with the stop command's disable marker.
                 with (STATE/'gate.lock').open('w') as gate:
                     fcntl.flock(gate, fcntl.LOCK_EX)
@@ -311,7 +320,7 @@ def manager():
                         child = subprocess.Popen([java_bin(), '-XX:+UseSerialGC', '-jar', str(JAR)],
                                                  env=env, cwd=HOME, stdout=output,
                                                  stderr=subprocess.STDOUT, start_new_session=True)
-                    policy.last_launch = now
+                    policy.last_launch = time.monotonic()
                     LOG.info('Launched engine pid=%s', child.pid)
             end.wait(1)
     except Exception:

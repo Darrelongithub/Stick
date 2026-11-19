@@ -105,7 +105,7 @@ to `~/.local/bin/`. Keep autostart disabled; restoration does not start anything
 
 ## Verification
 
-108 unit tests pass, including 27 manager tests. These cover query failures,
+110 unit tests pass, including 29 manager tests. These cover query failures,
 multiple visible monitors, special workspaces, cooldown, persistent disable,
 exact engine matching, bounded TERM/KILL and truthful failure reporting. A real
 Python subprocess with a Java-shaped argument list deliberately ignores TERM;
@@ -238,3 +238,18 @@ Five new tests exercise missing DISPLAY, inherited authentication, native-probe
 exit/timeout failure, retry throttling/recovery and manager refusal to launch
 without a verified connection. Native calls are isolated/mocked; none launch
 the real engine or manipulate the user's display.
+
+
+### Final pre-merge scan
+
+The final review also closes the stale-fullscreen-snapshot window around the
+X11 preflight: fullscreen is checked again after probing and before the launch
+gate. Fullscreen or unknown state aborts that launch. This is still polling,
+not an atomic compositor transaction; state can always change immediately after
+a check. The restart cooldown is timestamped at actual successful process
+creation rather than before potentially slow preflight calls.
+
+The isolated native probe sets its own core-dump limit to zero. If Xlib itself
+aborts, retries cannot generate new probe core dumps. This does not change
+Java's core-dump policy or erase existing diagnostic evidence. Regression tests
+verify both the changed-state launch refusal and the probe's core limit.
