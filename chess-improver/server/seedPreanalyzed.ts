@@ -8,10 +8,10 @@ async function main() {
   await stockfishPool.warmup();
 
   const records = pgnArchive.getArchiveRecordsOnly();
-  console.log(`Loaded ${records.length} standard games from darrelnxt-2026-.zip`);
+  console.log(`Loaded ${records.length} archive games from darrelnxt-2026-.zip`);
 
   // Select a diverse, instructive mix of recent games (Oct & Sep 2026: Rapid, Blitz, Bullet, Wins & Losses)
-  const selected = records.slice(0, 14);
+  const selected = records.filter(record => record.summary.analyzable !== false).slice(0, 14);
   const selectedIds = selected.map((r) => r.summary.id);
 
   const t0 = Date.now();

@@ -21,7 +21,7 @@ import {
 import type { ArchiveOverviewResponse, GameSummary, TimeClass } from '../../shared/types';
 import { api } from '../lib/api';
 import type { GameListResponse } from '../lib/api';
-import { cx, formatGameDate, shortOpening } from '../lib/chessFormat';
+import { archiveWinRate, cx, formatGameDate, shortOpening } from '../lib/chessFormat';
 import {
   EmptyState,
   Eyebrow,
@@ -35,6 +35,7 @@ import {
 } from './ui';
 
 interface LibraryInsightsViewProps {
+  revision: number;
   overview: ArchiveOverviewResponse | null;
   onOpenGame: (id: string) => void;
   onOpenImport: () => void;
@@ -171,12 +172,12 @@ function GameCard({ game, onOpen }: { game: GameSummary; onOpen: () => void }) {
         )}
         title={
           unsupported
-            ? 'Chess960 castling is not replayable by the bundled standard chess.js engine'
+            ? 'This variant is listed but cannot be analyzed by the standard chess engine'
             : undefined
         }
       >
         {unsupported ? (
-          <><BookOpen className="h-3.5 w-3.5" /> Listed only · Chess960</>
+          <><BookOpen className="h-3.5 w-3.5" /> Listed only · {game.variant ?? 'Variant'}</>
         ) : game.analyzed ? (
           <><Target className="h-3.5 w-3.5" /> Train mistakes</>
         ) : (
@@ -193,7 +194,7 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse }) {
   const series = [
     { key: 'rapidElo' as const, label: 'Rapid', color: '#8b7cff' },
     { key: 'blitzElo' as const, label: 'Blitz', color: '#4cc9f0' },
-    { key: 'bulletElo' as const, label: 'Bullet', color: '#8b7cff' },
+    { key: 'bulletElo' as const, label: 'Bullet', color: '#ffb340' },
   ];
 
   const allValues = timeline.flatMap((row) =>
@@ -227,7 +228,7 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse }) {
         <div>
           <Eyebrow>Rating trajectory</Eyebrow>
           <h3 className="mt-1 font-display text-lg font-semibold text-[var(--ink)]">
-            Ten months of play
+            Rating over time
           </h3>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -258,6 +259,9 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse }) {
           {paths.map((p) => (
             <path key={p.key} d={p.path} fill="none" stroke={p.color} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
           ))}
+          {series.flatMap(s => timeline.map((row, idx) => row[s.key] === null ? null : (
+            <circle key={`${s.key}-${row.month}`} cx={xFor(idx)} cy={yFor(row[s.key]!)} r="3" fill={s.color} />
+          )))}
           {timeline.map((row, idx) => {
             if (idx % 2 !== 0 && idx !== timeline.length - 1) return null;
             return (
@@ -295,8 +299,7 @@ function InsightsView({
     );
   }
 
-  const totalGames = overview.totalArchiveGames + overview.totalCustomGames;
-  const winRate = totalGames ? (overview.wins / totalGames) * 100 : 0;
+  const winRate = archiveWinRate(overview);
   const stats = overview.mistakeStats;
   const phaseTotal = Math.max(1, stats.byPhase.opening + stats.byPhase.middlegame + stats.byPhase.endgame);
   const timeClasses: TimeClass[] = ['rapid', 'blitz', 'bullet', 'classical'];
@@ -310,7 +313,7 @@ function InsightsView({
           sub={`${overview.totalSupportedGames.toLocaleString()} drillable · ${overview.totalChess960Games} Chess960 · ${overview.totalCustomGames} pasted`}
           icon={<Library className="h-4 w-4" />}
         />
-        <StatTile label="Record" value={`${overview.wins}–${overview.losses}–${overview.draws}`} sub={`${winRate.toFixed(1)}% win rate`} icon={<Trophy className="h-4 w-4" />} accent="#4cc9f0" />
+        <StatTile label="Record" value={`${overview.wins}–${overview.losses}–${overview.draws}`} sub={winRate === null ? 'No finished archive games' : `${winRate.toFixed(1)}% win rate · archive only`} icon={<Trophy className="h-4 w-4" />} accent="#4cc9f0" />
         <StatTile label="Analyzed" value={overview.analyzedGamesCount} sub="Stockfish-verified games" icon={<Brain className="h-4 w-4" />} accent="#4cc9f0" />
         <StatTile label="Mistakes found" value={stats.totalDiscovered} sub={`${stats.blunders} blunders · ${stats.mistakes} mistakes`} icon={<Flame className="h-4 w-4" />} accent="#ff6b57" />
         <StatTile label="First-try recall" value={`${stats.firstTrySolveRate}%`} sub={`${stats.mastered} mastered`} icon={<Target className="h-4 w-4" />} accent="#8b7cff" />
@@ -436,7 +439,7 @@ function InsightsView({
                   <p className="text-xs font-bold capitalize text-[var(--ink-soft)]">{tc}</p>
                   <Pill>{row.games} games</Pill>
                 </div>
-                <p className="mt-2 font-display text-2xl font-semibold text-[var(--ink)]">{rate.toFixed(0)}%</p>
+                <p className="mt-2 font-display text-2xl font-semibold text-[var(--ink)]">{row.games ? `${rate.toFixed(0)}% win rate` : 'No finished games'}</p>
                 <p className="mt-0.5 text-[10px] text-[var(--ink-secondary)]">
                   {row.wins}W · {row.losses}L · peak {row.peakElo ?? '—'}
                 </p>
@@ -451,6 +454,7 @@ function InsightsView({
 }
 
 export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
+  revision,
   overview,
   onOpenGame,
   onOpenImport,
@@ -504,7 +508,7 @@ export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [source, analyzed, timeClass, outcome, color, month, debouncedSearch, page, refreshKey]);
+  }, [source, analyzed, timeClass, outcome, color, month, debouncedSearch, page, refreshKey, revision]);
 
   const totalPages = Math.max(1, Math.ceil(data.total / data.limit));
   useEffect(() => {
@@ -669,7 +673,7 @@ export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
               <Eyebrow>Archive pulse</Eyebrow>
               <div className="mt-3 flex items-center gap-3">
                 <ProgressRing
-                  value={overview ? (overview.analyzedGamesCount / Math.max(1, overview.totalArchiveGames + overview.totalCustomGames)) * 100 : 0}
+                  value={overview ? (overview.analyzedGamesCount / Math.max(1, overview.totalSupportedGames + overview.totalCustomGames)) * 100 : 0}
                   size={62}
                   label={String(overview?.analyzedGamesCount ?? 0)}
                   subLabel="scanned"
@@ -683,7 +687,7 @@ export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-[var(--cool)]/20 bg-[var(--cool-bg)] px-2.5 py-2 text-[10px] text-[var(--cool)]">
-                <CheckCircle2 className="h-3.5 w-3.5" /> 14 recent games pre-analyzed for instant start
+                <CheckCircle2 className="h-3.5 w-3.5" /> {overview?.analyzedGamesCount ?? 0} games currently analyzed
               </div>
             </SurfaceCard>
           </aside>
@@ -715,7 +719,7 @@ export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
               <div className="flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/60 py-16 text-sm text-[var(--ink-muted)]">
                 <Spinner /> Searching archive…
               </div>
-            ) : data.games.length === 0 ? (
+            ) : error ? null : data.games.length === 0 ? (
               <EmptyState
                 icon={<Library className="h-6 w-6" />}
                 title="No games match this search."

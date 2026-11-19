@@ -1,11 +1,13 @@
 import { Chess, PieceSymbol } from 'chess.js';
 import type {
+  ArchiveOverviewResponse,
   GamePhase,
   MasteryState,
   MistakeMotif,
   MistakeSeverity,
   MoveClassification,
   PlayerColor,
+  PlyAnalysisSummary,
 } from '../../shared/types';
 
 export const MOTIF_LABELS: Record<MistakeMotif, string> = {
@@ -45,7 +47,7 @@ export const MASTERY_META: Record<
   },
   learning: {
     label: 'Learning',
-    description: 'One clean recall away',
+    description: 'Keep practicing clean blind recalls',
     pillClass: 'border-[var(--amber)]/35 bg-[var(--amber)]/10 text-[var(--amber)]',
     dotClass: 'bg-[var(--amber)]',
     rank: 1,
@@ -118,44 +120,84 @@ export function shortOpening(name: string, max = 34): string {
   return `${name.slice(0, max - 1).trimEnd()}…`;
 }
 
-export function computeMaterialBalance(fen: string): {
-  whiteDiff: number;
-  capturedByWhite: PieceSymbol[];
-  capturedByBlack: PieceSymbol[];
-} {
-  const startCounts: Record<PieceSymbol, number> = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
-  const whiteLeft: Record<PieceSymbol, number> = { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 };
-  const blackLeft: Record<PieceSymbol, number> = { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 };
+/** Overview win/loss/draw totals describe finished archive games only. */
+export function archiveWinRate(record: Pick<ArchiveOverviewResponse, 'wins' | 'losses' | 'draws'>): number | null {
+  const total = record.wins + record.losses + record.draws;
+  return total ? 100 * record.wins / total : null;
+}
 
-  const board = fen.split(' ')[0];
-  for (const ch of board) {
-    const lower = ch.toLowerCase() as PieceSymbol;
-    if (!(lower in startCounts)) continue;
-    if (ch === ch.toUpperCase()) whiteLeft[lower]++;
-    else blackLeft[lower]++;
+/** Never combine ratings from different time controls into one trajectory. */
+export function preferredRatingSeries(rows: ArchiveOverviewResponse['eloTimeline']) {
+  const choices = [ ['rapidElo', 'Rapid'], ['blitzElo', 'Blitz'], ['bulletElo', 'Bullet'] ] as const;
+  const selected = choices.find(([key]) => rows.some(row => row[key] !== null));
+  return { label: selected?.[1] ?? null, points: selected ? rows.flatMap((row, index) => {
+    const value = row[selected[0]];
+    return value === null ? [] : [{ month: row.month, value, index }];
+  }) : [] };
+}
+
+export function computeMaterialBalance(fen: string): { whiteDiff: number } {
+  const values: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+  let whiteDiff = 0;
+  for (const ch of fen.split(' ')[0]) {
+    const value = values[ch.toLowerCase()];
+    if (value !== undefined) whiteDiff += ch === ch.toUpperCase() ? value : -value;
   }
+  return { whiteDiff };
+}
 
-  const values: Record<PieceSymbol, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-  let whitePts = 0;
-  let blackPts = 0;
-  const order: PieceSymbol[] = ['q', 'r', 'b', 'n', 'p'];
-  const capturedByWhite: PieceSymbol[] = [];
-  const capturedByBlack: PieceSymbol[] = [];
+/** Captures require history: a FEN alone cannot distinguish odds or promotions. */
+export function capturedPiecesByFen(pgn: string): Map<string, { white: PieceSymbol[]; black: PieceSymbol[] }> {
+  const result = new Map<string, { white: PieceSymbol[]; black: PieceSymbol[] }>();
+  try {
+    const chess = new Chess();
+    chess.loadPgn(pgn);
+    const moves = chess.history({ verbose: true });
+    const white: PieceSymbol[] = [], black: PieceSymbol[] = [];
+    if (moves[0]) result.set(moves[0].before, { white: [], black: [] });
+    for (const move of moves) {
+      if (move.captured) (move.color === 'w' ? white : black).push(move.captured);
+      result.set(move.after, { white: [...white], black: [...black] });
+    }
+  } catch { /* Hide capture history if a game cannot be replayed. */ }
+  return result;
+}
 
-  for (const p of order) {
-    whitePts += whiteLeft[p] * values[p];
-    blackPts += blackLeft[p] * values[p];
-    const missingBlack = Math.max(0, startCounts[p] - blackLeft[p]);
-    const missingWhite = Math.max(0, startCounts[p] - whiteLeft[p]);
-    for (let i = 0; i < missingBlack; i++) capturedByWhite.push(p);
-    for (let i = 0; i < missingWhite; i++) capturedByBlack.push(p);
+/** Clock comments describe the time remaining after each recorded move. */
+export function clocksAtFen(plies: PlyAnalysisSummary[], fen: string): { w: string | null; b: string | null } {
+  const clocks: { w: string | null; b: string | null } = { w: null, b: null };
+  const positionIndex = plies.findIndex(ply => ply.fenAfter === fen);
+  if (positionIndex < 0) return clocks;
+  const seen = new Set<PlayerColor>();
+  for (let i = positionIndex; i >= 0 && seen.size < 2; i--) {
+    const ply = plies[i];
+    if (!seen.has(ply.color)) {
+      clocks[ply.color] = ply.clock ?? null;
+      seen.add(ply.color);
+    }
   }
+  return clocks;
+}
 
-  return {
-    whiteDiff: whitePts - blackPts,
-    capturedByWhite,
-    capturedByBlack,
-  };
+/** Group by actual move number and color, including Black-to-move FEN starts. */
+export function groupMoveSheet(plies: PlyAnalysisSummary[]): Array<{ number: number; white?: PlyAnalysisSummary; black?: PlyAnalysisSummary }> {
+  const groups = new Map<number, { number: number; white?: PlyAnalysisSummary; black?: PlyAnalysisSummary }>();
+  for (const ply of plies) {
+    let group = groups.get(ply.moveNumber);
+    if (!group) { group = { number: ply.moveNumber }; groups.set(ply.moveNumber, group); }
+    if (ply.color === 'w') group.white = ply;
+    else group.black = ply;
+  }
+  return [...groups.values()];
+}
+
+/** PGN move label for a line starting at an arbitrary FEN, including Black. */
+export function lineMoveLabel(startFen: string, index: number): string {
+  const fields = startFen.split(' ');
+  const startNumber = Number(fields[5]) || 1;
+  const startBlack = fields[1] === 'b' ? 1 : 0;
+  const absolute = startBlack + index;
+  return `${startNumber + Math.floor(absolute / 2)}${absolute % 2 ? '...' : '.'}`;
 }
 
 export function replaySanLine(
@@ -222,22 +264,11 @@ export function sanToMoveDetails(
 }
 
 /**
- * Defense-in-depth against legacy seeded hints. A hint may name a theme or piece,
- * but it must never expose an origin square, castling instruction, or the move.
+ * Defense-in-depth against legacy seeded hints: never expose a piece, square,
+ * castling instruction, or move while a drill is blind.
  */
-export function safePieceHint(rawHint: string): string {
-  const pieceMatch = rawHint.match(/your\s+([a-z]+)\s+on\s+[a-hA-H][1-8]/i);
-  if (pieceMatch) {
-    const piece = pieceMatch[1].toLowerCase();
-    if (piece === 'king') {
-      return 'King safety is the theme. Scan checks, escapes and coordination — no square or move is shown.';
-    }
-    return `One of your ${piece}s holds the key. Re-check its forcing moves and safe squares — no square or move is shown.`;
-  }
-  if (/castl/i.test(rawHint)) {
-    return 'King safety is the theme. Scan the entire board before committing — the answer stays hidden.';
-  }
-  return 'Scan checks, captures and threats in that order. The best move stays hidden until you fail.';
+export function safePieceHint(_rawHint: string): string {
+  return 'Scan checks, captures and threats in that order. The best move stays hidden until you finish the drill.';
 }
 
 export function severityBadgeMeta(severity: MistakeSeverity) {

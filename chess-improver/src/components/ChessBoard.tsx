@@ -103,6 +103,7 @@ const ChessBoardInternal: React.FC<ChessBoardProps> = ({
   const boardRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<typeof dragState>(null);
   const floatingRef = useRef<HTMLDivElement | null>(null);
+  const promotionRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [focusedSquare, setFocusedSquare] = useState<string | null>(null);
@@ -127,6 +128,10 @@ const ChessBoardInternal: React.FC<ChessBoardProps> = ({
     dragRef.current = null;
     setDragState(null);
   }, [fen]);
+
+  useEffect(() => {
+    if (pendingPromotion) promotionRef.current?.querySelector<HTMLElement>('button')?.focus();
+  }, [pendingPromotion]);
 
   const chess = useMemo(() => new Chess(fen), [fen]);
 
@@ -212,7 +217,7 @@ const ChessBoardInternal: React.FC<ChessBoardProps> = ({
     sq: string,
     cell: { type: PieceSymbol; color: PlayerColor } | null
   ) => {
-    if (!canInteractNow || pendingPromotion) return;
+    if (!canInteractNow || pendingPromotion || e.button !== 0 || !e.isPrimary) return;
 
     // If a source square is already selected and user clicks a legal target square, execute right away!
     if (selectedSquare && selectedSquare !== sq && legalTargets.has(sq)) {
@@ -267,9 +272,8 @@ const ChessBoardInternal: React.FC<ChessBoardProps> = ({
     dragRef.current = null;
     setDragState(null);
 
-    if (wasDrag && dropSq && dropSq !== originSq) {
-      const ok = tryExecuteMove(originSq, dropSq);
-      if (!ok) {
+    if (wasDrag) {
+      if (dropSq && dropSq !== originSq && !tryExecuteMove(originSq, dropSq)) {
         setSelectedSquare(originSq);
       }
     } else {
@@ -552,7 +556,24 @@ const ChessBoardInternal: React.FC<ChessBoardProps> = ({
         {/* Pawn Promotion Picker Modal Overlay */}
         {pendingPromotion && (
           <div
-            onClick={() => setPendingPromotion(null)}
+            ref={promotionRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Choose promotion piece"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                event.stopPropagation();
+                setPendingPromotion(null);
+                boardRef.current?.querySelector<HTMLElement>(`[data-square="${pendingPromotion.from}"]`)?.focus();
+              } else if (event.key === 'Tab') {
+                event.stopPropagation();
+                const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+                if (!buttons.length) return;
+                if (event.shiftKey && document.activeElement === buttons[0]) { event.preventDefault(); buttons[buttons.length - 1].focus(); }
+                else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) { event.preventDefault(); buttons[0].focus(); }
+              }
+            }}
+            onClick={() => { setPendingPromotion(null); boardRef.current?.querySelector<HTMLElement>(`[data-square="${pendingPromotion.from}"]`)?.focus(); }}
             className="absolute inset-0 z-40 flex items-center justify-center bg-[var(--surface-deep)]/50 backdrop-blur-[2px]"
           >
             <div
@@ -567,10 +588,13 @@ const ChessBoardInternal: React.FC<ChessBoardProps> = ({
                   <button
                     key={p}
                     type="button"
+                    aria-label={`Promote to ${{ q: 'queen', r: 'rook', b: 'bishop', n: 'knight' }[p as 'q' | 'r' | 'b' | 'n']}`}
                     onClick={() => {
                       const uci = `${pendingPromotion.from}${pendingPromotion.to}${p}`;
+                      const target = pendingPromotion.to;
                       setPendingPromotion(null);
-                      onMoveAttempt?.(uci);
+                      boardRef.current?.querySelector<HTMLElement>(`[data-square="${target}"]`)?.focus();
+                      if (canInteractNow) onMoveAttempt?.(uci);
                     }}
                     className="flex h-14 w-14 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface)] p-1.5 transition hover:border-[var(--a)] hover:bg-[var(--surface-soft)]"
                   >

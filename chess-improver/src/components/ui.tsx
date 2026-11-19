@@ -118,6 +118,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             title={option.hint}
             disabled={disabled}
+            aria-pressed={active}
             onClick={() => onChange(option.value)}
             className={cx(
               'rounded-lg font-semibold transition-all duration-200',

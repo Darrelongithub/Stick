@@ -1,3 +1,4 @@
+import { writeFileAtomic } from './atomicFile.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +25,7 @@ import type {
 } from '../shared/types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.resolve(__dirname, '../data');
+const DATA_DIR = process.env.CHESS_DATA_DIR ? path.resolve(process.env.CHESS_DATA_DIR) : path.resolve(__dirname, '../data');
 const SEED_ANALYSIS_PATH = path.join(DATA_DIR, 'preanalyzed-games.json');
 const RUNTIME_CACHE_PATH = path.join(DATA_DIR, 'analysis-cache.json');
 const ANALYZE_ALL_PROGRESS_PATH = path.join(DATA_DIR, 'analyze-all-progress.json');
@@ -63,19 +64,10 @@ export const MOTIF_LABELS: Record<MistakeMotif, string> = {
  * Public challenges must never expose that detail (and especially not a castling
  * instruction), so every outgoing hint is normalized to a theme-only nudge.
  */
-export function sanitizePieceNudge(rawHint: string): string {
-  const pieceMatch = rawHint.match(/your\s+([a-z]+)\s+on\s+[a-hA-H][1-8]/i);
-  if (pieceMatch) {
-    const piece = pieceMatch[1].toLowerCase();
-    if (piece === 'king') {
-      return 'King safety is the theme. Scan checks, escapes and coordination — no square or move is shown.';
-    }
-    return `One of your ${piece}s holds the key. Re-check its forcing moves and safe squares — no square or move is shown.`;
-  }
-  if (/castl/i.test(rawHint)) {
-    return 'King safety is the theme. Scan the entire board before committing — the answer stays hidden.';
-  }
-  return 'Scan checks, captures and threats in that order. The best move stays hidden until you fail.';
+export function sanitizePieceNudge(_rawHint: string): string {
+  // Even the type of the best piece can identify the answer. Never expose
+  // legacy hints derived from a move while a drill is still blind.
+  return 'Scan checks, captures and threats in that order. The best move stays hidden until you finish the drill.';
 }
 
 export interface StoredMistakeInternal {
@@ -96,7 +88,7 @@ export interface StoredMistakeInternal {
   phase: GamePhase;
   motif: MistakeMotif;
   pieceNudge: string;
-  // Private solution fields (only revealed on solve or fail!)
+  // Private solution fields (revealed only after final failure).
   bestMove: { san: string; uci: string; from: string; to: string };
   bestEvalUserCp: number;
   bestEvalUserMate: number | null;
@@ -342,10 +334,66 @@ function classifyMotifAndExplanation(params: {
   };
 }
 
+/** Avoid asserting speculative tactical explanations, including in old caches.
+ * These are engine evaluations and lines, not proof of why a move works. */
+function groundedExplanation(m: StoredMistakeInternal): string {
+  return `Stockfish evaluated your game move ${m.playedMove.san} at ${formatEvalLabel(m.evalAfterPlayedUserCp, m.evalAfterPlayedUserMate)} and its leading move ${m.bestMove.san} at ${formatEvalLabel(m.bestEvalUserCp, m.bestEvalUserMate)}. The displayed continuations are engine lines, not guarantees.`;
+}
+
+function validCachedAnalysis(gameId: string, analysis: StoredGameAnalysis): boolean {
+  const finite = (n: unknown) => typeof n === 'number' && Number.isFinite(n);
+  const validPositionMoves = (m: StoredMistakeInternal) => {
+    try {
+      const board = new Chess(m.fenBefore);
+      if (board.turn() !== m.userColor) return false;
+      for (const move of [m.playedMove, m.bestMove]) {
+        const played = board.move({ from: move.from, to: move.to, promotion: move.uci[4] });
+        if (played.san !== move.san) return false;
+        board.undo();
+      }
+      return true;
+    } catch { return false; }
+  };
+  const mate = (n: unknown) => n === null || Number.isInteger(n);
+  const strings = (items: unknown) => Array.isArray(items) && items.every(item => typeof item === 'string');
+  const move = (m: StoredMistakeInternal['playedMove']) => m &&
+    typeof m.san === 'string' && /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(m.uci) &&
+    m.from === m.uci.slice(0, 2) && m.to === m.uci.slice(2, 4);
+  if (!analysis || typeof analysis !== 'object' || analysis.gameId !== gameId ||
+      typeof analysis.analyzedAt !== 'string' || typeof analysis.engineName !== 'string' ||
+      ![analysis.whiteAccuracy, analysis.blackAccuracy, analysis.userAccuracy].every(finite) ||
+      !Array.isArray(analysis.plies) || !Array.isArray(analysis.mistakes)) return false;
+  return analysis.plies.every(p => p && Number.isInteger(p.ply) && Number.isInteger(p.moveNumber) &&
+    ['w', 'b'].includes(p.color) && typeof p.san === 'string' && typeof p.uci === 'string' &&
+    typeof p.from === 'string' && typeof p.to === 'string' && typeof p.fenBefore === 'string' &&
+    typeof p.fenAfter === 'string' && finite(p.whiteEvalCp) && mate(p.whiteMate) &&
+    ['book', 'best', 'excellent', 'good', 'inaccuracy', 'mistake', 'blunder'].includes(p.classification) &&
+    (p.clock === undefined || typeof p.clock === 'string')) &&
+    analysis.mistakes.every(m => m && typeof m.id === 'string' && m.gameId === gameId &&
+      Number.isInteger(m.ply) && Number.isInteger(m.moveNumber) && ['w', 'b'].includes(m.userColor) &&
+      typeof m.fenBefore === 'string' && move(m.playedMove) && move(m.bestMove) && validPositionMoves(m) &&
+      [m.evalBeforeUserCp, m.evalAfterPlayedUserCp, m.bestEvalUserCp, m.winProbLost].every(finite) &&
+      [m.evalBeforeUserMate, m.evalAfterPlayedUserMate, m.bestEvalUserMate].every(mate) &&
+      ['blunder', 'mistake', 'inaccuracy'].includes(m.severity) &&
+      ['opening', 'middlegame', 'endgame'].includes(m.phase) &&
+      Object.hasOwn(MOTIF_LABELS, m.motif) && typeof m.pieceNudge === 'string' &&
+      typeof m.coachExplanation === 'string' && strings(m.bestPvSan) && strings(m.playedRefutationPvSan) &&
+      Array.isArray(m.alternatives) && m.alternatives.every(alt => move(alt) && finite(alt.evalUserCp) && mate(alt.evalUserMate) && strings(alt.pvSan)) &&
+      (m.precedingMove === null || (typeof m.precedingMove?.san === 'string' && typeof m.precedingMove.from === 'string' && typeof m.precedingMove.to === 'string')));
+}
+
+type AnalysisProgressInfo = { stage: string; current: number; total: number; percent: number };
+
 class GameAnalyzerService {
   private cache = new Map<string, StoredGameAnalysis>();
-  private inFlight = new Map<string, Promise<StoredGameAnalysis>>();
+  private inFlight = new Map<string, {
+    promise: Promise<StoredGameAnalysis>;
+    listeners: Set<(info: AnalysisProgressInfo) => void>;
+    latest: AnalysisProgressInfo | null;
+    requirePersistence: () => void;
+  }>();
   private loaded = false;
+  private runtimeLoadError: Error | null = null;
   revision = 0;
 
   ensureLoaded() {
@@ -359,10 +407,17 @@ class GameAnalyzerService {
             string,
             StoredGameAnalysis
           >;
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) ||
+              Object.entries(parsed).some(([gameId, analysis]) => !validCachedAnalysis(gameId, analysis))) {
+            throw new Error('Expected valid cached game analyses');
+          }
           for (const [gameId, analysis] of Object.entries(parsed)) {
             this.cache.set(gameId, analysis);
           }
         } catch (err) {
+          if (filePath === RUNTIME_CACHE_PATH) {
+            this.runtimeLoadError = new Error('Cannot save analysis: the existing analysis cache could not be read. Restore it or move it aside before trying again.', { cause: err });
+          }
           console.warn(`[analyzer] Failed to load ${filePath}:`, err);
         }
       }
@@ -371,13 +426,14 @@ class GameAnalyzerService {
   }
 
   /** Public so the full-archive batch job can checkpoint and do one final write. */
-  persistRuntimeCache() {
+  persistRuntimeCache(cache = this.cache) {
+    if (this.runtimeLoadError) throw this.runtimeLoadError;
     const obj: Record<string, StoredGameAnalysis> = {};
-    for (const [k, v] of this.cache.entries()) {
+    for (const [k, v] of cache.entries()) {
       obj[k] = v;
     }
     // Compact JSON: the full archive cache is tens of megabytes.
-    fs.writeFileSync(RUNTIME_CACHE_PATH, JSON.stringify(obj), 'utf8');
+    writeFileAtomic(RUNTIME_CACHE_PATH, JSON.stringify(obj));
   }
 
   saveSeedFile(gameIds?: string[]) {
@@ -388,7 +444,7 @@ class GameAnalyzerService {
         obj[k] = v;
       }
     }
-    fs.writeFileSync(SEED_ANALYSIS_PATH, JSON.stringify(obj, null, 2), 'utf8');
+    writeFileAtomic(SEED_ANALYSIS_PATH, JSON.stringify(obj, null, 2));
   }
 
   getCached(gameId: string): StoredGameAnalysis | undefined {
@@ -440,7 +496,7 @@ class GameAnalyzerService {
       alternatives: m.alternatives,
       playedRefutationPvSan: m.playedRefutationPvSan,
       motifLabel: MOTIF_LABELS[m.motif],
-      coachExplanation: m.coachExplanation,
+      coachExplanation: groundedExplanation(m),
     };
   }
 
@@ -453,7 +509,7 @@ class GameAnalyzerService {
       const found = analysis.mistakes.find((m) => m.id === mistakeId);
       if (found) {
         const game = pgnArchive.getGameById(found.gameId);
-        if (game) return { mistake: found, game };
+        if (game && game.summary.analyzable !== false) return { mistake: found, game };
       }
     }
     return null;
@@ -465,6 +521,11 @@ class GameAnalyzerService {
     options: { persist?: boolean } = {}
   ): Promise<StoredGameAnalysis> {
     this.ensureLoaded();
+    const record = pgnArchive.getGameById(gameId);
+    if (!record) throw new Error(`Game not found: ${gameId}`);
+    if (record.summary.analyzable === false) {
+      throw new Error('This variant cannot be analyzed by the standard chess engine.');
+    }
     const existing = this.cache.get(gameId);
     if (existing) {
       onProgress?.({ stage: 'complete', current: existing.plies.length, total: existing.plies.length, percent: 100 });
@@ -472,26 +533,45 @@ class GameAnalyzerService {
     }
 
     const active = this.inFlight.get(gameId);
-    if (active) return active;
-
-    const record = pgnArchive.getGameById(gameId);
-    if (!record) {
-      throw new Error(`Game not found: ${gameId}`);
+    if (active) {
+      if (options.persist !== false) active.requirePersistence();
+      if (onProgress) {
+        active.listeners.add(onProgress);
+        if (active.latest) {
+          try { onProgress(active.latest); } catch { /* Ignore an observer that cannot receive progress. */ }
+        }
+      }
+      try { return await active.promise; }
+      finally { if (onProgress) active.listeners.delete(onProgress); }
     }
 
-    const jobPromise = this.runFullAnalysis(record, onProgress)
+    const listeners = new Set<(info: AnalysisProgressInfo) => void>();
+    if (onProgress) listeners.add(onProgress);
+    let latest: AnalysisProgressInfo | null = null;
+    let shouldPersist = options.persist !== false;
+    const broadcast = (progress: AnalysisProgressInfo) => {
+      latest = progress;
+      const job = this.inFlight.get(gameId);
+      if (job) job.latest = progress;
+      for (const listener of listeners) {
+        try { listener(progress); } catch { /* A disconnected observer must not fail analysis. */ }
+      }
+    };
+    const jobPromise = this.runFullAnalysis(record, broadcast)
       .then((res) => {
-        this.cache.set(gameId, res);
+        const nextCache = new Map(this.cache).set(gameId, res);
+        if (shouldPersist) this.persistRuntimeCache(nextCache);
+        this.cache = nextCache;
         this.revision++;
-        if (options.persist !== false) this.persistRuntimeCache();
         return res;
       })
       .finally(() => {
         this.inFlight.delete(gameId);
       });
 
-    this.inFlight.set(gameId, jobPromise);
-    return jobPromise;
+    this.inFlight.set(gameId, { promise: jobPromise, listeners, latest, requirePersistence: () => { shouldPersist = true; } });
+    try { return await jobPromise; }
+    finally { if (onProgress) listeners.delete(onProgress); }
   }
 
   /**
@@ -521,7 +601,8 @@ class GameAnalyzerService {
     const failures: Array<{ gameId: string; error: string }> = [];
 
     for (const analysis of this.cache.values()) {
-      if (pgnArchive.getGameById(analysis.gameId)) {
+      const game = pgnArchive.getGameById(analysis.gameId);
+      if (game && game.summary.analyzable !== false) {
         totalMistakes += analysis.mistakes.length;
       }
     }
@@ -674,7 +755,7 @@ class GameAnalyzerService {
     const stage1Results = await Promise.all(
       fens.map(async (fen, idx) => {
         const turn: PlayerColor = fen.split(' ')[1] === 'b' ? 'b' : 'w';
-        const evalRes = await stockfishPool.evaluateFen(fen, { depth: 10, multiPv: 1 });
+        const evalRes = await stockfishPool.evaluateFen(fen, { depth: 10, multiPv: 1, priority: 'background' });
         completedSweep++;
         onProgress?.({
           stage: 'Scanning game moves with Stockfish 18 NNUE',
@@ -719,7 +800,8 @@ class GameAnalyzerService {
         uAfter.userCp >= 450 &&
         (uBefore.userMate === null || uBefore.userMate > 2 || uBefore.userMate < 0);
 
-      if (!stillCrushing && winLoss >= 0.055 && !(i < 4 && winLoss < 0.09)) {
+      const actualMoveNumber = Number(mv.before.split(' ')[5]) || 1;
+      if (!stillCrushing && winLoss >= 0.055 && !(actualMoveNumber <= 2 && winLoss < 0.09)) {
         candidateUserPlies.push(i);
       }
     }
@@ -737,8 +819,8 @@ class GameAnalyzerService {
     await Promise.all(
       candidateUserPlies.map(async (plyIdx) => {
         const [beforeEval, afterEval] = await Promise.all([
-          stockfishPool.evaluateFen(fens[plyIdx], { depth: 12, multiPv: 3 }),
-          stockfishPool.evaluateFen(fens[plyIdx + 1], { depth: 12, multiPv: 1 }),
+          stockfishPool.evaluateFen(fens[plyIdx], { depth: 12, multiPv: 3, priority: 'background' }),
+          stockfishPool.evaluateFen(fens[plyIdx + 1], { depth: 12, multiPv: 1, priority: 'background' }),
         ]);
         deepVerified.set(plyIdx, { beforeEval, afterEval });
         deepDone++;
@@ -759,7 +841,8 @@ class GameAnalyzerService {
     for (let i = 0; i < totalPlies; i++) {
       const mv = verboseMoves[i];
       const ply = i + 1;
-      const moveNumber = Math.floor(i / 2) + 1;
+      // A PGN may start from a FEN with Black to move or a later move number.
+      const moveNumber = Number(mv.before.split(' ')[5]) || 1;
       const color = mv.color as PlayerColor;
       const playedUci = `${mv.from}${mv.to}${mv.promotion ?? ''}`;
       const fenBefore = fens[i];
@@ -804,7 +887,7 @@ class GameAnalyzerService {
         (moverBefore.userMate === null || moverBefore.userMate > 2 || moverBefore.userMate < 0);
 
       let classification: MoveClassification = 'good';
-      if (i < 4 && winLoss < 0.05) {
+      if (moveNumber <= 2 && winLoss < 0.05) {
         classification = 'book';
       } else if (bestMoveUci === playedUci || winLoss <= 0.012) {
         classification = 'best';
@@ -835,7 +918,8 @@ class GameAnalyzerService {
         if (bestDetails) {
           mistakeId = `${record.summary.id}-ply-${ply}`;
           const prevMv = i > 0 ? verboseMoves[i - 1] : null;
-          const phase = detectPhase(ply, fenBefore);
+          const absolutePly = (moveNumber - 1) * 2 + (color === 'w' ? 1 : 2);
+          const phase = detectPhase(absolutePly, fenBefore);
 
           const bestPvUci = deep?.beforeEval.lines[0]?.pvUci ?? stage1Results[i].pvUci;
           const bestPvSan = uciPvToSan(fenBefore, bestPvUci, 6);
@@ -1019,7 +1103,7 @@ class GameAnalyzerService {
       const wasBlindFirstTry = req.attemptNumber === 1;
       const updatedMastery = progressStore.recordSuccess(mistake.id, wasBlindFirstTry);
       return {
-        outcome: 'best',
+        outcome: 'great',
         candidateMove: {
           san: appliedMove.san,
           uci: normalizedUci,
@@ -1028,17 +1112,16 @@ class GameAnalyzerService {
         },
         candidateEvalUserCp: mistake.bestEvalUserCp,
         candidateEvalUserMate: mistake.bestEvalUserMate,
-        candidateRefutationPvSan: mistake.bestPvSan.slice(1),
-        feedbackHeadline: `Stockfish #1 Move Found: ${appliedMove.san}!`,
-        feedbackDetail: `Spot on! ${appliedMove.san} keeps ${formatEvalLabel(
+        candidateRefutationPvSan: [],
+        feedbackHeadline: `Strong improvement: ${appliedMove.san}!`,
+        feedbackDetail: `${appliedMove.san} (${formatEvalLabel(
           mistake.bestEvalUserCp,
           mistake.bestEvalUserMate
-        )} instead of your game move ${mistake.playedMove.san} (${formatEvalLabel(
+        )}) cleanly improves on your game move ${mistake.playedMove.san} (${formatEvalLabel(
           mistake.evalAfterPlayedUserCp,
           mistake.evalAfterPlayedUserMate
         )}).`,
         mastery: updatedMastery,
-        solution: this.toSolutionReveal(mistake),
       };
     }
 
@@ -1083,7 +1166,8 @@ class GameAnalyzerService {
     const isStrongFix =
       bestWp - candWp <= 0.045 &&
       candWp - playedWp >= 0.045 &&
-      !(mistake.bestEvalUserMate !== null && mistake.bestEvalUserMate > 0 && (candidateUserMate === null || candidateUserMate <= 0));
+      !(mistake.bestEvalUserMate !== null && mistake.bestEvalUserMate > 0 &&
+        !chess.isCheckmate() && (candidateUserMate === null || candidateUserMate <= 0));
 
     if (isStrongFix) {
       const wasBlindFirstTry = req.attemptNumber === 1;
@@ -1098,20 +1182,16 @@ class GameAnalyzerService {
         },
         candidateEvalUserCp: candidateUserCp,
         candidateEvalUserMate: candidateUserMate,
-        candidateRefutationPvSan,
-        feedbackHeadline: `Strong Improvement: ${appliedMove.san}!`,
+        candidateRefutationPvSan: [],
+        feedbackHeadline: `Strong improvement: ${appliedMove.san}!`,
         feedbackDetail: `${appliedMove.san} (${formatEvalLabel(
           candidateUserCp,
           candidateUserMate
-        )}) cleanly fixes your game mistake ${mistake.playedMove.san} (${formatEvalLabel(
+        )}) cleanly improves on your game move ${mistake.playedMove.san} (${formatEvalLabel(
           mistake.evalAfterPlayedUserCp,
           mistake.evalAfterPlayedUserMate
-        )}). Stockfish's absolute top pick was ${mistake.bestMove.san} (${formatEvalLabel(
-          mistake.bestEvalUserCp,
-          mistake.bestEvalUserMate
         )}).`,
         mastery: updatedMastery,
-        solution: this.toSolutionReveal(mistake),
       };
     }
 
@@ -1133,12 +1213,12 @@ class GameAnalyzerService {
         },
         candidateEvalUserCp: candidateUserCp,
         candidateEvalUserMate: candidateUserMate,
-        candidateRefutationPvSan,
+        candidateRefutationPvSan: [],
         feedbackHeadline: `${appliedMove.san} doesn't hold (${formatEvalLabel(
           candidateUserCp,
           candidateUserMate
         )})`,
-        feedbackDetail: `Stockfish spots a flaw:${oppPunishText} You have ${remaining} ${
+        feedbackDetail: `Stockfish spots a flaw. You have ${remaining} ${
           remaining === 1 ? 'try' : 'tries'
         } left before the best move is revealed!`,
         mastery: progressStore.getRecord(mistake.id),
@@ -1164,7 +1244,7 @@ class GameAnalyzerService {
       )}) — Best was ${mistake.bestMove.san}`,
       feedbackDetail: `After ${appliedMove.san},${
         oppPunishText || ' the position stays difficult.'
-      } ${mistake.coachExplanation}`,
+      } ${groundedExplanation(mistake)}`,
       mastery: updatedMastery,
       solution: this.toSolutionReveal(mistake),
     };
@@ -1172,7 +1252,7 @@ class GameAnalyzerService {
 
   buildGameDetailResponse(record: StoredGameRecord): GameDetailResponse {
     this.ensureLoaded();
-    const cached = this.cache.get(record.summary.id);
+    const cached = record.summary.analyzable === false ? undefined : this.cache.get(record.summary.id);
     const enrichedSummary = this.enrichGameSummary(record);
 
     if (!cached) {
@@ -1199,7 +1279,7 @@ class GameAnalyzerService {
 
   enrichGameSummary(record: StoredGameRecord): GameSummary {
     this.ensureLoaded();
-    const cached = this.cache.get(record.summary.id);
+    const cached = record.summary.analyzable === false ? undefined : this.cache.get(record.summary.id);
     if (!cached) {
       return {
         ...record.summary,

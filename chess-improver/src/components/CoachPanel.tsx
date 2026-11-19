@@ -34,6 +34,9 @@ import {
   applyUciToFen,
   classificationGlyph,
   computeMaterialBalance,
+  capturedPiecesByFen,
+  clocksAtFen,
+  groupMoveSheet,
   cx,
   formatClock,
   formatGameDate,
@@ -42,7 +45,6 @@ import {
   PHASE_LABELS,
   replaySanLine,
   safePieceHint,
-  sanToMoveDetails,
   severityBadgeMeta,
 } from '../lib/chessFormat';
 import { soundEngine } from '../lib/sound';
@@ -169,17 +171,7 @@ function MoveSheet({
   open: boolean;
   onToggle: () => void;
 }) {
-  const pairs = useMemo(() => {
-    const result: Array<{ number: number; white?: PlyAnalysisSummary; black?: PlyAnalysisSummary }> = [];
-    for (let i = 0; i < plies.length; i += 2) {
-      result.push({
-        number: Math.floor(i / 2) + 1,
-        white: plies[i],
-        black: plies[i + 1],
-      });
-    }
-    return result;
-  }, [plies]);
+  const pairs = useMemo(() => groupMoveSheet(plies), [plies]);
 
   const renderMove = (ply?: PlyAnalysisSummary) => {
     if (!ply) return <span className="text-[var(--ink-dim)]">…</span>;
@@ -333,12 +325,16 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
     ? (masteryOverrides[current.id] ?? current.mastery)
     : null;
   const hasSolution = Boolean(attemptResponse?.solution);
+  const solved = attemptResponse?.outcome === 'great';
   const isBlindRetest = phase === 'redrill';
   const turnColor: PlayerColor = boardFen.split(' ')[1] === 'b' ? 'b' : 'w';
   const activePly = viewedPly ?? current?.ply ?? null;
   const severityMeta = current ? severityBadgeMeta(current.severity) : null;
 
+  const capturesByFen = useMemo(() => capturedPiecesByFen(game.pgn), [game.pgn]);
   const material = useMemo(() => computeMaterialBalance(boardFen), [boardFen]);
+  const captured = capturesByFen.get(boardFen);
+  const clocks = useMemo(() => clocksAtFen(game.plies, boardFen), [game.plies, boardFen]);
   const previewFen = useMemo(() => {
     const chess = new Chess();
     try {
@@ -348,11 +344,6 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
       return chess.fen();
     }
   }, [game.pgn]);
-
-  const clockForPly = (plyNumber: number): string | null => {
-    const ply = game.plies[plyNumber - 1];
-    return ply?.clock ? formatClock(ply.clock) : null;
-  };
 
   const resetBoardToPuzzle = () => {
     if (!current) return;
@@ -460,7 +451,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
   };
 
   const handleAttempt = async (uci: string) => {
-    if (!current || attemptLockRef.current || hasSolution || boardDetached || attempting) return;
+    if (!current || attemptLockRef.current || hasSolution || solved || boardDetached || attempting) return;
     const submittedChallenge = challengeKey;
     attemptLockRef.current = true;
     setAttempting(true);
@@ -481,13 +472,14 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
         isPracticeRetry: isBlindRetest,
       });
 
-      if (activeChallengeKey.current !== submittedChallenge) return;
+      if (activeChallengeKey.current !== submittedChallenge) {
+        if (response.outcome !== 'retry' && response.outcome !== 'same_as_game') onRefreshOverview();
+        return;
+      }
       setAttemptResponse(response);
       setMasteryOverrides((prev) => ({ ...prev, [current.id]: response.mastery }));
 
       const candidateFen = applyUciToFen(current.fenBefore, response.candidateMove.uci).fen;
-      const refSan = response.candidateRefutationPvSan[0];
-      const refutation = refSan ? sanToMoveDetails(candidateFen, refSan) : null;
 
       if (response.outcome === 'same_as_game') {
         setAttemptNumber((prev) => prev); // does not consume a try
@@ -506,20 +498,15 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
         setAttemptNumber((prev) => Math.min(maxAttempts, prev + 1));
         setBoardFen(current.fenBefore);
         setLastMove(current.precedingMove ? { from: current.precedingMove.from, to: current.precedingMove.to } : null);
-        setArrows([
-          { from: response.candidateMove.from, to: response.candidateMove.to, kind: 'attempt' },
-          ...(refutation
-            ? [{ from: refutation.from, to: refutation.to, kind: 'refutation' as const }]
-            : []),
-        ]);
+        setArrows([{ from: response.candidateMove.from, to: response.candidateMove.to, kind: 'attempt' }]);
         setBadge({ square: response.candidateMove.to, glyph: '×', bgColor: '#ff8a78' });
         setBoardDetached(false);
         setViewedPly(null);
         soundEngine.playMiss();
       } else {
-        // A better move was found OR the final attempt failed. Only this branch can unlock solution.
+        // A better move was found OR the final attempt failed. Only a final failed attempt unlocks the solution.
         setResolvedIds((prev) => new Set(prev).add(current.id));
-        if (isBlindRetest && (response.outcome === 'best' || response.outcome === 'great')) {
+        if (isBlindRetest && response.outcome === 'great') {
           setRedrillSolvedIds((prev) => new Set(prev).add(current.id));
         }
         if (response.outcome === 'failed_revealed') {
@@ -584,6 +571,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
   };
 
   const selectPly = (ply: PlyAnalysisSummary) => {
+    if (attemptLockRef.current) return;
     setBoardFen(ply.fenAfter);
     setLastMove({ from: ply.from, to: ply.to });
     const linkedMistake = mistakes.find((m) => m.id === ply.mistakeId);
@@ -799,22 +787,10 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
     name: color === 'w' ? game.summary.white : game.summary.black,
     elo: color === 'w' ? game.summary.whiteElo : game.summary.blackElo,
     isUser: color === userColor,
-    clock:
-      current == null
-        ? null
-        : color === userColor
-          ? clockForPly(current.ply)
-          : clockForPly(current.ply - 1),
-    captured:
-      color === userColor
-        ? userColor === 'w'
-          ? material.capturedByWhite
-          : material.capturedByBlack
-        : userColor === 'w'
-          ? material.capturedByBlack
-          : material.capturedByWhite,
+    clock: clocks[color] ? formatClock(clocks[color]!) : null,
+    captured: color === 'w' ? (captured?.white ?? []) : (captured?.black ?? []),
     capturedPieceColor: color === 'w' ? ('b' as PlayerColor) : ('w' as PlayerColor),
-    materialDiff: color === userColor ? (userColor === 'w' ? material.whiteDiff : -material.whiteDiff) : 0,
+    materialDiff: color === 'w' ? material.whiteDiff : -material.whiteDiff,
     active: turnColor === color,
   });
 
@@ -824,7 +800,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
     Boolean(current) &&
     !attempting &&
     !boardDetached &&
-    (practiceMode ? !practiceSolved : !hasSolution);
+    (practiceMode ? !practiceSolved : !hasSolution && !solved);
 
   return (
     <div className="mx-auto max-w-[1280px] view-shell">
@@ -910,7 +886,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                 <button
                   type="button"
                   onClick={resetBoardToPuzzle}
-                  disabled={!current}
+                  disabled={!current || attempting}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--line)] px-2.5 text-[11px] font-semibold text-[var(--ink-secondary)] transition hover:border-[var(--a)]/45 hover:text-[var(--ink)] disabled:opacity-40"
                   title="Return to the blind puzzle position"
                 >
@@ -969,7 +945,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                   arrows={arrows}
                   badge={badge}
                   nudgeSquare={null}
-                  hintActive={hintOpen && !isBlindRetest && !hasSolution}
+                  hintActive={hintOpen && !isBlindRetest && !hasSolution && !solved}
                   onMoveAttempt={handleBoardMove}
                 />
                 <PlayerStrip {...bottomInfo} color={bottomColor} />
@@ -982,7 +958,9 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
             </div>}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)]/85 px-3 py-2">
               <p className="text-[11px] text-[var(--ink-secondary)]">
-                {boardDetached ? (
+                {solved ? (
+                  <span className="flex items-center gap-1.5 text-[var(--cool)]"><CheckCircle2 className="h-3 w-3" /> Solved · continue when ready</span>
+                ) : boardDetached ? (
                   <span className="flex items-center gap-1.5 text-[var(--a)]">
                     <Eye className="h-3 w-3" /> Viewing a replay — return to puzzle to attempt a move
                   </span>
@@ -1040,13 +1018,13 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                   </Pill>
                 </div>
 
-                {!hasSolution && (
+                {!hasSolution && !solved && (
                   <>
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={previewGameMove}
-                        disabled={isBlindRetest}
+                        disabled={isBlindRetest || attempting}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-[11px] font-semibold text-[var(--ink-soft)] transition hover:border-[var(--warm)]/45 hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Eye className="h-3.5 w-3.5" /> Preview My Game Move
@@ -1057,7 +1035,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                         disabled={isBlindRetest}
                         className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--a)]/25 bg-[var(--a-soft)] px-3 py-2.5 text-[11px] font-semibold text-[var(--a)] transition hover:bg-[var(--a)]/15 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <Lightbulb className="h-3.5 w-3.5" /> Piece Hint
+                        <Lightbulb className="h-3.5 w-3.5" /> Scan Hint
                       </button>
                     </div>
 
@@ -1074,7 +1052,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                           Tries before reveal
                         </p>
                         <p className="mt-0.5 text-[10px] text-[var(--ink-muted)]">
-                          {attemptNumber > 1 || attemptResponse
+                          {attemptNumber > 1 || (attemptResponse && attemptResponse.outcome !== 'same_as_game')
                             ? 'Locked for this drill'
                             : isBlindRetest
                               ? 'Blind retest — no hints'
@@ -1089,7 +1067,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                           setAttemptNumber((n) => Math.min(n, limit));
                         }}
                         size="sm"
-                        disabled={attemptNumber > 1 || Boolean(attemptResponse)}
+                        disabled={attempting || attemptNumber > 1 || Boolean(attemptResponse && attemptResponse.outcome !== 'same_as_game')}
                         options={[
                           { value: '1', label: '1 try' },
                           { value: '2', label: '2 tries' },
@@ -1129,12 +1107,18 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
                           {attemptResponse.candidateMove.san} · {formatScore(attemptResponse.candidateEvalUserCp, attemptResponse.candidateEvalUserMate)}
                         </Pill>
                         <Pill className="border-[var(--cool)]/20 bg-[var(--cool)]/[0.05] text-[var(--cool)]">
-                          Answer still hidden
+                          {solved ? 'Solved · engine line stays hidden' : 'Answer still hidden'}
                         </Pill>
                       </div>
                     </div>
                   </div>
                 </div>
+              )}
+
+              {solved && (
+                <button type="button" onClick={advance} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--a)] px-4 py-3 text-sm font-bold text-[#0a0714]">
+                  Continue <ArrowRight className="h-4 w-4" />
+                </button>
               )}
 
               {practiceMode && (
@@ -1279,7 +1263,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
             </SurfaceCard>
           )}
 
-          {(boardDetached || previewMode || activeLine || practiceMode) && current && (
+          {!solved && (boardDetached || previewMode || activeLine || practiceMode) && current && (
             <button
               type="button"
               onClick={resetBoardToPuzzle}

@@ -45,6 +45,7 @@ import {
 interface LearningPlanViewProps {
   /** Home already fetches the plan; pass it through to avoid a duplicate request. */
   initialPlan?: LearningPlanResponse | null;
+  onPlanLoaded?: (plan: LearningPlanResponse) => void;
   onTrainMistake: (gameId: string, mistakeId: string) => void;
   onOpenVault: () => void;
   onOpenCoach: () => void;
@@ -71,7 +72,7 @@ function HowItTeaches() {
     {
       icon: <Target className="h-4 w-4" />,
       title: 'Fail to reveal',
-      text: 'A wrong move gets a refutation. Only the final failed attempt unlocks the best move and full line.',
+      text: 'A wrong move gets feedback. Only the final failed attempt unlocks the best move and full line.',
     },
     {
       icon: <RefreshCw className="h-4 w-4" />,
@@ -112,6 +113,7 @@ function EyeOffIcon() {
 
 export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   initialPlan = null,
+  onPlanLoaded,
   onTrainMistake,
   onOpenVault,
   onOpenCoach,
@@ -126,24 +128,31 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const previousRunning = useRef(initialPlan?.analyzeAll.running ?? false);
   const seededPlanAt = useRef<string | null>(initialPlan?.generatedAt ?? null);
   const refreshRef = useRef(onRefreshOverview);
+  const planLoadedRef = useRef(onPlanLoaded);
+  planLoadedRef.current = onPlanLoaded;
+  const loadRequestRef = useRef(0);
+  useEffect(() => () => { loadRequestRef.current++; }, []);
 
   useEffect(() => {
     refreshRef.current = onRefreshOverview;
   }, [onRefreshOverview]);
 
   const load = useCallback(async () => {
+    const request = ++loadRequestRef.current;
     try {
       const data = await api.learningPlan();
+      if (request !== loadRequestRef.current) return;
       setPlan(data);
+      planLoadedRef.current?.(data);
       setError(null);
       if (previousRunning.current && !data.analyzeAll.running) {
         refreshRef.current();
       }
       previousRunning.current = data.analyzeAll.running;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load your learning plan.');
+      if (request === loadRequestRef.current) setError(err instanceof Error ? err.message : 'Could not load your learning plan.');
     } finally {
-      setLoading(false);
+      if (request === loadRequestRef.current) setLoading(false);
     }
   }, []);
 
@@ -152,18 +161,25 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   useEffect(() => {
     if (initialPlan && seededPlanAt.current !== initialPlan.generatedAt) {
       seededPlanAt.current = initialPlan.generatedAt;
+      loadRequestRef.current++;
       previousRunning.current = initialPlan.analyzeAll.running;
       setPlan(initialPlan);
       setLoading(false);
       return;
     }
-    if (!initialPlan && !plan && loading) void load();
-  }, [initialPlan, load, plan, loading]);
+    if (!initialPlan && !plan && loading && !error) void load();
+  }, [initialPlan, load, plan, loading, error]);
 
   useEffect(() => {
     if (!plan?.analyzeAll.running) return;
-    const timer = window.setInterval(() => void load(), 4000);
-    return () => window.clearInterval(timer);
+    let cancelled = false;
+    let timer: number;
+    const poll = async () => {
+      await load();
+      if (!cancelled) timer = window.setTimeout(poll, 4000);
+    };
+    timer = window.setTimeout(poll, 4000);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [plan?.analyzeAll.running, load]);
 
   const startFullAnalysis = async () => {
@@ -194,12 +210,14 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
         icon={<Brain className="h-6 w-6" />}
         title="Learning plan unavailable"
         detail={error ?? 'Start the chess server again to rebuild your curriculum.'}
+        action={<button type="button" onClick={() => { setLoading(true); void load(); }} className="rounded-lg bg-[var(--a)] px-4 py-2.5 text-xs font-bold text-[#0a0714]">Retry</button>}
       />
     );
   }
 
   const job = plan.analyzeAll;
-  const allAnalyzed = plan.analyzedGames >= plan.totalSupportedGames;
+  const totalDrillable = plan.totalSupportedGames + plan.totalCustomGames;
+  const allAnalyzed = totalDrillable > 0 && plan.analyzedGames >= totalDrillable;
   const masteryPct = plan.totalMistakes > 0 ? (plan.masteredCount / plan.totalMistakes) * 100 : 0;
   const firstDue = plan.recommendedDrills[0];
   const howToSteps = [
@@ -248,7 +266,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
               All <span className="font-semibold text-[var(--a)]">{plan.totalArchiveGames.toLocaleString()} games</span> from{' '}
               <code className="rounded bg-[var(--surface)] px-1.5 py-0.5 font-mono-tabular text-[11px] text-[var(--a)]">darrelnxt-2026-.zip</code>{' '}
               are loaded. {plan.totalSupportedGames.toLocaleString()} standard-rules games are engine-drillable;{' '}
-              {plan.totalChess960Games} Chess960 games are listed but not drilled. Chess knowledge never comes from an external API; Gemini only explains spoiler-free local Stockfish knowledge.
+              {plan.totalChess960Games} Chess960 games are listed but not drilled. Chess knowledge never comes from an external API; Gemini only selects a topic; the coach uses local Stockfish knowledge.
             </p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -265,14 +283,14 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </div>
             {allAnalyzed && (
               <div className="flex items-center gap-1.5 rounded-full border border-[var(--a)]/25 bg-[var(--a-soft)] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--a)]">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Full archive analyzed
+                <CheckCircle2 className="h-3.5 w-3.5" /> All drillable games analyzed
               </div>
             )}
           </div>
         </div>
 
         <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <StatTile label="Games analyzed" value={`${plan.analyzedGames.toLocaleString()}/${plan.totalSupportedGames.toLocaleString()}`} sub={`${plan.totalCustomGames} pasted PGNs`} icon={<Brain className="h-4 w-4" />} />
+          <StatTile label="Games analyzed" value={`${plan.analyzedGames.toLocaleString()}/${totalDrillable.toLocaleString()}`} sub={`${plan.totalCustomGames} pasted PGNs`} icon={<Brain className="h-4 w-4" />} />
           <StatTile label="Verified mistakes" value={plan.totalMistakes.toLocaleString()} sub={`${plan.counts.bySeverity.blunder} blunders`} icon={<Flame className="h-4 w-4" />} accent="#ff6b57" />
           <StatTile label="Due now" value={plan.dueCount.toLocaleString()} sub="Needs review → learning → unseen" icon={<Target className="h-4 w-4" />} accent="#ffb340" />
           <StatTile label="Mastered" value={plan.masteredCount.toLocaleString()} sub={`${Math.round(masteryPct)}% of discovered`} icon={<GraduationCap className="h-4 w-4" />} accent="#4cc9f0" />
@@ -401,18 +419,13 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             <div className="p-4">
               <EmptyState
                 icon={<Sparkles className="h-6 w-6" />}
-                title="No drills yet"
-                detail="Analyze your archive first; Stockfish will turn every verified mistake into a blind challenge."
-                action={
-                  <button
-                    type="button"
-                    onClick={() => void startFullAnalysis()}
-                    disabled={job.running}
-                    className="rounded-lg bg-[var(--a)] px-4 py-2.5 text-xs font-bold text-[#0a0714] disabled:opacity-50"
-                  >
-                    Analyze all games
-                  </button>
-                }
+                title={plan.totalMistakes > 0 ? 'All discovered drills mastered' : 'No drills yet'}
+                detail={plan.totalMistakes > 0 ? 'There are no positions due right now. You can revisit mastered drills in the vault.' : 'Analyze a game to turn Stockfish-verified mistakes into blind challenges.'}
+                action={plan.totalMistakes > 0 ? (
+                  <button type="button" onClick={onOpenVault} className="rounded-lg bg-[var(--a)] px-4 py-2.5 text-xs font-bold text-[#0a0714]">Open vault</button>
+                ) : (
+                  <button type="button" onClick={onOpenCoach} className="rounded-lg bg-[var(--a)] px-4 py-2.5 text-xs font-bold text-[#0a0714]">Choose a game</button>
+                )}
               />
             </div>
           ) : (
@@ -533,7 +546,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             <p className="mt-2 text-[12px] leading-relaxed text-[var(--ink-secondary)]">
               <span className="font-semibold text-[var(--a)]">Stockfish stays the source of truth.</span> Set{' '}
               <code className="rounded bg-[var(--surface)] px-1 py-0.5 font-mono-tabular text-[10px]">GEMINI_API_KEY</code> in{' '}
-              <code className="rounded bg-[var(--surface)] px-1 py-0.5 font-mono-tabular text-[10px]">chess-improver/.env</code> or the server environment to let Gemini explain the same spoiler-free knowledge.
+              <code className="rounded bg-[var(--surface)] px-1 py-0.5 font-mono-tabular text-[10px]">chess-improver/.env</code> or the server environment to let Gemini select a topic for a local, spoiler-free response.
               The key never reaches the browser; without it, a deterministic local coach answers instead.
             </p>
             <div className="mt-3 flex items-center gap-1.5 rounded-lg border border-[var(--a)]/20 bg-[var(--a-soft)] px-2.5 py-2 text-[10px] font-semibold text-[var(--a2)]">

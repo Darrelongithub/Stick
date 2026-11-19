@@ -52,11 +52,13 @@ const ACCENTS = [
 export default function App() {
   const [view, setView] = useState<AppView>('plan');
   const [overview, setOverview] = useState<ArchiveOverviewResponse | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
   const [activeGame, setActiveGame] = useState<GameDetailResponse | null>(null);
   const [gameLoading, setGameLoading] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
   const [initialMistakeId, setInitialMistakeId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [libraryRevision, setLibraryRevision] = useState(0);
   const [muted, setMuted] = useState(soundEngine.muted);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export default function App() {
   const streamCloseRef = useRef<(() => void) | null>(null);
   const activeGameIdRef = useRef<string | null>(null);
   const gameRequestRef = useRef(0);
+  const overviewRequestRef = useRef(0);
   const bootedRef = useRef(false);
   const spotRef = useRef<HTMLDivElement | null>(null);
   const [accentIndex, setAccentIndex] = useState(0);
@@ -109,11 +112,12 @@ export default function App() {
   }, []);
 
   const refreshOverview = useCallback(async () => {
+    const token = ++overviewRequestRef.current;
     try {
       const data = await api.overview();
-      setOverview(data);
+      if (token === overviewRequestRef.current) { setOverview(data); setOverviewError(null); }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load archive overview.');
+      if (token === overviewRequestRef.current) setOverviewError(err instanceof Error ? err.message : 'Could not load archive overview.');
     }
   }, []);
 
@@ -282,7 +286,7 @@ export default function App() {
   const handleImported = useCallback(
     async (games: GameSummary[]) => {
       closeImport();
-      await refreshOverview();
+      void refreshOverview();
       if (games[0]) {
         setToast(`${games.length} ${games.length === 1 ? 'game' : 'games'} imported · launching Stockfish…`);
         await loadGame(games[0].id);
@@ -375,12 +379,18 @@ export default function App() {
         <div className="sync">
           <i className="dot" />
           <span className="sync-text">
-            {overview ? `${overview.analyzedGamesCount.toLocaleString()} games analyzed` : 'Loading your archive'} · Stockfish runs locally · Blind drills keep answers hidden
+            {overview ? `${overview.analyzedGamesCount.toLocaleString()} games analyzed` : overviewError ? 'Archive overview unavailable' : 'Loading your archive'} · Stockfish runs locally · Blind drills keep answers hidden
           </span>
         </div>
       </div>
 
       <main className="relative z-[1] mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
+        {overviewError && (
+          <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--warm)]/30 bg-[var(--warm-bg)]/85 px-4 py-3 text-sm text-[var(--warm-soft)]">
+            <span>Archive overview unavailable: {overviewError}</span>
+            <button type="button" onClick={() => void refreshOverview()} className="rounded-lg border border-current px-3 py-1.5 font-semibold">Retry overview</button>
+          </div>
+        )}
         {error && (
           <div className="mb-5 flex items-start justify-between gap-3 rounded-2xl border border-[var(--warm)]/30 bg-[var(--warm-bg)]/85 px-4 py-3 text-sm text-[var(--warm-soft)] shadow-[0_22px_60px_-30px_rgba(0,0,0,0.9)] backdrop-blur-xl animate-slide-in-right">
             <span>{error}</span>
@@ -454,6 +464,7 @@ export default function App() {
           />
         ) : (
           <LibraryInsightsView
+            revision={libraryRevision}
             overview={overview}
             onOpenGame={(id) => void loadGame(id)}
             onOpenImport={openImport}
@@ -478,6 +489,7 @@ export default function App() {
       <PastePgnModal
         open={importOpen}
         onClose={closeImport}
+        onSaved={() => { setLibraryRevision((revision) => revision + 1); void refreshOverview(); }}
         onImported={(games) => void handleImported(games)}
         onViewLibrary={viewLibraryFromImport}
       />
