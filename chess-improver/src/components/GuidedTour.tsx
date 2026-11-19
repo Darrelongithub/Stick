@@ -80,7 +80,7 @@ const TOUR_STEPS: TourStep[] = [
     view: 'plan',
     eyebrow: 'The no-spoiler rule',
     title: 'Fail first, reveal second',
-    body: 'The best move stays hidden during the blind challenge and any retry with attempts left. Only after your final failed attempt does the app reveal Stockfish’s answer and let you practice it.',
+    body: 'The best move stays hidden during the blind challenge and after a successful solve. If your final try fails, Stockfish’s analysis is revealed so you can practice it.',
     icon: <EyeOff className="h-5 w-5" />,
     targets: [
       '[data-tour="quick-guide"]',
@@ -104,6 +104,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ open, onClose, onNavigat
     height: typeof window === 'undefined' ? 800 : window.innerHeight,
   }));
   const nextRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const navigateRef = useRef(onNavigate);
   const closeRef = useRef(onClose);
 
@@ -116,13 +117,24 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ open, onClose, onNavigat
   }, [onClose]);
 
   useEffect(() => {
-    if (open) setStep(0);
+    if (!open) return;
+    setStep(0);
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    return () => { if (previousFocus?.isConnected) previousFocus.focus(); };
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeRef.current();
+      if (event.key === 'Tab' && dialogRef.current) {
+        const buttons = [...dialogRef.current.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+        if (buttons.length) {
+          const first = buttons[0], last = buttons[buttons.length - 1];
+          if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
+      }
       if (event.key === 'ArrowRight' && step < TOUR_STEPS.length - 1) {
         setStep((current) => Math.min(current + 1, TOUR_STEPS.length - 1));
       }
@@ -148,6 +160,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ open, onClose, onNavigat
     let cancelled = false;
     let raf = 0;
     let settleInterval = 0;
+    let settleTimeout = 0;
     let lateTimer = 0;
     let finalTimer = 0;
     let readyTimer = 0;
@@ -171,7 +184,10 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ open, onClose, onNavigat
 
     const trackSettling = () => {
       window.clearInterval(settleInterval);
+      window.clearTimeout(settleTimeout);
       settleInterval = window.setInterval(measure, 32);
+      // Track the transition, not the entire time the user reads this step.
+      settleTimeout = window.setTimeout(() => window.clearInterval(settleInterval), 1200);
     };
 
     // Wait for the page's fonts and first layout pass to settle before painting
@@ -249,6 +265,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ open, onClose, onNavigat
       cancelled = true;
       window.cancelAnimationFrame(raf);
       window.clearInterval(settleInterval);
+      window.clearTimeout(settleTimeout);
       window.clearTimeout(lateTimer);
       window.clearTimeout(finalTimer);
       window.clearTimeout(readyTimer);
@@ -313,7 +330,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({ open, onClose, onNavigat
   };
 
   return (
-    <div className="fixed inset-0 z-[150]" role="dialog" aria-modal="true" aria-label="Guided tour">
+    <div ref={dialogRef} className="fixed inset-0 z-[150]" role="dialog" aria-modal="true" aria-label="Guided tour">
       {rect ? (
         <div
           className="pointer-events-none absolute animate-fade-in"

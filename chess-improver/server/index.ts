@@ -218,7 +218,8 @@ export async function createApp() {
 
     for (const analysis of cachedAnalyses) {
       // Only count if game exists in archive or custom
-      if (!pgnArchive.getGameById(analysis.gameId)) continue;
+      const game = pgnArchive.getGameById(analysis.gameId);
+      if (!game || game.summary.analyzable === false) continue;
       for (const m of analysis.mistakes) {
         totalDiscovered++;
         if (m.severity === 'blunder') blunders++;
@@ -259,7 +260,7 @@ export async function createApp() {
       totalSupportedGames: counts.supported,
       totalChess960Games: counts.chess960,
       totalCustomGames: counts.custom,
-      analyzedGamesCount: allRecords.filter((r) => Boolean(gameAnalyzer.getCached(r.summary.id)))
+      analyzedGamesCount: allRecords.filter((r) => r.summary.analyzable !== false && Boolean(gameAnalyzer.getCached(r.summary.id)))
         .length,
       wins,
       losses,
@@ -307,6 +308,10 @@ export async function createApp() {
     for (const r of all) monthsSet.add(r.summary.month);
     const months = Array.from(monthsSet).sort((a, b) => b.localeCompare(a));
 
+    if (Object.values(req.query).some(value => typeof value !== 'string')) {
+      res.status(400).json({ error: 'Each query parameter must have a single value.' });
+      return;
+    }
     const q = (search || '').trim().toLowerCase();
 
     const filtered = all
@@ -403,8 +408,10 @@ export async function createApp() {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
 
+    let disconnected = false;
+    req.on('close', () => { disconnected = true; });
     const sendEvent = (data: unknown) => {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if (!disconnected && !res.writableEnded) res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
     try {
@@ -481,7 +488,7 @@ export async function createApp() {
     const allChallenges: MistakeChallengePublic[] = [];
     for (const analysis of gameAnalyzer.getAllCached()) {
       const gameRec = pgnArchive.getGameById(analysis.gameId);
-      if (!gameRec) continue;
+      if (!gameRec || gameRec.summary.analyzable === false) continue;
       for (const m of analysis.mistakes) {
         const pub = gameAnalyzer.toPublicChallenge(m, gameRec);
         if (status && status !== 'all') {
@@ -544,6 +551,10 @@ export async function createApp() {
 
   // 10. Reset Mistake Mastery for Blind Retest
   app.post('/api/mistakes/:id/reset', (req, res) => {
+    if (!gameAnalyzer.getMistakeInternalById(req.params.id)) {
+      res.status(404).json({ error: 'Mistake challenge not found' });
+      return;
+    }
     const mastery = progressStore.resetMistake(req.params.id);
     res.json({ mastery });
   });
@@ -577,6 +588,11 @@ export async function createApp() {
       res.status(400).json({ error: 'A question is required' });
       return;
     }
+    if (body?.history !== undefined && (!Array.isArray(body.history) || body.history.some(entry =>
+      !entry || !['user', 'coach'].includes(entry.role) || typeof entry.text !== 'string' || entry.text.length > 800))) {
+      res.status(400).json({ error: 'Conversation history must contain valid messages under 800 characters.' });
+      return;
+    }
     if (question.length > 800) {
       res.status(400).json({ error: 'Please keep questions under 800 characters' });
       return;
@@ -595,6 +611,19 @@ export async function createApp() {
         error: err instanceof Error ? err.message : 'Coach could not answer right now',
       });
     }
+  });
+
+  // Classify a question only. No position or solution is sent to Gemini or
+  // returned here; the revealed card assembles facts it already received.
+  app.post('/api/coach/explanation-intent', async (req, res) => {
+    loadLocalEnv();
+    const question = req.body?.question;
+    if (typeof question !== 'string' || !question.trim() || question.length > 800) {
+      res.status(400).json({ error: 'Please enter a question under 800 characters.' });
+      return;
+    }
+    try { res.json(await coachService.classifyExplanation(question)); }
+    catch { res.status(500).json({ error: 'Could not classify your question.' }); }
   });
 
   // 12. Full-archive local Stockfish batch job

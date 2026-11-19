@@ -59,10 +59,15 @@ export async function mirrorMove(moves: unknown) {
   // Conservatively block all analyzed challenge positions, even if previously
   // solved, since a fresh blind retry can be started at any time.
   const target = positionKey(chess.fen());
-  if (gameAnalyzer.getAllCached().some(a => a.mistakes.some(m => positionKey(m.fenBefore) === target))) {
-    throw new Error('This position is a blind drill. Start a new mirror game to keep its answer hidden.');
-  }
+  const assertNotBlindDrill = () => {
+    if (gameAnalyzer.getAllCached().some(a => a.mistakes.some(m => positionKey(m.fenBefore) === target))) {
+      throw new Error('This position is a blind drill. Start a new mirror game to keep its answer hidden.');
+    }
+  };
+  assertNotBlindDrill();
   const profile = await getMirrorProfile();
+  // A concurrent analysis may have made this a blind drill while we waited.
+  assertNotBlindDrill();
   const counts = profile.positions.get(positionKey(chess.fen()));
   const legal = new Set(chess.moves({ verbose: true }).map(m => `${m.from}${m.to}${m.promotion ?? ''}`));
   const choices = counts ? [...counts].filter(([move]) => legal.has(move)).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])) : [];
@@ -70,6 +75,7 @@ export async function mirrorMove(moves: unknown) {
     return { move: choices[0][0], source: 'archive' as const, occurrences: choices[0][1], samples: choices.reduce((n, c) => n + c[1], 0) };
   }
   const result = await stockfishPool.evaluateFen(chess.fen(), { depth: 8, multiPv: 1, movetimeMs: 350 });
+  assertNotBlindDrill();
   if (!result.bestMoveUci || !legal.has(result.bestMoveUci)) throw new Error('Stockfish could not find a legal reply.');
   return { move: result.bestMoveUci, source: 'stockfish' as const, occurrences: 0, samples: 0 };
 }

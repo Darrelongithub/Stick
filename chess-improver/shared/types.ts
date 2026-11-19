@@ -168,12 +168,11 @@ export interface AttemptMoveRequest {
 export interface AttemptMoveResponse {
   /**
    * - 'same_as_game': user accidentally re-played the exact game mistake (doesn't burn attempt)
-   * - 'best': user found Stockfish's #1 move!
-   * - 'great': user found a strong engine-approved improvement close to #1!
+   * - 'great': user found a strong engine-approved improvement (the top move remains private).
    * - 'retry': wrong move, user still has an attempt remaining (best move stays hidden!)
    * - 'failed_revealed': user failed -> best move + refutations are NOW revealed!
    */
-  outcome: 'same_as_game' | 'best' | 'great' | 'retry' | 'failed_revealed';
+  outcome: 'same_as_game' | 'great' | 'retry' | 'failed_revealed';
   candidateMove: {
     san: string;
     uci: string;
@@ -186,7 +185,7 @@ export interface AttemptMoveResponse {
   feedbackHeadline: string;
   feedbackDetail: string;
   mastery: MistakeMasteryRecord;
-  /** ONLY populated when outcome is 'best', 'great', or 'failed_revealed' */
+  /** ONLY populated after the final failed attempt. */
   solution?: MistakeSolutionReveal;
 }
 
@@ -336,7 +335,6 @@ export interface CoachStatusResponse {
   provider: 'gemini';
   configured: boolean;
   model: string;
-  baseUrl: string;
   dailyCallBudget: number;
   callsToday: number;
   minIntervalMs: number;

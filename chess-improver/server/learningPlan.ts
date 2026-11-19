@@ -17,7 +17,7 @@ import type {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(__dirname, '..');
-const DATA_DIR = path.join(APP_ROOT, 'data');
+const DATA_DIR = process.env.CHESS_DATA_DIR ? path.resolve(process.env.CHESS_DATA_DIR) : path.join(APP_ROOT, 'data');
 const LEARNING_PLAN_JSON = path.join(DATA_DIR, 'learning-plan.json');
 const WHAT_TO_LEARN_MD = path.join(DATA_DIR, 'WHAT_TO_LEARN.md');
 const FULL_CACHE_PATH = path.join(DATA_DIR, 'analysis-cache.json');
@@ -42,23 +42,26 @@ const STATUS_PRIORITY: Record<MasteryState, number> = {
   mastered: 3,
 };
 
-const FORBIDDEN_SOLUTION_KEYS = [
-  '"solution"',
-  '"bestMove"',
-  '"bestPvSan"',
-  '"bestEvalUserCp"',
-  '"bestEvalUserMate"',
-  '"alternatives"',
-  '"playedRefutationPvSan"',
-  '"coachExplanation"',
-];
+const FORBIDDEN_SOLUTION_KEYS = new Set([
+  'solution',
+  'bestMove',
+  'bestPvSan',
+  'bestEvalUserCp',
+  'bestEvalUserMate',
+  'alternatives',
+  'playedRefutationPvSan',
+  'coachExplanation',
+]);
 
-function assertSpoilerFree(payload: unknown, label: string) {
-  const text = JSON.stringify(payload);
-  for (const key of FORBIDDEN_SOLUTION_KEYS) {
-    if (text.includes(key)) {
+export function assertSpoilerFree(payload: unknown, label: string): void {
+  // Inspect property names, not serialized text: a player's name or opening
+  // may legitimately equal a forbidden field name without being a leak.
+  if (!payload || typeof payload !== 'object') return;
+  for (const [key, value] of Object.entries(payload)) {
+    if (FORBIDDEN_SOLUTION_KEYS.has(key)) {
       throw new Error(`${label} leaked a Stockfish solution field: ${key}`);
     }
+    assertSpoilerFree(value, label);
   }
 }
 
@@ -84,7 +87,7 @@ export function emptyAnalyzeAllStatus(): AnalyzeAllStatus {
     totalMistakes: 0,
     currentGameId: null,
     currentOpening: null,
-    message: 'Not started. Run `chess analyze-all` to scan every supported game.',
+    message: 'No full-archive job is running in this session. The library shows the analyses currently saved locally.',
     error: null,
     result: null,
   };
@@ -96,7 +99,9 @@ function reasonForDrill(challenge: MistakeChallengePublic): string {
     case 'needs_review':
       return `Missed in a drill · recover ${lost}% win chance`;
     case 'learning':
-      return 'One clean blind recall away from mastered';
+      return challenge.mastery.failCount > 0 && challenge.mastery.streak === 0
+        ? 'Two clean blind recalls away from mastered'
+        : 'One clean blind recall away from mastered';
     case 'unseen':
       return `New Stockfish-verified mistake · ${lost}% win chance lost`;
     case 'mastered':
@@ -164,7 +169,7 @@ export function buildLearningPlan(analyzeAll: AnalyzeAllStatus): LearningPlanRes
     return b.gameDate.localeCompare(a.gameDate);
   });
 
-  const recommendedDrills: LearningPlanDrill[] = challenges.slice(0, 24).map((c, idx) => ({
+  const recommendedDrills: LearningPlanDrill[] = challenges.filter(c => c.mastery.status !== 'mastered').slice(0, 24).map((c, idx) => ({
     rank: idx + 1,
     mistakeId: c.id,
     gameId: c.gameId,
@@ -231,7 +236,7 @@ export function buildLearningPlan(analyzeAll: AnalyzeAllStatus): LearningPlanRes
 
 function renderMarkdown(plan: LearningPlanResponse): string {
   const lines: string[] = [];
-  lines.push('# What to learn, darrelnxt');
+  lines.push('# What to learn, Darrel');
   lines.push('');
   lines.push(`_Generated ${plan.generatedAt} by ${plan.engine}._`);
   lines.push('');
@@ -277,7 +282,9 @@ function renderMarkdown(plan: LearningPlanResponse): string {
     );
   }
   if (plan.recommendedDrills.length === 0) {
-    lines.push('| — | No mistakes yet | — | Analyze games first | — | — |');
+    lines.push(plan.totalMistakes > 0
+      ? '| — | No positions due | — | All discovered drills are mastered | — | — |'
+      : '| — | No mistakes yet | — | Analyze games first | — | — |');
   }
 
   lines.push('');
@@ -296,7 +303,7 @@ function renderMarkdown(plan: LearningPlanResponse): string {
   lines.push('## How it teaches');
   lines.push('');
   lines.push('1. **Blind recall.** You see the position and your game move, never Stockfish’s answer.');
-  lines.push('2. **Fail to reveal.** A wrong move refutes your idea; only after the final failed attempt is the best move unlocked.');
+  lines.push('2. **Fail to reveal.** A wrong move gets feedback; only after the final failed attempt is the best move and refutation unlocked.');
   lines.push('3. **Practice and re-drill.** Step through the PV, play the best move yourself, then recall missed positions blind.');
   lines.push('4. **Spaced repetition.** Missed positions return first; two clean blind recalls master a previously failed mistake.');
   lines.push('');
@@ -310,7 +317,6 @@ function renderMarkdown(plan: LearningPlanResponse): string {
   lines.push('');
 
   const markdown = lines.join('\n');
-  assertSpoilerFree(markdown, 'WHAT_TO_LEARN.md');
   return markdown;
 }
 

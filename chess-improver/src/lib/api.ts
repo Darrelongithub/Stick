@@ -126,6 +126,10 @@ export const api = {
     return requestJson<LearningPlanResponse>('/api/learning-plan');
   },
 
+  explanationIntent(question: string): Promise<{ intent: string; source: 'gemini' | 'local'; status: string }> {
+    return requestJson('/api/coach/explanation-intent', { method: 'POST', body: JSON.stringify({ question }) });
+  },
+
   coachStatus(): Promise<CoachStatusResponse> {
     return requestJson<CoachStatusResponse>('/api/coach/status');
   },

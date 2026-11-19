@@ -148,7 +148,7 @@ let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{
     const j=JSON.parse(s);
     if (j.running) console.log('  batch analysis:', j.percent + '%', '|', j.processed + '/' + j.total, 'games | ETA', (j.etaSeconds ?? '—') + 's');
     else if (j.result) console.log('  full scan:', j.result.analyzedGames, 'newly analyzed,', j.result.totalMistakes, 'total mistakes');
-    else console.log('  full scan: not started');
+    else console.log('  full scan: no batch running in this session');
   } catch {}
 });"
   fi

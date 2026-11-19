@@ -9,7 +9,7 @@ import type {
   LearningPlanResponse,
 } from '../../shared/types';
 import { api } from '../lib/api';
-import { cx } from '../lib/chessFormat';
+import { cx, preferredRatingSeries } from '../lib/chessFormat';
 import { LearningPlanView } from './LearningPlanView';
 
 type CoachHistory = NonNullable<CoachAskRequest['history']>;
@@ -106,11 +106,10 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse | null })
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const chart = useMemo(() => {
     const rows = overview?.eloTimeline ?? [];
-    const values = rows
-      .map((row) => row.rapidElo ?? row.blitzElo ?? row.bulletElo)
-      .filter((value): value is number => typeof value === 'number');
+    const series = preferredRatingSeries(rows);
+    const values = series.points.map(point => point.value);
     if (values.length === 0) {
-      return { points: [] as RatingPoint[], linePath: '', areaPath: '', lo: 0, hi: 1 };
+      return { points: [] as RatingPoint[], linePath: '', areaPath: '', lo: 0, hi: 1, label: null };
     }
     const lo = Math.min(...values) - 30;
     const hi = Math.max(...values) + 30;
@@ -118,18 +117,16 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse | null })
     const height = 230;
     const pad = 18;
     const points: RatingPoint[] = [];
-    rows.forEach((row, index) => {
-      const value = row.rapidElo ?? row.blitzElo ?? row.bulletElo;
-      if (typeof value !== 'number') return;
+    series.points.forEach(({ month, value, index }) => {
       const x = rows.length > 1 ? (index / (rows.length - 1)) * width : width / 2;
       const y = height - pad - ((value - lo) / Math.max(1, hi - lo)) * (height - pad * 2);
-      points.push({ month: row.month, value, x, y });
+      points.push({ month, value, x, y });
     });
     const linePath = points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
     const areaPath = points.length
       ? `${linePath} L${points[points.length - 1].x.toFixed(1)} ${height} L${points[0].x.toFixed(1)} ${height} Z`
       : '';
-    return { points, linePath, areaPath, lo, hi };
+    return { points, linePath, areaPath, lo, hi, label: series.label };
   }, [overview]);
 
   const latest = chart.points[chart.points.length - 1]?.value;
@@ -140,11 +137,11 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse | null })
   return (
     <>
       <div className="big">
-        {latest?.toLocaleString() ?? '—'} <small>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta)} since {chart.points[0] ? formatMonth(chart.points[0].month) : 'the start'}</small>
+        {latest?.toLocaleString() ?? '—'} <small>{chart.label ? `${chart.label} · ` : ''}{chart.points.length > 1 ? `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)} since ${formatMonth(chart.points[0].month)}` : ''}</small>
       </div>
       <div className="font-mono-tabular mt-2 text-[13px] text-[var(--ink-muted)]">
         {hovered
-          ? `${formatMonth(hovered.month)} · ${hovered.value.toLocaleString()} Elo`
+          ? `${formatMonth(hovered.month)} · ${hovered.value.toLocaleString()} ${chart.label} Elo`
           : 'Hover to travel through your rating history. Values come from the archive timeline.'}
       </div>
       {chart.points.length > 1 ? (
@@ -153,12 +150,14 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse | null })
           viewBox="0 0 800 230"
           preserveAspectRatio="none"
           role="img"
-          aria-label="Rating history from the local game archive"
+          aria-label={`${chart.label} rating history from the local game archive`}
           onMouseMove={(event) => {
             const rect = event.currentTarget.getBoundingClientRect();
             const ratio = (event.clientX - rect.left) / Math.max(1, rect.width);
-            const index = Math.round(ratio * (chart.points.length - 1));
-            setHoverIndex(Math.max(0, Math.min(chart.points.length - 1, index)));
+            const x = Math.max(0, Math.min(1, ratio)) * 800;
+            const index = chart.points.reduce((best, point, i) =>
+              Math.abs(point.x - x) < Math.abs(chart.points[best].x - x) ? i : best, 0);
+            setHoverIndex(index);
           }}
           onMouseLeave={() => setHoverIndex(null)}
         >
@@ -199,7 +198,7 @@ function RatingChart({ overview }: { overview: ArchiveOverviewResponse | null })
         </svg>
       ) : (
         <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-8 text-center text-sm text-[var(--ink-muted)]">
-          Rating timeline appears after the archive loads.
+          {chart.points.length === 1 ? 'Only one rated month is available.' : 'No rated games are available in the archive.'}
         </div>
       )}
     </>
@@ -221,31 +220,33 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [plan, setPlan] = useState<LearningPlanResponse | null>(null);
   const [coachStatus, setCoachStatus] = useState<CoachStatusResponse | null>(null);
   const [games, setGames] = useState<GameSummary[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [gamesError, setGamesError] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<CoachAnswerResponse | null>(null);
   const [history, setHistory] = useState<CoachHistory>([]);
   const [asking, setAsking] = useState(false);
+  const askLock = useRef(false);
   const [coachError, setCoachError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     // Independent requests prevent a slow plan build from hiding coach status.
     api.learningPlan().then((value) => { if (!cancelled) setPlan(value); })
-      .catch((err: unknown) => { if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Could not load the learning plan.'); });
+      .catch((err: unknown) => { if (!cancelled) setPlanError(err instanceof Error ? err.message : 'Could not load the learning plan.'); });
     api.coachStatus().then((value) => { if (!cancelled) setCoachStatus(value); })
       .catch(() => { if (!cancelled) setCoachError('Could not check coach status.'); });
-    api.games({ limit: 10 }).then((value) => { if (!cancelled) setGames(value.games); })
-      .catch(() => { if (!cancelled) setLoadError('Could not load recent games.'); });
+    api.games({ source: 'archive', limit: 10 }).then((value) => { if (!cancelled) setGames(value.games); })
+      .catch(() => { if (!cancelled) setGamesError('Could not load recent games.'); });
     return () => {
       cancelled = true;
     };
   }, []);
 
   const initialGreeting = useMemo(() => {
-    if (!plan) return 'Loading your local study plan…';
-    return `Stockfish has analyzed ${plan.analyzedGames.toLocaleString()} games and found ${plan.totalMistakes.toLocaleString()} mistakes. ${plan.dueCount.toLocaleString()} blind drills are ready. Ask about your study plan or start a session.`;
-  }, [plan]);
+    if (!plan) return planError ? 'Your study plan is unavailable. Retry in the curriculum section below.' : 'Loading your local study plan…';
+    return `Hi Darrel. Stockfish has analyzed ${plan.analyzedGames.toLocaleString()} games and found ${plan.totalMistakes.toLocaleString()} mistakes. ${plan.dueCount.toLocaleString()} blind drills are ready. Ask about your study plan or start a session.`;
+  }, [plan, planError]);
 
   // The old 8ms character-by-character typing effect re-rendered the entire
   // dashboard ~200 times per answer. Render once; the caret still indicates
@@ -255,7 +256,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const ask = useCallback(
     async (raw: string) => {
       const nextQuestion = raw.trim().slice(0, 800);
-      if (!nextQuestion || asking) return;
+      if (!nextQuestion || askLock.current) return;
+      askLock.current = true;
       setAsking(true);
       setCoachError(null);
       setQuestion('');
@@ -270,13 +272,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
         ];
         setHistory((previous) => [...previous, ...entries].slice(-6));
       } catch (err) {
-        setQuestion(nextQuestion);
+        setQuestion(current => current || nextQuestion);
         setCoachError(err instanceof Error ? err.message : 'The coach could not answer right now.');
       } finally {
+        askLock.current = false;
         setAsking(false);
       }
     },
-    [asking, history],
+    [history],
   );
 
   const topMotif = plan?.counts.byMotif[0];
@@ -302,11 +305,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div className="wrap view-shell">
-      {loadError && (
-        <div className="mb-4 rounded-2xl border border-[var(--warm)]/30 bg-[var(--warm-bg)]/80 px-4 py-3 text-sm text-[var(--warm-soft)]">
-          {loadError}
+      {[planError, gamesError].filter(Boolean).map((message) => (
+        <div key={message} role="alert" className="mb-4 rounded-2xl border border-[var(--warm)]/30 bg-[var(--warm-bg)]/80 px-4 py-3 text-sm text-[var(--warm-soft)]">
+          {message}
         </div>
-      )}
+      ))}
 
       <section className="hero">
         <div>
@@ -321,7 +324,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </div>
           <h1 className="hero-title">
-            Your games,<br />
+            Darrel, your games,<br />
             <em>remembered.</em>
           </h1>
 
@@ -340,7 +343,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   {answer ? (answer.source === 'gemini' ? 'Gemini · ' : 'Local · ') + answer.status : 'Stockfish 18 NNUE · spoiler-free'}
                 </span>
               </div>
-              <p className="coach-card-answer">
+              <p className="coach-card-answer" aria-live="polite">
                 {coachText}
                 {asking && <i className="caret" />}
               </p>
@@ -506,7 +509,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         <div className="card s2">
           <h3>
-            Latest game
+            Latest archive game
             {latestGame && (
               <button type="button" onClick={() => onOpenGame(latestGame.id)} className="inline-flex items-center gap-1">
                 Replay <ArrowUpRight className="h-3 w-3" />
@@ -612,6 +615,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
       <DeferredCurriculum
         initialPlan={plan}
+        onPlanLoaded={(loaded) => { setPlan(loaded); setPlanError(null); }}
         onTrainMistake={onTrainMistake}
         onOpenVault={onOpenVault}
         onOpenCoach={onOpenCoach}

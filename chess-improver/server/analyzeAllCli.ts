@@ -11,7 +11,9 @@ async function serverIsUp(): Promise<boolean> {
     const response = await fetch(`${BASE_URL}/api/health`, {
       signal: AbortSignal.timeout(1200),
     });
-    return response.ok;
+    if (!response.ok) return false;
+    const health = await response.json() as { ok?: boolean; engine?: string };
+    return health.ok === true && health.engine === 'Stockfish 18 Lite NNUE';
   } catch {
     return false;
   }

@@ -16,6 +16,7 @@ interface PastePgnModalProps {
   open: boolean;
   onClose: () => void;
   onImported: (games: GameSummary[]) => void;
+  onSaved: () => void;
   onViewLibrary?: () => void;
 }
 
@@ -71,6 +72,7 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
   open,
   onClose,
   onImported,
+  onSaved,
   onViewLibrary,
 }) => {
   const [pgn, setPgn] = useState('');
@@ -78,11 +80,17 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
   const [side, setSide] = useState<PreferredSide>('auto');
   const [playerHint, setPlayerHint] = useState('darrelnxt');
   const [busy, setBusy] = useState(false);
+  const [readingFile, setReadingFile] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imported, setImported] = useState<GameSummary[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const fileReadVersion = useRef(0);
+
+  useEffect(() => {
+    if (!open) { fileReadVersion.current++; setReadingFile(false); }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -113,6 +121,8 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
   }, [open, busy, onClose]);
 
   const loadPreset = (preset: PgnPreset) => {
+    fileReadVersion.current++;
+    setReadingFile(false);
     setPgn(preset.pgn);
     setFileName(`${preset.label} preset`);
     setSide('auto');
@@ -123,14 +133,19 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    const version = ++fileReadVersion.current;
+    setReadingFile(true);
     try {
       const text = await file.text();
+      if (version !== fileReadVersion.current) return;
       setPgn(text);
       setFileName(file.name);
       setImported(null);
       setError(null);
     } catch {
-      setError('Could not read that file. Try a plain .pgn or .txt file.');
+      if (version === fileReadVersion.current) setError('Could not read that file. Try a plain .pgn or .txt file.');
+    } finally {
+      if (version === fileReadVersion.current) setReadingFile(false);
     }
   };
 
@@ -145,6 +160,7 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
     try {
       const result = await api.importPgn(pgn, side, playerHint.trim() || 'darrelnxt');
       setImported(result.games);
+      onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed.');
     } finally {
@@ -174,7 +190,7 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
               Paste a new PGN
             </h2>
             <p className="mt-1 text-xs text-[var(--ink-muted)]">
-              Stockfish 18 NNUE will analyze it live, then every real mistake becomes a blind drill.
+              Save one or more games to your library. Choose a game to analyze it with Stockfish and create blind drills.
             </p>
           </div>
           <button
@@ -194,6 +210,7 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() => fileInputRef.current?.click()}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold text-[var(--ink-soft)] transition hover:border-[var(--a)]/50 hover:text-[var(--ink)]"
                 >
@@ -204,7 +221,11 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
                   type="file"
                   accept=".pgn,.txt,.chess,text/plain"
                   className="hidden"
-                  onChange={(event) => void handleFile(event.target.files?.[0])}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = ''; // allow choosing the same file again
+                    void handleFile(file);
+                  }}
                 />
                 {fileName && (
                   <Pill className="border-[var(--cool)]/25 bg-[var(--cool-bg)] text-[var(--cool)]">
@@ -218,9 +239,14 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
             </div>
 
             <textarea
+              disabled={busy}
+              aria-label="PGN or move list"
               value={pgn}
               onChange={(event) => {
+                fileReadVersion.current++;
+                setReadingFile(false);
                 setPgn(event.target.value);
+                setFileName('');
                 setImported(null);
                 setError(null);
               }}
@@ -277,7 +303,8 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
               </p>
               <SegmentedControl<PreferredSide>
                 value={side}
-                onChange={setSide}
+                disabled={busy}
+                onChange={(value) => { setSide(value); setImported(null); }}
                 size="sm"
                 className="w-full [&>button]:flex-1"
                 options={[
@@ -287,16 +314,17 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
                 ]}
               />
               <label className="mt-3 block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-secondary)]">
-                Your name for auto-detect
+                Your Chess.com username for auto-detect
                 <input
                   value={playerHint}
-                  onChange={(event) => setPlayerHint(event.target.value)}
+                  disabled={busy}
+                  onChange={(event) => { setPlayerHint(event.target.value); setImported(null); }}
                   className="mt-1.5 w-full rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-normal normal-case tracking-normal text-[var(--ink-soft)] outline-none focus:border-[var(--a)]/50"
                   placeholder="darrelnxt"
                 />
               </label>
               <p className="mt-2 text-[10px] leading-relaxed text-[var(--ink-muted)]">
-                Only the side you played is scored. Pasted games are saved as custom games and can be drilled later.
+                Darrel, your archive username is darrelnxt. Only the side you played is scored. Pasted games are saved as custom games and can be drilled later.
               </p>
             </div>
 
@@ -309,6 +337,7 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
                   <button
                     key={preset.id}
                     type="button"
+                    disabled={busy}
                     onClick={() => loadPreset(preset)}
                     className={cx(
                       'w-full rounded-lg border px-3 py-2 text-left transition',
@@ -342,10 +371,10 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
             <button
               type="button"
               onClick={() => void submit()}
-              disabled={busy}
+              disabled={busy || readingFile}
               className="inline-flex min-w-[150px] items-center justify-center gap-2 rounded-lg bg-[var(--a)] px-4 py-2.5 text-xs font-bold text-[#0a0714] transition hover:bg-[var(--a-hover)] disabled:opacity-60"
             >
-              {busy ? <><Spinner /> Importing…</> : <>Import &amp; Analyze <ArrowRight className="h-3.5 w-3.5" /></>}
+              {busy ? <><Spinner /> Importing…</> : readingFile ? <>Reading file…</> : <>Import games <ArrowRight className="h-3.5 w-3.5" /></>}
             </button>
           </div>
         </footer>

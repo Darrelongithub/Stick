@@ -14,20 +14,23 @@ const managed = new Map<string, string>();
 function parseEnvFile(filePath: string): Map<string, string> {
   const values = new Map<string, string>();
   if (!fs.existsSync(filePath)) return values;
-  for (const rawLine of fs.readFileSync(filePath, 'utf8').split(/\r?\n/)) {
+  for (const rawLine of fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith('#')) continue;
-    const separator = line.indexOf('=');
-    if (separator < 1) continue;
-    const key = line.slice(0, separator).trim();
-    let value = line.slice(separator + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
+    const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!match) continue;
+    const [, key, raw] = match;
+    let value: string;
+    if (raw.startsWith('"') || raw.startsWith("'")) {
+      const quote = raw[0];
+      const end = raw.indexOf(quote, 1);
+      // Ignore malformed lines rather than accidentally using a partial key.
+      if (end < 0 || !/^\s*(?:#.*)?$/.test(raw.slice(end + 1))) continue;
+      value = raw.slice(1, end);
+    } else {
+      value = raw.replace(/\s+#.*$/, '').trim();
     }
-    if (key) values.set(key, value);
+    values.set(key, value);
   }
   return values;
 }
@@ -40,8 +43,16 @@ function parseEnvFile(filePath: string): Map<string, string> {
  * without a restart. The key itself is never returned or logged.
  */
 export function loadLocalEnv(): string[] {
-  const envPath = path.resolve(__dirname, '../.env');
-  const fileValues = parseEnvFile(envPath);
+  const envPath = process.env.CHESS_ENV_FILE ? path.resolve(process.env.CHESS_ENV_FILE) : path.resolve(__dirname, '../.env');
+  let fileValues: Map<string, string>;
+  try {
+    fileValues = parseEnvFile(envPath);
+  } catch {
+    // Never expose filesystem details or keep using a key from a file that
+    // can no longer be read. Process-level overrides remain untouched.
+    console.warn('[env] Could not read the local environment file; using process environment only.');
+    fileValues = new Map();
+  }
   const loaded: string[] = [];
 
   // Reconcile values this loader previously owned.

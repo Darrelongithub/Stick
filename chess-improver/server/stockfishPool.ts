@@ -28,6 +28,7 @@ interface EvalJob {
   depth: number;
   multiPv: number;
   movetimeMs?: number;
+  priority: 'interactive' | 'background';
   resolve: (res: EngineEvalResult) => void;
   reject: (err: Error) => void;
 }
@@ -85,20 +86,30 @@ class StockfishWorker {
   }
 
   private waitForLine(predicate: (line: string) => boolean, timeoutMs = 10000): Promise<string> {
+    const proc = this.proc;
+    if (proc.killed || proc.exitCode !== null || proc.signalCode !== null) {
+      return Promise.reject(new Error(`Stockfish worker #${this.id} is not running`));
+    }
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const cleanup = () => {
+        clearTimeout(timer);
         this.removeListener(onLine);
+        proc.off('exit', onExit);
+        proc.off('error', onError);
+      };
+      const onExit = () => { cleanup(); reject(new Error(`Stockfish worker #${this.id} exited unexpectedly`)); };
+      const onError = () => { cleanup(); reject(new Error(`Stockfish worker #${this.id} failed to start`)); };
+      const onLine = (line: string) => {
+        if (predicate(line)) { cleanup(); resolve(line); }
+      };
+      const timer = setTimeout(() => {
+        cleanup();
+        proc.kill('SIGKILL');
         reject(new Error(`Stockfish worker #${this.id} timed out waiting for response`));
       }, timeoutMs);
-
-      const onLine = (line: string) => {
-        if (predicate(line)) {
-          clearTimeout(timer);
-          this.removeListener(onLine);
-          resolve(line);
-        }
-      };
       this.lineListeners.push(onLine);
+      proc.once('exit', onExit);
+      proc.once('error', onError);
     });
   }
 
@@ -114,11 +125,11 @@ class StockfishWorker {
   }
 
   async ensureReady(): Promise<void> {
-    if (this.ready && this.proc && !this.proc.killed && this.proc.exitCode === null) return;
+    if (this.ready && this.proc && !this.proc.killed && this.proc.exitCode === null && this.proc.signalCode === null) return;
     // Warmup and a first request can race; share one UCI handshake.
     if (this.readyPromise) return this.readyPromise;
     const initialize = async () => {
-      if (!this.proc || this.proc.killed || this.proc.exitCode !== null) this.spawnEngine();
+      if (!this.proc || this.proc.killed || this.proc.exitCode !== null || this.proc.signalCode !== null) this.spawnEngine();
       const proc = this.proc;
       const uciPromise = this.waitForLine((l) => l === 'uciok', 10000);
       this.send('uci');
@@ -127,7 +138,7 @@ class StockfishWorker {
       const readyPromise = this.waitForLine((l) => l === 'readyok', 10000);
       this.send('isready');
       await readyPromise;
-      if (this.proc !== proc || proc.exitCode !== null || proc.killed) throw new Error(`Stockfish worker #${this.id} exited during startup`);
+      if (this.proc !== proc || proc.exitCode !== null || proc.signalCode !== null || proc.killed) throw new Error(`Stockfish worker #${this.id} exited during startup`);
       this.ready = true;
     };
     const pending = initialize();
@@ -150,17 +161,24 @@ class StockfishWorker {
 
     const latestByPv = new Map<number, { depth: number; line: EngineLine }>();
 
+    const proc = this.proc;
+    if (proc.killed || proc.exitCode !== null || proc.signalCode !== null) throw new Error(`Stockfish worker #${this.id} is not running`);
     return new Promise<EngineEvalResult>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const cleanup = () => {
+        clearTimeout(timer);
         this.removeListener(onLine);
-        try {
-          this.proc.kill('SIGKILL');
-        } catch {
-          // ignore
-        }
-        this.spawnEngine();
+        proc.off('exit', onExit);
+        proc.off('error', onError);
+      };
+      const onExit = () => { cleanup(); reject(new Error(`Stockfish worker #${this.id} exited during search`)); };
+      const onError = () => { cleanup(); reject(new Error(`Stockfish worker #${this.id} failed during search`)); };
+      const timer = setTimeout(() => {
+        cleanup();
+        proc.kill('SIGKILL');
         reject(new Error(`Stockfish search timed out on FEN: ${fen}`));
       }, 15000);
+      proc.once('exit', onExit);
+      proc.once('error', onError);
 
       const onLine = (line: string) => {
         if (line.startsWith('info ') && line.includes(' score ') && line.includes(' pv ')) {
@@ -194,8 +212,7 @@ class StockfishWorker {
             }
           }
         } else if (line.startsWith('bestmove ')) {
-          clearTimeout(timer);
-          this.removeListener(onLine);
+          cleanup();
           const parts = line.split(/\s+/);
           const rawBest = parts[1] && parts[1] !== '(none)' ? parts[1] : null;
           const lines = Array.from(latestByPv.values())
@@ -232,19 +249,23 @@ class StockfishWorker {
 export class StockfishPool {
   private workers: StockfishWorker[];
   private queue: EvalJob[] = [];
+  private stopped = false;
 
   constructor(size = 2) {
+    if (!Number.isInteger(size) || size < 1) throw new Error('Stockfish pool must have at least one worker');
     this.workers = Array.from({ length: size }, (_, i) => new StockfishWorker(i + 1));
   }
 
   async warmup(): Promise<void> {
+    if (this.stopped) throw new Error('Stockfish pool is shut down');
     await Promise.all(this.workers.map((w) => w.ensureReady()));
   }
 
   evaluateFen(
     fen: string,
-    opts: { depth?: number; multiPv?: number; movetimeMs?: number } = {}
+    opts: { depth?: number; multiPv?: number; movetimeMs?: number; priority?: 'interactive' | 'background' } = {}
   ): Promise<EngineEvalResult> {
+    if (this.stopped) return Promise.reject(new Error('Stockfish pool is shut down'));
     // Handle terminal positions synchronously via chess.js
     const chess = new Chess(fen);
     if (chess.isGameOver()) {
@@ -264,19 +285,27 @@ export class StockfishPool {
     const multiPv = opts.multiPv ?? 1;
 
     return new Promise<EngineEvalResult>((resolve, reject) => {
-      this.queue.push({
+      const job: EvalJob = {
         fen,
         depth,
         multiPv,
         movetimeMs: opts.movetimeMs,
+        priority: opts.priority ?? 'interactive',
         resolve,
         reject,
-      });
+      };
+      // Full-game sweeps can queue hundreds of positions. Let a user's live
+      // drill or Mirror move pass that backlog without interrupting a search.
+      const firstBackground = job.priority === 'interactive'
+        ? this.queue.findIndex(queued => queued.priority === 'background') : -1;
+      if (firstBackground < 0) this.queue.push(job);
+      else this.queue.splice(firstBackground, 0, job);
       this.drain();
     });
   }
 
   private drain() {
+    if (this.stopped) return;
     while (this.queue.length > 0) {
       const idleWorker = this.workers.find((w) => !w.busy);
       if (!idleWorker) break;
@@ -285,7 +314,32 @@ export class StockfishPool {
       idleWorker.busy = true;
       idleWorker
         .evaluate(job.fen, job.depth, job.multiPv, job.movetimeMs)
-        .then(job.resolve)
+        .then((result) => {
+          // Never turn an incomplete or malformed engine response into a neutral
+          // score. That would silently create incorrect analysis and drills.
+          const legal = new Set(new Chess(job.fen).moves({ verbose: true })
+            .map(move => `${move.from}${move.to}${move.promotion ?? ''}`));
+          const invalidLine = (line: EngineLine, index: number) => {
+            if (line.multipv !== index + 1 || !Number.isFinite(line.cpFromTurn) ||
+                !(line.mateFromTurn === null || Number.isInteger(line.mateFromTurn)) ||
+                !Array.isArray(line.pvUci) || !line.pvUci.length || !legal.has(line.pvUci[0])) return true;
+            const replay = new Chess(job.fen);
+            try {
+              for (const uci of line.pvUci) {
+                if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) return true;
+                replay.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
+              }
+              return false;
+            } catch { return true; }
+          };
+          if (!result.bestMoveUci || !legal.has(result.bestMoveUci) ||
+              result.lines.length !== Math.min(job.multiPv, legal.size) || result.lines.some(invalidLine) ||
+              result.lines[0].pvUci[0] !== result.bestMoveUci ||
+              new Set(result.lines.map(line => line.pvUci[0])).size !== result.lines.length) {
+            throw new Error('Stockfish returned an incomplete or illegal evaluation');
+          }
+          job.resolve(result);
+        })
         .catch(job.reject)
         .finally(() => {
           idleWorker.busy = false;
@@ -295,6 +349,9 @@ export class StockfishPool {
   }
 
   shutdown() {
+    if (this.stopped) return;
+    this.stopped = true;
+    for (const job of this.queue.splice(0)) job.reject(new Error('Stockfish pool is shut down'));
     for (const w of this.workers) w.shutdown();
   }
 }

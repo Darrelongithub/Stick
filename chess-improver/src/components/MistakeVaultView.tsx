@@ -33,7 +33,6 @@ import {
   PHASE_LABELS,
   replaySanLine,
   safePieceHint,
-  sanToMoveDetails,
   severityBadgeMeta,
   shortOpening,
 } from '../lib/chessFormat';
@@ -231,25 +230,44 @@ function VaultTrainerModal({
   const [badge, setBadge] = useState<SquareBadge | null>(null);
   const [boardDetached, setBoardDetached] = useState(false);
   const attemptLockRef = useRef(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef(onClose);
+  const attemptingRef = useRef(attempting);
+  closeRef.current = onClose;
+  attemptingRef.current = attempting;
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.querySelector<HTMLElement>('[aria-label="Close vault trainer"]')?.focus();
+    return () => { if (previousFocus?.isConnected) previousFocus.focus(); };
+  }, []);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !attempting) onClose();
+      if (event.key === 'Escape' && !attemptingRef.current) closeRef.current();
+      if (event.key === 'Tab' && dialogRef.current) {
+        const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]')].filter(el => el.getClientRects().length > 0);
+        if (!focusable.length) { event.preventDefault(); return; }
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [onClose, attempting]);
+  }, []);
 
   const hasSolution = Boolean(response?.solution);
+  const solved = response?.outcome === 'great';
   const boardInteractive =
     !attempting &&
     !boardDetached &&
-    (practiceMode ? !practiceSolved : !hasSolution);
+    (practiceMode ? !practiceSolved : !hasSolution && !solved);
 
   const resetBoard = () => {
     setBoardFen(challenge.fenBefore);
@@ -347,7 +365,7 @@ function VaultTrainerModal({
   };
 
   const handleAttempt = async (uci: string) => {
-    if (attemptLockRef.current || hasSolution || boardDetached || attempting) return;
+    if (attemptLockRef.current || hasSolution || solved || boardDetached || attempting) return;
     attemptLockRef.current = true;
     setAttempting(true);
     setAttemptError(null);
@@ -366,8 +384,6 @@ function VaultTrainerModal({
       });
       setResponse(result);
       const candidateFen = applyUciToFen(challenge.fenBefore, result.candidateMove.uci).fen;
-      const refSan = result.candidateRefutationPvSan[0];
-      const refutation = refSan ? sanToMoveDetails(candidateFen, refSan) : null;
 
       if (result.outcome === 'same_as_game') {
         setBoardFen(challenge.fenBefore);
@@ -384,12 +400,7 @@ function VaultTrainerModal({
         setLastMove(
           challenge.precedingMove ? { from: challenge.precedingMove.from, to: challenge.precedingMove.to } : null
         );
-        setArrows([
-          { from: result.candidateMove.from, to: result.candidateMove.to, kind: 'attempt' },
-          ...(refutation
-            ? [{ from: refutation.from, to: refutation.to, kind: 'refutation' as const }]
-            : []),
-        ]);
+        setArrows([{ from: result.candidateMove.from, to: result.candidateMove.to, kind: 'attempt' }]);
         setBadge({ square: result.candidateMove.to, glyph: '×', bgColor: '#ff8a78' });
         setBoardDetached(false);
         soundEngine.playMiss();
@@ -435,7 +446,7 @@ function VaultTrainerModal({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[var(--surface-deep)]/55 p-2 backdrop-blur-md sm:p-5 animate-fade-in">
-      <div className="premium-card relative flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-[var(--line)] animate-scale-in">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Vault blind drill" className="premium-card relative flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-[var(--line)] animate-scale-in">
         <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-[var(--a-deep)] via-[var(--a2)] to-[var(--a-deep)]" />
         <header className="flex items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface)]/85 px-4 py-3 sm:px-6">
           <div className="min-w-0">
@@ -449,6 +460,7 @@ function VaultTrainerModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={attempting}
               className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--line)] text-[var(--ink-secondary)] transition hover:border-[var(--warm)]/50 hover:text-[var(--warm-soft)]"
               aria-label="Close vault trainer"
             >
@@ -481,6 +493,7 @@ function VaultTrainerModal({
                 <button
                   type="button"
                   onClick={resetBoard}
+                  disabled={attempting}
                   className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--line)] px-2.5 text-[11px] font-semibold text-[var(--ink-secondary)] hover:border-[var(--a)]/45"
                 >
                   <Target className="h-3.5 w-3.5" /> Puzzle
@@ -517,12 +530,12 @@ function VaultTrainerModal({
                   arrows={arrows}
                   badge={badge}
                   nudgeSquare={null}
-                  hintActive={hintOpen && !hasSolution}
+                  hintActive={hintOpen && !hasSolution && !solved}
                   onMoveAttempt={handleBoardMove}
                 />
                 <div className="mt-1.5 flex items-center justify-between rounded-lg border border-[var(--line)] bg-[var(--surface)]/85 px-2.5 py-1.5">
                   <span className="text-[11px] font-semibold text-[var(--ink-soft)]">
-                    {orientation === challenge.userColor ? 'You to move' : 'Opponent view'}
+                    {boardFen.split(' ')[1] === challenge.userColor ? 'Your turn' : 'Opponent to move'}
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-[var(--a)]">
                     {hasSolution ? <CheckCircle2 className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -533,7 +546,9 @@ function VaultTrainerModal({
             </div>
 
             <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-[11px] text-[var(--ink-secondary)]">
-              {boardDetached
+              {solved
+                ? 'Solved. Continue when you are ready.'
+                : boardDetached
                 ? 'Viewing a replay. Return to puzzle to attempt another move.'
                 : practiceMode
                   ? 'Practice mode: reproduce the revealed move by hand.'
@@ -555,7 +570,7 @@ function VaultTrainerModal({
                 <Pill className={severity.pillClass}>{severity.glyph} {severity.label}</Pill>
               </div>
               <p className="mt-2 text-[12px] leading-relaxed text-[var(--ink-secondary)]">
-                You played <span className="font-mono-tabular font-bold text-[var(--warm-soft)]">{challenge.playedMove.san}</span>. Stockfish marked it as a {challenge.severity}. No best move is sent to this page yet.
+                You played <span className="font-mono-tabular font-bold text-[var(--warm-soft)]">{challenge.playedMove.san}</span>. Stockfish marked it as a {challenge.severity}. {hasSolution ? 'The engine line is unlocked after your final failed attempt.' : 'The engine line remains hidden.'}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Pill>{MOTIF_LABELS[challenge.motif]}</Pill>
@@ -565,12 +580,13 @@ function VaultTrainerModal({
                 </Pill>
               </div>
 
-              {!hasSolution && (
+              {!hasSolution && !solved && (
                 <>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={previewGameMove}
+                      disabled={attempting}
                       className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--line)] px-2.5 py-2 text-[11px] font-semibold text-[var(--ink-soft)] hover:border-[var(--warm)]/45"
                     >
                       <Eye className="h-3.5 w-3.5" /> Game move
@@ -580,7 +596,7 @@ function VaultTrainerModal({
                       onClick={() => setHintOpen((v) => !v)}
                       className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--a)]/25 bg-[var(--a-soft)] px-2.5 py-2 text-[11px] font-semibold text-[var(--a)]"
                     >
-                      <Lightbulb className="h-3.5 w-3.5" /> Piece hint
+                      <Lightbulb className="h-3.5 w-3.5" /> Scan hint
                     </button>
                   </div>
                   {hintOpen && (
@@ -591,7 +607,7 @@ function VaultTrainerModal({
                   )}
                   <div className="mt-3 flex items-center justify-between border-t border-[var(--line)] pt-3">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ink-secondary)]">
-                      {attemptNumber > 1 || response ? 'Tries locked' : 'Tries before reveal'}
+                      {attemptNumber > 1 || (response && response.outcome !== 'same_as_game') ? 'Tries locked' : 'Tries before reveal'}
                     </span>
                     <SegmentedControl<'1' | '2'>
                       value={String(maxAttempts) as '1' | '2'}
@@ -601,7 +617,7 @@ function VaultTrainerModal({
                         setAttemptNumber((n) => Math.min(n, limit));
                       }}
                       size="sm"
-                      disabled={attemptNumber > 1 || Boolean(response)}
+                      disabled={attempting || attemptNumber > 1 || Boolean(response && response.outcome !== 'same_as_game')}
                       options={[
                         { value: '1', label: '1 try' },
                         { value: '2', label: '2 tries' },
@@ -624,9 +640,15 @@ function VaultTrainerModal({
                 <p className="mt-1 text-[11px] leading-relaxed text-[var(--ink-secondary)]">{response.feedbackDetail}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <Pill>{response.candidateMove.san} · {formatScore(response.candidateEvalUserCp, response.candidateEvalUserMate)}</Pill>
-                  <Pill className="border-[var(--cool)]/20 bg-[var(--cool)]/[0.05] text-[var(--cool)]">Answer still hidden</Pill>
+                  <Pill className="border-[var(--cool)]/20 bg-[var(--cool)]/[0.05] text-[var(--cool)]">{solved ? 'Solved · engine line stays hidden' : 'Answer still hidden'}</Pill>
                 </div>
               </div>
+            )}
+
+            {solved && (
+              <button type="button" onClick={onComplete} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--a)] px-4 py-3 text-sm font-bold text-[#0a0714]">
+                Continue <ArrowRight className="h-4 w-4" />
+              </button>
             )}
 
             {practiceMode && (
@@ -662,10 +684,11 @@ function VaultTrainerModal({
               />
             )}
 
-            {(boardDetached || activeLine || practiceMode || previewMode) && (
+            {!solved && (boardDetached || activeLine || practiceMode || previewMode) && (
               <button
                 type="button"
                 onClick={resetBoard}
+                disabled={attempting}
                 className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--a)]/25 bg-[var(--a-soft)] px-3 py-2.5 text-xs font-bold text-[var(--a)]"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Return to blind puzzle
@@ -706,6 +729,8 @@ export const MistakeVaultView: React.FC<MistakeVaultViewProps> = ({
   const [queue, setQueue] = useState<MistakeChallengePublic[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [queueBusy, setQueueBusy] = useState(false);
+  const queueRequestRef = useRef(0);
+  useEffect(() => () => { queueRequestRef.current++; }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -746,19 +771,25 @@ export const MistakeVaultView: React.FC<MistakeVaultViewProps> = ({
 
   const startQueue = (items: MistakeChallengePublic[]) => {
     if (items.length === 0) return;
+    queueRequestRef.current++;
+    setQueueBusy(false);
     setQueue(items);
     setQueueIndex(0);
   };
 
   const startDueQueue = async () => {
+    const request = ++queueRequestRef.current;
     setQueueBusy(true);
+    setLoadError(null);
     try {
       const result = await api.mistakes({ status: 'due' });
-      startQueue(result.mistakes);
+      if (request !== queueRequestRef.current) return;
+      if (result.mistakes.length) startQueue(result.mistakes);
+      else setLoadError('No drills are due now. Refresh the overview to update the count.');
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not build the review queue.');
+      if (request === queueRequestRef.current) setLoadError(err instanceof Error ? err.message : 'Could not build the review queue.');
     } finally {
-      setQueueBusy(false);
+      if (request === queueRequestRef.current) setQueueBusy(false);
     }
   };
 
@@ -934,14 +965,14 @@ export const MistakeVaultView: React.FC<MistakeVaultViewProps> = ({
         <div className="flex items-center justify-center gap-2 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/60 py-16 text-sm text-[var(--ink-muted)]">
           <Spinner /> Loading spaced-repetition queue…
         </div>
-      ) : filtered.length === 0 ? (
+      ) : loadError ? null : filtered.length === 0 ? (
         <EmptyState
           icon={status === 'due' ? <Trophy className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
-          title={status === 'due' ? 'Nothing is due right now.' : 'No mistakes match these filters.'}
+          title={status === 'due' && dueCount === 0 ? 'Nothing is due right now.' : 'No mistakes match these filters.'}
           detail={
-            status === 'due'
-              ? 'Every discovered mistake has been recalled cleanly. Analyze another archive game or paste a new PGN to add fresh positions.'
-              : 'Try widening the mastery, motif, severity, or phase filters.'
+            status === 'due' && dueCount === 0
+              ? 'There are no discovered positions due. Analyze another game or paste a PGN to add fresh positions.'
+              : 'Try widening the mastery, motif, severity, phase, or search filters.'
           }
           action={
             <div className="flex flex-wrap justify-center gap-2">

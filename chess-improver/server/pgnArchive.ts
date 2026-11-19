@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import AdmZip from 'adm-zip';
 import { Chess } from 'chess.js';
+import { writeFileAtomic } from './atomicFile.js';
 import type {
   GameOutcome,
   GameSummary,
@@ -13,7 +14,7 @@ import type {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
-const DATA_DIR = path.resolve(__dirname, '../data');
+const DATA_DIR = process.env.CHESS_DATA_DIR ? path.resolve(process.env.CHESS_DATA_DIR) : path.resolve(__dirname, '../data');
 const CUSTOM_GAMES_PATH = path.join(DATA_DIR, 'custom-games.json');
 const DEFAULT_USERNAME = 'darrelnxt';
 
@@ -64,10 +65,26 @@ function cleanOpeningName(ecoUrl?: string, openingHeader?: string, eco?: string)
 
 function parseHeaders(rawPgn: string): Record<string, string> {
   const headers: Record<string, string> = {};
-  const regex = /^\[(\w+)\s+"([^"]*)"\]/gm;
-  let m: RegExpExecArray | null;
-  while ((m = regex.exec(rawPgn)) !== null) {
-    headers[m[1]] = m[2];
+  let inComment = false;
+  for (const line of rawPgn.split(/\r?\n/)) {
+    // Comment markers are ordinary characters inside a quoted PGN tag.
+    // Recognize a complete tag before stripping movetext comments.
+    if (!inComment) {
+      const tag = line.trim().match(/^\[(\w+)\s+"([^"\r\n]*)"\]\s*$/);
+      if (tag) { headers[tag[1]] = tag[2]; continue; }
+    }
+    let visible = '';
+    for (const ch of line) {
+      if (inComment) { if (ch === '}') inComment = false; continue; }
+      if (ch === ';') break;
+      if (ch === '{') { inComment = true; continue; }
+      visible += ch;
+    }
+    const trimmed = visible.trim();
+    if (!trimmed) continue;
+    const tag = trimmed.match(/^\[(\w+)\s+"([^"\r\n]*)"\]\s*$/);
+    if (!tag) break; // A tag in movetext is not game metadata.
+    headers[tag[1]] = tag[2];
   }
   return headers;
 }
@@ -79,6 +96,33 @@ function estimateMoveCount(rawPgn: string): number {
   if (!nums || nums.length === 0) return 0;
   const last = nums[nums.length - 1];
   return parseInt(last, 10) || nums.length;
+}
+
+/** Split on the next game's tag section, regardless of tag order. Ignore
+ * tag-like text inside multi-line brace or semicolon comments. */
+function splitPgnGames(input: string): string[] {
+  const chunks: string[] = [];
+  let lines: string[] = [];
+  let inComment = false;
+  let hasMovetext = false;
+  for (const line of input.split(/\r?\n/)) {
+    if (!inComment && hasMovetext && /^\s*\[\w+\s+"/.test(line)) {
+      chunks.push(lines.join('\n').trim());
+      lines = [];
+      hasMovetext = false;
+    }
+    const isTag = !inComment && /^\s*\[\w+\s+"/.test(line);
+    lines.push(line);
+    if (isTag) continue;
+    for (const ch of line) {
+      if (inComment) { if (ch === '}') inComment = false; continue; }
+      if (ch === ';') break;
+      if (ch === '{') { inComment = true; continue; }
+      if (!/\s/.test(ch)) hasMovetext = true;
+    }
+  }
+  if (lines.join('\n').trim()) chunks.push(lines.join('\n').trim());
+  return chunks;
 }
 
 function computeOutcome(result: string, userColor: PlayerColor): GameOutcome {
@@ -94,27 +138,29 @@ function computeOutcome(result: string, userColor: PlayerColor): GameOutcome {
  * and displayed. Drilling is still disabled for Chess960 because standard
  * chess.js cannot replay every non-standard castling move.
  */
-function normalizeChess960Fen(fen: string): string {
+export function normalizeChess960Fen(fen: string): string {
   const parts = fen.trim().split(/\s+/);
   if (parts.length < 4 || parts[2] === '-' || !/[A-Ha-h]/.test(parts[2])) return fen;
 
   const rows = parts[0].split('/');
-  const whiteBack = rows[7] ?? '';
-  const blackBack = rows[0] ?? '';
+  const expand = (rank: string) => rank.replace(/[1-8]/g, digit => '.'.repeat(Number(digit)));
+  const whiteBack = expand(rows[7] ?? '');
+  const blackBack = expand(rows[0] ?? '');
   const whiteKingFile = whiteBack.indexOf('K');
   const blackKingFile = blackBack.indexOf('k');
   const rights = new Set<string>();
 
   for (const ch of parts[2]) {
     if (ch === '-') continue;
+    if ('KQkq'.includes(ch)) { rights.add(ch); continue; }
     const upper = ch.toUpperCase();
     const file = 'ABCDEFGH'.indexOf(upper);
     if (file < 0) continue;
     if (ch === upper) {
-      if (whiteBack[file]?.toLowerCase() === 'r') {
+      if (whiteKingFile >= 0 && whiteBack[file] === 'R') {
         rights.add(file > whiteKingFile ? 'K' : 'Q');
       }
-    } else if (blackBack[file]?.toLowerCase() === 'r') {
+    } else if (blackKingFile >= 0 && blackBack[file] === 'r') {
       rights.add(file > blackKingFile ? 'k' : 'q');
     }
   }
@@ -148,7 +194,9 @@ function findZipPath(): string | null {
   return null;
 }
 
-class PgnArchiveStore {
+export class PgnArchiveStore {
+  constructor(private readonly customPath = CUSTOM_GAMES_PATH) {}
+  private customLoadError: Error | null = null;
   private archiveGames = new Map<string, StoredGameRecord>();
   private customGames = new Map<string, StoredGameRecord>();
   private orderedIds: string[] = [];
@@ -262,9 +310,21 @@ class PgnArchiveStore {
   }
 
   private loadCustomGamesFromDisk() {
-    if (!fs.existsSync(CUSTOM_GAMES_PATH)) return;
+    if (!fs.existsSync(this.customPath)) return;
     try {
-      const raw = JSON.parse(fs.readFileSync(CUSTOM_GAMES_PATH, 'utf8')) as StoredGameRecord[];
+      const raw = JSON.parse(fs.readFileSync(this.customPath, 'utf8')) as StoredGameRecord[];
+      if (!Array.isArray(raw) || raw.some(item => {
+        if (!item || typeof item.pgn !== 'string' || !item.summary) return true;
+        const s = item.summary;
+        const requiredText = [s.id, s.month, s.date, s.utcTime, s.white, s.black, s.userName,
+          s.opponentName, s.result, s.timeControl, s.eco, s.openingName, s.termination];
+        return requiredText.some(value => typeof value !== 'string') || s.source !== 'custom' ||
+          !['w', 'b'].includes(s.userColor) || !['bullet', 'blitz', 'rapid', 'classical'].includes(s.timeClass) ||
+          ![s.whiteElo, s.blackElo, s.userElo, s.opponentElo].every(value => value === null || (typeof value === 'number' && Number.isFinite(value))) ||
+          !Number.isInteger(s.moveCount) || s.moveCount < 0;
+      })) {
+        throw new Error('Expected an array of valid saved game records');
+      }
       for (const item of raw) {
         // Older imports could lose a result supplied in the movetext.
         if (!item.summary.result || item.summary.result === '*') {
@@ -274,13 +334,15 @@ class PgnArchiveStore {
         this.customGames.set(item.summary.id, item);
       }
     } catch (err) {
-      console.warn('[pgnArchive] Failed to parse custom-games.json:', err);
+      this.customGames.clear();
+      this.customLoadError = new Error('Cannot import games: the saved custom games file could not be read. Restore it or move it aside before trying again.', { cause: err });
+      console.warn('[pgnArchive] Could not read saved games; imports are disabled:', err);
     }
   }
 
-  private saveCustomGamesToDisk() {
-    const arr = Array.from(this.customGames.values());
-    fs.writeFileSync(CUSTOM_GAMES_PATH, JSON.stringify(arr, null, 2), 'utf8');
+  private saveCustomGamesToDisk(games: Map<string, StoredGameRecord>) {
+    if (this.customLoadError) throw this.customLoadError;
+    writeFileAtomic(this.customPath, JSON.stringify(Array.from(games.values()), null, 2));
   }
 
   private rebuildOrder() {
@@ -346,10 +408,7 @@ class PgnArchiveStore {
       throw new Error('Please paste a PGN or move list first.');
     }
 
-    // Split multi-game PGN if multiple [Event ...] blocks exist
-    const chunks = cleaned.includes('[Event ')
-      ? cleaned.split(/\r?\n\r?\n+(?=\[Event )/)
-      : [cleaned];
+    const chunks = splitPgnGames(cleaned);
 
     const imported: StoredGameRecord[] = [];
     const now = new Date();
@@ -370,7 +429,7 @@ class PgnArchiveStore {
         );
       }
 
-      const history = chess.history();
+      const history = chess.history({ verbose: true });
       if (history.length < 2) {
         throw new Error('PGN must contain at least 1 full move (2 plies).');
       }
@@ -386,10 +445,16 @@ class PgnArchiveStore {
       if (preferredSide === 'w' || preferredSide === 'b') {
         userColor = preferredSide;
       } else {
-        const target = (playerHint || DEFAULT_USERNAME).toLowerCase();
-        if (black.toLowerCase().includes(target)) userColor = 'b';
-        else if (white.toLowerCase().includes(target)) userColor = 'w';
-        else userColor = 'w';
+        const target = (playerHint?.trim() || DEFAULT_USERNAME).toLowerCase();
+        const whiteName = white.toLowerCase();
+        const blackName = black.toLowerCase();
+        const whiteExact = whiteName === target;
+        const blackExact = blackName === target;
+        const whiteMatch = whiteName.includes(target);
+        const blackMatch = blackName.includes(target);
+        if (whiteExact !== blackExact) userColor = whiteExact ? 'w' : 'b';
+        else if (!whiteExact && whiteMatch !== blackMatch) userColor = whiteMatch ? 'w' : 'b';
+        else throw new Error('Could not uniquely identify your side. Choose White or Black for this import.');
       }
 
       const whiteElo =
@@ -397,7 +462,14 @@ class PgnArchiveStore {
       const blackElo =
         headers.BlackElo && /^\d+$/.test(headers.BlackElo) ? parseInt(headers.BlackElo, 10) : null;
 
-      const result = headers.Result || chess.getHeaders().Result || '*';
+      const parsedResult = chess.getHeaders().Result || '*';
+      if (headers.Result && parsedResult !== headers.Result) {
+        throw new Error('PGN result header conflicts with the movetext result.');
+      }
+      if (!['1-0', '0-1', '1/2-1/2', '*'].includes(parsedResult)) {
+        throw new Error('PGN result must be 1-0, 0-1, 1/2-1/2, or *.');
+      }
+      const result = parsedResult;
       const timeControl = headers.TimeControl || '600';
       const eco = headers.ECO || '';
       const openingName = cleanOpeningName(headers.ECOUrl, headers.Opening, eco);
@@ -438,7 +510,7 @@ class PgnArchiveStore {
           eco,
           openingName: openingName === 'Standard Chess' ? 'Pasted PGN Study' : openingName,
           termination: headers.Termination || 'Imported PGN',
-          moveCount: Math.ceil(history.length / 2),
+          moveCount: Number(history[history.length - 1].before.split(' ')[5]) - Number(history[0].before.split(' ')[5]) + 1,
           link: headers.Link || undefined,
           variant: 'Standard',
           analyzable: true,
@@ -450,8 +522,10 @@ class PgnArchiveStore {
 
     // Commit only after all games validate; a bad later game must not leave
     // earlier games silently imported in memory.
-    for (const record of imported) this.customGames.set(record.summary.id, record);
-    this.saveCustomGamesToDisk();
+    const nextGames = new Map(this.customGames);
+    for (const record of imported) nextGames.set(record.summary.id, record);
+    this.saveCustomGamesToDisk(nextGames);
+    this.customGames = nextGames;
     this.rebuildOrder();
     this.revision++;
     return imported;
