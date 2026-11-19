@@ -10,6 +10,7 @@ const PROGRESS_PATH = path.join(DATA_DIR, 'user-progress.json');
 class ProgressStore {
   private records = new Map<string, MistakeMasteryRecord>();
   private loaded = false;
+  revision = 0;
 
   private ensureLoaded() {
     if (this.loaded) return;
@@ -80,6 +81,7 @@ class ProgressStore {
     };
 
     this.records.set(mistakeId, updated);
+    this.revision++;
     this.persist();
     return updated;
   }
@@ -100,6 +102,7 @@ class ProgressStore {
     };
 
     this.records.set(mistakeId, updated);
+    this.revision++;
     this.persist();
     return updated;
   }
@@ -116,6 +119,7 @@ class ProgressStore {
       lastAttemptAt: null,
     };
     this.records.set(mistakeId, reset);
+    this.revision++;
     this.persist();
     return reset;
   }

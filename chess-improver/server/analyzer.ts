@@ -346,6 +346,7 @@ class GameAnalyzerService {
   private cache = new Map<string, StoredGameAnalysis>();
   private inFlight = new Map<string, Promise<StoredGameAnalysis>>();
   private loaded = false;
+  revision = 0;
 
   ensureLoaded() {
     if (this.loaded) return;
@@ -481,6 +482,7 @@ class GameAnalyzerService {
     const jobPromise = this.runFullAnalysis(record, onProgress)
       .then((res) => {
         this.cache.set(gameId, res);
+        this.revision++;
         if (options.persist !== false) this.persistRuntimeCache();
         return res;
       })

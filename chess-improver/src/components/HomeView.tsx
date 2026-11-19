@@ -518,7 +518,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <div className="mt-3 font-display text-[22px]">
                 vs. {latestGame.opponentName}{' '}
                 <span className={cx('res', latestGame.userOutcome === 'win' && '!border-[var(--cool)] !text-[var(--cool)]')}>
-                  {latestGame.userOutcome === 'win' ? 'Won' : latestGame.userOutcome === 'loss' ? 'Lost' : 'Drew'}
+                  {latestGame.userOutcome === 'win' ? 'Won' : latestGame.userOutcome === 'loss' ? 'Lost' : latestGame.userOutcome === 'draw' ? 'Drew' : 'Unfinished'}
                 </span>
               </div>
               <p className="mt-1 text-[12px] text-[var(--ink-muted)]">

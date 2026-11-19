@@ -80,7 +80,13 @@ function squareToBoardXY(square: string, orientation: PlayerColor): { col: numbe
   return { col: 7 - fileIdx, row: rankNum - 1 };
 }
 
-export const ChessBoard: React.FC<ChessBoardProps> = ({
+export const ChessBoard: React.FC<ChessBoardProps> = (props) => {
+  const valid = useMemo(() => { try { new Chess(props.fen); return true; } catch { return false; } }, [props.fen]);
+  if (!valid) return <div role="alert" className="rounded-2xl border border-[var(--warm)]/40 bg-[var(--surface)] p-6 text-sm text-[var(--warm-soft)]">This position could not be displayed. Try reopening the game.</div>;
+  return <ChessBoardInternal {...props} />;
+};
+
+const ChessBoardInternal: React.FC<ChessBoardProps> = ({
   fen,
   orientation,
   interactive,
@@ -122,13 +128,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
     setDragState(null);
   }, [fen]);
 
-  const chess = useMemo(() => {
-    try {
-      return new Chess(fen);
-    } catch {
-      return new Chess();
-    }
-  }, [fen]);
+  const chess = useMemo(() => new Chess(fen), [fen]);
 
   const turn = chess.turn() as PlayerColor;
   const canInteractNow =
