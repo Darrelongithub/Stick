@@ -90,31 +90,140 @@ def query_fullscreen():
         return None
 
 
+def process_identity(pid, proc=Path('/proc')):
+    """PID plus kernel start time; zombies have already finished shutdown."""
+    try:
+        fields = (proc/str(pid)/'stat').read_text().rsplit(')', 1)[1].split()
+        return None if fields[0] in ('Z', 'X') else (pid, fields[19])
+    except (OSError, IndexError):
+        return None
+
+
+def shutdown_snapshot(stage, pids):
+    """Small bounded passive snapshot; no Java signals, GC or disk sync.
+
+    Best effort: a forced power loss can still lose buffered writes. These
+    three fixed filenames bound storage rather than create files per poll.
+    """
+    try:
+        data = {'stage': stage, 'wall_time': time.time(), 'monotonic': time.monotonic(),
+                'processes': {}, 'system': {}}
+        for filename in ('meminfo', 'pressure/cpu', 'pressure/memory', 'pressure/io'):
+            try:
+                data['system'][filename] = Path('/proc', filename).read_text()[:8192]
+            except OSError as error:
+                data['system'][filename] = str(error)
+        for pid in pids:
+            record = {}
+            for filename in ('status', 'stat', 'wchan', 'io'):
+                try:
+                    record[filename] = Path(f'/proc/{pid}/{filename}').read_text()[:8192]
+                except OSError as error:
+                    record[filename] = str(error)
+            data['processes'][str(pid)] = record
+        STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = STATE/f'shutdown-{stage}.json'
+        with path.open('w') as output:
+            os.chmod(path, 0o600)
+            json.dump(data, output, indent=2)
+    except OSError:
+        LOG.warning('Could not write shutdown snapshot', exc_info=True)
+
+
 def stop_engines(timeout=8):
-    """Bounded TERM, then KILL; never report stopped while a process remains."""
+    """Bounded TERM/KILL with targeted waits, not a full /proc scan per tick."""
+    pids = engine_pids()
+    if not pids:
+        return True
+    began = time.monotonic()
+    targets = [identity for pid in pids if (identity := process_identity(pid))]
+    shutdown_snapshot('before-term', pids)
+
+    def alive():
+        return [identity for identity in targets if process_identity(identity[0]) == identity]
+
     def send(sig):
-        for pid in engine_pids():
+        for pid, _ in alive():
             try:
                 os.kill(pid, sig)
             except ProcessLookupError:
                 pass
-    if not engine_pids():
-        return True
-    LOG.info('Requesting engine shutdown')
-    send(signal.SIGTERM)
-    deadline = time.monotonic()+timeout
-    while engine_pids() and time.monotonic() < deadline:
-        time.sleep(.1)
-    if engine_pids():
-        LOG.warning('Engine did not exit within %ss; sending SIGKILL', timeout)
-        send(signal.SIGKILL)
-        deadline = time.monotonic()+2
-        while engine_pids() and time.monotonic() < deadline:
+
+    def wait(seconds):
+        deadline = time.monotonic()+seconds
+        while alive() and time.monotonic() < deadline:
             time.sleep(.1)
+
+    LOG.info('Requesting engine shutdown: pids=%s', pids)
+    send(signal.SIGTERM)
+    wait(timeout)
+    if alive():
+        LOG.warning('Engine did not exit within %ss; sending SIGKILL', timeout)
+        shutdown_snapshot('before-kill', [pid for pid, _ in alive()])
+        send(signal.SIGKILL)
+        wait(2)
+    # A final global scan detects externally launched/replacement processes,
+    # without adopting or signalling them during this shutdown transaction.
     remaining = engine_pids()
+    shutdown_snapshot('after', remaining)
+    LOG.info('Shutdown verification: elapsed=%.3fs remaining=%s', time.monotonic()-began, remaining)
     if remaining:
         LOG.error('Engine still present: %s; no replacement will be launched', remaining)
     return not remaining
+
+
+# Run native X11 probing in a separate process. A stuck/crashing native call
+# must not take the watchdog with it. Uses the same inherited DISPLAY and
+# XAUTHORITY as Java; no guessed :0 or hard-coded authentication file.
+X11_PROBE = """import ctypes, resource, sys
+# A native probe crash must not produce core dumps in a retry loop.
+resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+try:
+    x11 = ctypes.CDLL('libX11.so.6')
+    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x11.XOpenDisplay.restype = ctypes.c_void_p
+    x11.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    x11.XCloseDisplay.restype = ctypes.c_int
+    display = x11.XOpenDisplay(None)
+    if not display:
+        print('XOpenDisplay failed: check Xwayland and session authentication', file=sys.stderr)
+        sys.exit(1)
+    x11.XCloseDisplay(display)
+except OSError:
+    print('Could not load the system X11 library', file=sys.stderr)
+    sys.exit(2)
+"""
+
+
+def display_ready():
+    if not os.environ.get('DISPLAY', '').strip():
+        return False, 'DISPLAY is unset; start from the graphical session, not a text console'
+    try:
+        result = subprocess.run([sys.executable, '-c', X11_PROBE],
+                                capture_output=True, text=True, timeout=2)
+        if result.returncode:
+            return False, f'X11 connection probe failed (exit {result.returncode})'
+        return True, 'X11 connection verified'
+    except (OSError, subprocess.SubprocessError):
+        return False, 'X11 connection probe could not complete within its limit'
+
+
+class DisplayGate:
+    def __init__(self):
+        self.next_attempt = 0
+        self.last_reason = None
+
+    def allow(self, now):
+        if now < self.next_attempt:
+            return False
+        ready, reason = display_ready()
+        if reason != self.last_reason:
+            LOG.info('Display preflight: %s', reason)
+            self.last_reason = reason
+        # Failed readiness is not an engine failure: keep Java OFF and retry
+        # gently, without generating GTK aborts or core dumps to test readiness.
+        self.next_attempt = now + 5 if not ready else 0
+        return ready
 
 
 def java_bin():
@@ -156,6 +265,7 @@ def manager():
     signal.signal(signal.SIGTERM, lambda *_: end.set())
     signal.signal(signal.SIGINT, lambda *_: end.set())
     policy = Policy()
+    display_gate = DisplayGate()
     child = None
     previous = 'initial'
     try:
@@ -186,6 +296,16 @@ def manager():
                         child = None  # Requested hide is not an unexpected exit.
                     policy.clear_since = None
             elif ready and not pids:
+                if not display_gate.allow(now):
+                    end.wait(1)
+                    continue
+                # Opening X11 may start Xwayland and take time. Do not use
+                # the fullscreen snapshot taken before that readiness probe.
+                launch_state = query_fullscreen()
+                if launch_state is not False:
+                    policy.allow(launch_state, time.monotonic())
+                    end.wait(1)
+                    continue
                 # Serialize launch with the stop command's disable marker.
                 with (STATE/'gate.lock').open('w') as gate:
                     fcntl.flock(gate, fcntl.LOCK_EX)
@@ -200,7 +320,7 @@ def manager():
                         child = subprocess.Popen([java_bin(), '-XX:+UseSerialGC', '-jar', str(JAR)],
                                                  env=env, cwd=HOME, stdout=output,
                                                  stderr=subprocess.STDOUT, start_new_session=True)
-                    policy.last_launch = now
+                    policy.last_launch = time.monotonic()
                     LOG.info('Launched engine pid=%s', child.pid)
             end.wait(1)
     except Exception:
@@ -240,6 +360,8 @@ def main():
         return manager()
     if args.command == 'diagnose':
         print('fullscreen:', query_fullscreen(), '(None=unknown; stays off)')
+        display_ok, reason = display_ready()
+        print('display ready:', display_ok, '-', reason)
         print('engine PIDs:', engine_pids())
         print('logs:', STATE)
         return 0

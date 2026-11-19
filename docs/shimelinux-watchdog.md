@@ -105,7 +105,7 @@ to `~/.local/bin/`. Keep autostart disabled; restoration does not start anything
 
 ## Verification
 
-100 unit tests pass, including 19 manager tests. These cover query failures,
+110 unit tests pass, including 29 manager tests. These cover query failures,
 multiple visible monitors, special workspaces, cooldown, persistent disable,
 exact engine matching, bounded TERM/KILL and truthful failure reporting. A real
 Python subprocess with a Java-shaped argument list deliberately ignores TERM;
@@ -144,3 +144,112 @@ grow during prolonged use; it is not covered by manager-log rotation. Explicitly
 launching the engine outside the manager bypasses launch locking. No automated
 unit test here establishes that a fullscreen transition is safe on the user's
 GPU/compositor. Keep autostart disabled during diagnosis.
+
+
+## Shutdown lag follow-up: targeted waits and passive diagnostics
+
+The user's fullscreen hide succeeded once, but manual stop still caused reported
+whole-desktop lag. That earlier success does not establish resolution. Do not
+ask the user to deliberately reproduce another freeze to validate this change.
+
+Previously, waiting for TERM/KILL called `engine_pids()` repeatedly: every
+100 milliseconds it enumerated all of `/proc` and opened command lines for the
+user's processes. The new shutdown transaction enumerates all processes only
+at its beginning and end. In between, it checks the selected Java PIDs and
+kernel start times, treating zombies as exited. It does not signal a PID whose
+start time changed. This reduces watchdog work during shutdown; it is NOT proof
+that the full scans caused a desktop stall. A narrow check-to-signal PID race
+still exists without pidfd-based signalling; start-time checks reduce but do
+not eliminate it.
+
+New fixed-size-count, passive diagnostic files in the state directory:
+
+- `shutdown-before-term.json`: written before signalling Java.
+- `shutdown-before-kill.json`: written only if TERM times out.
+- `shutdown-after.json`: remaining matching PIDs and post-wait system state.
+
+Each contains uptime/clock timestamps, memory totals, CPU/memory/I/O pressure,
+and available Java status, process stat, wait channel and I/O counters. Files
+are mode 0600 and overwritten per stage, not created per poll. They may contain
+stale data from an earlier attempt: compare timestamps. No thread-dump signals,
+forced garbage collection, GPU commands, full filesystem scans or forced disk
+sync are used. Read failures are recorded where possible. They cannot guarantee
+survival of a forced power cut. The manager log also records elapsed shutdown
+seconds and the final PID list.
+
+The TERM (8s) and post-KILL (2s) wait limits are unchanged. A waiting terminal
+command and an unresponsive entire desktop are different observations; the
+bounded wait alone does not explain loss of pointer/input across the session.
+No new claim is made about Java shutdown-hook or compositor behavior.
+
+Before installing this follow-up, collect the EXISTING log without starting or
+stopping the engine again:
+
+```bash
+state="${XDG_STATE_HOME:-$HOME/.local/state}/stick-shimelinux"
+tail -n 100 "$state/manager.log"
+```
+
+New regressions check only two global scans per shutdown, PID reuse detection,
+zombie handling, and private bounded passive snapshots. The existing real
+subprocess test still verifies TERM/KILL escalation without loading ShimeLinux.
+
+
+## Confirmed tray abort and X11 readiness guard
+
+The matching saved Java abort (PID 2127, Nov 18) contains GTK style/widget
+creation through JNA. Engine log context identifies:
+
+```
+Main createTrayIcon Creating the tray icon
+Gtk-ERROR: Can't create a GtkStyleContext without a display connection
+```
+
+This establishes the native abort site, not a causal explanation for every
+whole-desktop freeze or manual-stop lag. A transient missing X11 display,
+authorization failure, or tray/toolkit initialization problem can require
+additional differentiation. No graphics driver or global GTK configuration
+change follows from this evidence alone.
+
+Before every managed Java launch, a separate bounded Python process now calls
+`XOpenDisplay` and `XCloseDisplay` against the inherited session environment.
+Hyprland responding on Wayland alone no longer authorizes an X11-dependent
+engine launch. Missing DISPLAY, unavailable libX11, failed authorization,
+probe crash or a two-second timeout means Java stays off. Failed probes retry
+at most once every five seconds and log reason changes, without creating an
+engine/core dump to test readiness. `shimeji diagnose` reports the result too.
+
+No hard-coded DISPLAY=:0, guessed XAUTHORITY path, xhost permission changes,
+new pip requirement, tray-disabling flag, or launch from a text console is used.
+Fedora's system libX11.so.6 is required for the probe (already used by the engine
+in the supplied core report). DISPLAY/XAUTHORITY are inherited, not copied from
+another user or session. Start from the same graphical-session terminal used by
+other X11 apps. The manager does not rewrite its inherited environment if a
+session is replaced; leave it off and start deliberately in the new session.
+
+**Limit:** a successful X11 connection probe does not prove GTK/JNA tray init
+will succeed later, particularly if the display disappears while assets load.
+Repeated unexpected engine exits still disable restarts after three failures
+within five minutes. We have not reproduced this exact GTK abort or the user's
+compositor freeze in a live native session. Do not claim the guard conclusively
+fixes either, or request another deliberate freeze as validation.
+
+Five new tests exercise missing DISPLAY, inherited authentication, native-probe
+exit/timeout failure, retry throttling/recovery and manager refusal to launch
+without a verified connection. Native calls are isolated/mocked; none launch
+the real engine or manipulate the user's display.
+
+
+### Final pre-merge scan
+
+The final review also closes the stale-fullscreen-snapshot window around the
+X11 preflight: fullscreen is checked again after probing and before the launch
+gate. Fullscreen or unknown state aborts that launch. This is still polling,
+not an atomic compositor transaction; state can always change immediately after
+a check. The restart cooldown is timestamped at actual successful process
+creation rather than before potentially slow preflight calls.
+
+The isolated native probe sets its own core-dump limit to zero. If Xlib itself
+aborts, retries cannot generate new probe core dumps. This does not change
+Java's core-dump policy or erase existing diagnostic evidence. Regression tests
+verify both the changed-state launch refusal and the probe's core limit.
