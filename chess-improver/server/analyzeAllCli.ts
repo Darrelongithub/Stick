@@ -55,7 +55,7 @@ async function driveRunningServer(): Promise<void> {
 
     if (!status.running) {
       if (status.error) throw new Error(status.error);
-      console.log('[chess] Full-archive analysis complete. WHAT_TO_LEARN.md and the Mistake Vault are updated.');
+      console.log('[chess] Full-archive analysis complete. data/WHAT_TO_LEARN.md and the Mistake Vault are updated.');
       return;
     }
 
@@ -98,7 +98,7 @@ async function runDirectly(): Promise<void> {
       `${result.skippedVariantGames} Chess960 indexed, ${result.failedGames} failed, ` +
       `${result.totalMistakes} total mistakes in ${result.durationSeconds}s.`
   );
-  console.log('[chess] Wrote chess-improver/data/analysis-cache.json and chess-improver/WHAT_TO_LEARN.md');
+  console.log('[chess] Wrote chess-improver/data/analysis-cache.json and chess-improver/data/WHAT_TO_LEARN.md');
 }
 
 async function main() {

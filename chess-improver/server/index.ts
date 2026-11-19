@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadLocalEnv } from './env.js';
 import { coachService } from './geminiCoach.js';
+import { getMirrorProfile, mirrorMove } from './mirrorOpponent.js';
 import { pgnArchive } from './pgnArchive.js';
 import { gameAnalyzer, MOTIF_LABELS } from './analyzer.js';
 import { progressStore } from './progressStore.js';
@@ -103,6 +104,21 @@ export async function createApp() {
       engine: 'Stockfish 18 Lite NNUE',
       analyzeAllRunning: analyzeAllJob.running,
     });
+  });
+
+  // Separate from blind drills: only completed game moves are returned.
+  app.get('/api/mirror/profile', async (_req, res) => {
+    try {
+      const p = await getMirrorProfile();
+      res.json({ indexed: p.indexed, games: p.games, skipped: p.skipped });
+    } catch { res.status(500).json({ error: 'Could not build your playing profile.' }); }
+  });
+  app.post('/api/mirror/move', async (req, res) => {
+    try { res.json(await mirrorMove(req.body?.moves)); }
+    catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not choose a move.';
+      res.status(/blind drill/i.test(message) ? 409 : /move history|moves must|already over|moves continue/i.test(message) ? 400 : 503).json({ error: message });
+    }
   });
 
   // 1. Archive & Mastery Overview
@@ -432,14 +448,15 @@ export async function createApp() {
 
   // 7. Import Pasted PGN
   app.post('/api/pgn/import', (req, res) => {
-    const { pgn, preferredSide = 'auto', playerHint } = req.body as {
+    const { pgn, preferredSide = 'auto', playerHint } = (req.body ?? {}) as {
       pgn?: string;
       preferredSide?: 'auto' | 'w' | 'b';
       playerHint?: string;
     };
 
     try {
-      const records = pgnArchive.importPgnText(pgn || '', preferredSide, playerHint);
+      if (typeof pgn !== 'string' || !['auto', 'w', 'b'].includes(preferredSide) || (playerHint !== undefined && typeof playerHint !== 'string')) throw new Error('Provide PGN text and a valid side.');
+      const records = pgnArchive.importPgnText(pgn, preferredSide, playerHint);
       res.json({
         importedCount: records.length,
         games: records.map((r) => gameAnalyzer.enrichGameSummary(r)),
@@ -504,8 +521,8 @@ export async function createApp() {
   // 9. Evaluate Player Candidate Move (Strict Anti-Spoiler Reveal Contract!)
   app.post('/api/mistakes/:id/attempt', async (req, res) => {
     const body = req.body as AttemptMoveRequest;
-    if (!body?.moveUci) {
-      res.status(400).json({ error: 'moveUci is required' });
+    if (typeof body?.moveUci !== 'string' || !/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(body.moveUci)) {
+      res.status(400).json({ error: 'A valid UCI move is required' });
       return;
     }
 
@@ -630,10 +647,14 @@ const isMain =
 if (isMain) {
   createApp()
     .then((app) => {
-      app.listen(PORT, '0.0.0.0', () => {
-        console.log(
-          `[Coach · Chess Improver] Running on http://0.0.0.0:${PORT} (Stockfish 18 NNUE ready)`
-        );
+      const server = app.listen(PORT, '0.0.0.0');
+      server.on('listening', () => {
+        console.log(`[Coach · Chess Improver] Running on http://0.0.0.0:${PORT} (Stockfish 18 NNUE ready)`);
+      });
+      server.on('error', (err) => {
+        console.error('Failed to start server:', err.message);
+        stockfishPool.shutdown();
+        process.exit(1);
       });
     })
     .catch((err) => {

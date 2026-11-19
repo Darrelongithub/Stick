@@ -49,9 +49,9 @@ const WATCHED_FILES = [
   'custom-games.json',
   'analysis-cache.json',
   'learning-plan.json',
+  'WHAT_TO_LEARN.md',
   'analyze-all-progress.json',
 ].map((name) => path.join(DATA_DIR, name));
-WATCHED_FILES.push(path.resolve(__dirname, '../WHAT_TO_LEARN.md'));
 WATCHED_FILES.push(path.resolve(__dirname, '../.env'));
 
 const snapshots = WATCHED_FILES.map((filePath) => ({
@@ -126,6 +126,7 @@ for (const key of [
 const { createApp } = await import('./index.js');
 const { createCoachService } = await import('./geminiCoach.js');
 const { stockfishPool } = await import('./stockfishPool.js');
+const { pgnArchive } = await import('./pgnArchive.js');
 
 const seedRaw = JSON.parse(fs.readFileSync(SEED_PATH, 'utf8')) as Record<string, SeedAnalysis>;
 const seedAnalyses = Object.values(seedRaw);
@@ -305,6 +306,46 @@ try {
   assertNoSolution(plan.recommendedDrills, 'GET /api/learning-plan drills');
   passed('Health, batch status, and spoiler-free learning-plan endpoints');
 
+  const mirrorProfile = await requestJson('/api/mirror/profile');
+  assert.equal(mirrorProfile.indexed, 1128);
+  assert.equal(mirrorProfile.games + mirrorProfile.skipped, mirrorProfile.indexed);
+  assert.ok(mirrorProfile.games >= 1108);
+  const mirrorFirst = await postJson('/api/mirror/move', { moves: [] });
+  assert.equal(mirrorFirst.source, 'archive');
+  assert.match(mirrorFirst.move, /^[a-h][1-8][a-h][1-8][qrbn]?$/);
+  assert.ok(mirrorFirst.occurrences > 0 && mirrorFirst.samples >= mirrorFirst.occurrences);
+  const invalidMirror = await fetch(`${baseUrl}/api/mirror/move`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ moves: ['e2e5'] }) });
+  assert.equal(invalidMirror.status, 400);
+  const unseen = await postJson('/api/mirror/move', { moves: ['e2e4','e7e5','g1f3','b8c6','b1c3','g8f6','a2a3','a7a6','h2h3','h7h6','d2d3','d7d6','f1e2','f8e7','c1d2','c8d7'] });
+  assert.equal(unseen.source, 'stockfish');
+  assert.match(unseen.move, /^[a-h][1-8][a-h][1-8][qrbn]?$/);
+  const finished = await fetch(`${baseUrl}/api/mirror/move`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ moves: ['f2f3','e7e5','g2g4','d8h4'] }) });
+  assert.equal(finished.status, 400);
+  passed('Mirror profile indexes the archive and plays a recorded legal move; Stockfish handles unseen positions and invalid or finished games are rejected');
+  // A mirror reply must never expose the answer to an existing blind drill.
+  const blockedDrill = seedMistakes[0];
+  const recorded = pgnArchive.getGameById(blockedDrill.gameId);
+  assert.ok(recorded);
+  const replay = new Chess();
+  replay.loadPgn(recorded.pgn);
+  const history = replay.history({ verbose: true });
+  const target = blockedDrill.fenBefore.split(' ').slice(0, 4).join(' ');
+  const targetIndex = history.findIndex(move => move.before.split(' ').slice(0, 4).join(' ') === target);
+  assert.ok(targetIndex >= 0);
+  const preceding = history.slice(0, targetIndex).map(m => `${m.from}${m.to}${m.promotion ?? ''}`);
+  const blockedResponse = await fetch(`${baseUrl}/api/mirror/move`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ moves: preceding }) });
+  assert.equal(blockedResponse.status, 409);
+  const blockedBody = await blockedResponse.json();
+  assert.equal(blockedBody.move, undefined);
+  passed('Mirror cannot reveal a blind-drill position');
+  const badImport = await fetch(`${baseUrl}/api/pgn/import`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pgn: '[Event "First"]\n\n1. e4 e5\n\n[Event "Bad"]\n\n1. e4 e9' }) });
+  assert.equal(badImport.status, 400);
+  const afterBadImport = await requestJson('/api/overview');
+  assert.equal(afterBadImport.totalCustomGames, overview.totalCustomGames);
+  const malformedImport = await fetch(`${baseUrl}/api/pgn/import`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pgn: 123 }) });
+  assert.equal(malformedImport.status, 400);
+  passed('Invalid multi-game imports are atomic; malformed inputs are rejected');
+
   // 1b. Gemini coach layer: no key -> local fallback; fake provider -> Gemini path;
   // a provider answer that names an engine move is rejected before it reaches the UI.
   const coachStatus = await requestJson('/api/coach/status');
@@ -475,6 +516,10 @@ try {
   assert.ok(bareSanImported.importedCount >= 1);
   assert.equal(bareSanImported.games[0].userColor, 'w');
   passed('Pasted PGN import accepted header PGN and bare SAN move list');
+  const updatedMirrorProfile = await requestJson('/api/mirror/profile');
+  assert.ok(updatedMirrorProfile.indexed >= mirrorProfile.indexed + 2);
+  assert.ok(updatedMirrorProfile.games >= mirrorProfile.games + 2);
+  passed('Mirror profile refreshes when new games are imported');
 
   // 6. Real live Stockfish analysis of a newly pasted custom game
   const customGameId = String(imported.games[0].id);

@@ -8,6 +8,7 @@ data/analysis-cache.json
 data/user-progress.json
 data/custom-games.json
 data/learning-plan.json
+data/WHAT_TO_LEARN.md
 data/analyze-all-progress.json
 data/chess-server.log
 data/chess-server.pid

@@ -32,7 +32,7 @@ const TOUR_STEPS: TourStep[] = [
     view: 'plan',
     eyebrow: 'Home · your map',
     title: 'Begin with the violet button',
-    body: 'Home ranks your next blind drill from the full archive. The violet “Start session” button opens the highest-priority position — that is the main place to click.',
+    body: 'Home ranks your next blind drill from analyzed games. The violet “Start training” button opens the highest-priority position — that is the main place to click.',
     icon: <Compass className="h-5 w-5" />,
     targets: [
       '[data-tour="start-training"]',

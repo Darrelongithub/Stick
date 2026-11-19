@@ -12,9 +12,7 @@ import { api } from '../lib/api';
 import { cx } from '../lib/chessFormat';
 import { LearningPlanView } from './LearningPlanView';
 
-type CSSVars = React.CSSProperties & Record<`--${string}`, string | number>;
 type CoachHistory = NonNullable<CoachAskRequest['history']>;
-type HeatModeId = 'blunder' | 'tactics' | 'speed';
 
 interface HomeViewProps {
   overview: ArchiveOverviewResponse | null;
@@ -25,6 +23,7 @@ interface HomeViewProps {
   onOpenImport: () => void;
   onOpenLibrary: () => void;
   onOpenTour: () => void;
+  onOpenMirror: () => void;
   onRefreshOverview: () => void;
 }
 
@@ -34,20 +33,6 @@ const COACH_CHIPS = [
   'Show my worst blunders',
   'Am I improving?',
 ];
-
-const HEAT_SPOTS: Record<HeatModeId, Array<[number, number, number]>> = {
-  blunder: [[5, 2, 1], [3, 4, 0.75], [6, 4, 0.6], [7, 1, 0.5], [2, 5, 0.4]],
-  tactics: [[4, 3, 1], [2, 2, 0.8], [6, 1, 0.7], [1, 5, 0.45]],
-  speed: [[3, 3, 0.9], [4, 4, 0.85], [5, 5, 0.5], [2, 4, 0.5], [7, 6, 0.4]],
-};
-
-function seededRandom(seed: number): () => number {
-  let x = seed * 9301 + 49297;
-  return () => {
-    x = (x * 9301 + 49297) % 233280;
-    return x / 233280;
-  };
-}
 
 function formatMonth(month: string): string {
   const [year, monthNumber] = month.split('-').map(Number);
@@ -230,6 +215,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onOpenImport,
   onOpenLibrary,
   onOpenTour,
+  onOpenMirror,
   onRefreshOverview,
 }) => {
   const [plan, setPlan] = useState<LearningPlanResponse | null>(null);
@@ -241,8 +227,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [history, setHistory] = useState<CoachHistory>([]);
   const [asking, setAsking] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
-  const [heatMode, setHeatMode] = useState<HeatModeId>('blunder');
-  const [hoverSquare, setHoverSquare] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -259,10 +243,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   }, []);
 
   const initialGreeting = useMemo(() => {
-    const analyzed = plan?.analyzedGames ?? 1108;
-    const mistakes = plan?.totalMistakes ?? 5705;
-    const due = plan?.dueCount ?? 5704;
-    return `I've read ${analyzed.toLocaleString()} Stockfish-analyzed games and ${mistakes.toLocaleString()} verified mistakes. ${due.toLocaleString()} blind drills are ready. Ask me about your colours, this week's study, or your recall — I only use spoiler-free local knowledge.`;
+    if (!plan) return 'Loading your local study plan…';
+    return `Stockfish has analyzed ${plan.analyzedGames.toLocaleString()} games and found ${plan.totalMistakes.toLocaleString()} mistakes. ${plan.dueCount.toLocaleString()} blind drills are ready. Ask about your study plan or start a session.`;
   }, [plan]);
 
   // The old 8ms character-by-character typing effect re-rendered the entire
@@ -288,61 +270,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
         ];
         setHistory((previous) => [...previous, ...entries].slice(-6));
       } catch (err) {
+        setQuestion(nextQuestion);
         setCoachError(err instanceof Error ? err.message : 'The coach could not answer right now.');
       } finally {
         setAsking(false);
       }
     },
     [asking, history],
-  );
-
-  const modes = useMemo(() => {
-    const tactics = plan?.counts.byMotif.find((entry) => entry.motif === 'missed_tactic')?.count ?? 0;
-    const fastGames = overview
-      ? overview.byTimeClass.bullet.games + overview.byTimeClass.blitz.games
-      : 0;
-    return [
-      {
-        id: 'blunder' as const,
-        label: 'Blunders',
-        count: plan?.counts.bySeverity.blunder ?? 0,
-        color: 'var(--warm)',
-        note: 'Stockfish-verified severe evaluation swings.',
-      },
-      {
-        id: 'tactics' as const,
-        label: 'Missed tactics',
-        count: tactics || plan?.counts.bySeverity.mistake || 0,
-        color: 'var(--a)',
-        note: 'Tactical motifs found across the analyzed archive.',
-      },
-      {
-        id: 'speed' as const,
-        label: 'Fast time controls',
-        count: fastGames,
-        color: 'var(--cool)',
-        note: 'Bullet and blitz games in the local archive.',
-      },
-    ];
-  }, [plan, overview]);
-
-  const activeMode = modes.find((mode) => mode.id === heatMode) ?? modes[0];
-  const heatValues = useMemo(() => {
-    const random = seededRandom(activeMode.id.length * 97 + Math.min(999, activeMode.count));
-    return Array.from({ length: 64 }, (_, index) => {
-      const file = index % 8;
-      const rank = Math.floor(index / 8);
-      let value = 0;
-      for (const [spotFile, spotRank, weight] of HEAT_SPOTS[activeMode.id]) {
-        value += weight * Math.exp(-((file - spotFile) ** 2 + (rank - spotRank) ** 2) / 1.6);
-      }
-      return Math.min(1, value) + random() * 0.05;
-    });
-  }, [activeMode]);
-
-  const squareNames = useMemo(
-    () => Array.from({ length: 64 }, (_, index) => `${'abcdefgh'[index % 8]}${8 - Math.floor(index / 8)}`),
-    [],
   );
 
   const topMotif = plan?.counts.byMotif[0];
@@ -454,58 +388,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </p>
         </div>
 
-        <div className="heatmap" style={{ '--hc2': activeMode.color } as CSSVars}>
-          <div className="hm-top">
-            <h3>Where you go wrong</h3>
-            <div className="tabs">
-              {modes.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  className={cx('tab', heatMode === mode.id && 'on')}
-                  onClick={() => {
-                    setHeatMode(mode.id);
-                    setHoverSquare(null);
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
+        <aside className="home-focus" aria-labelledby="focus-title">
+          <span className="home-focus-kicker">Your next step</span>
+          <h2 id="focus-title">A little practice, built around your games.</h2>
+          <p>Try a position blind, then review the Stockfish analysis. Your answer stays hidden until the drill is finished.</p>
+          <div className="home-focus-stats">
+            <div><strong>{plan?.dueCount.toLocaleString() ?? '—'}</strong><span>positions due</span></div>
+            <div><strong>{plan?.analyzedGames.toLocaleString() ?? '—'}</strong><span>games analyzed</span></div>
           </div>
-          <div className="board" role="img" aria-label={`Relative ${activeMode.label} heat across the archive`}>
-            {squareNames.map((name, index) => {
-              const file = index % 8;
-              const rank = Math.floor(index / 8);
-              const heat = Math.min(0.92, heatValues[index] * 0.9);
-              return (
-                <div
-                  key={name}
-                  className={cx('sq', (rank + file) % 2 === 0 && 'l')}
-                  style={{ '--hc': activeMode.color, '--heat': heat } as CSSVars}
-                  onMouseEnter={() => setHoverSquare(index)}
-                  onMouseLeave={() => setHoverSquare(null)}
-                  title={`${name} · relative heat index ${Math.round(heat * 100)}`}
-                >
-                  <i>{name}</i>
-                </div>
-              );
-            })}
-          </div>
-          <div className="read">
-            {hoverSquare !== null ? (
-              <>
-                <b>{squareNames[hoverSquare]}</b> · heat index {Math.round(heatValues[hoverSquare] * 100)} ·{' '}
-                {activeMode.label.toLowerCase()} across {plan?.analyzedGames.toLocaleString() ?? '—'} analyzed games.
-              </>
-            ) : (
-              <>
-                <b>{topMotif?.label ?? 'Stockfish patterns'}</b> leads with{' '}
-                {topMotif?.count.toLocaleString() ?? '—'} cases. {activeMode.note} Hover any square for a relative index; this is aggregate heat, not a specific position.
-              </>
-            )}
-          </div>
-        </div>
+          <button type="button" data-tour="start-training" className="btn home-focus-action" onClick={startTraining}>
+            Start training <span aria-hidden="true">→</span>
+          </button>
+          <div className="home-focus-links"><button type="button" className="home-focus-link" onClick={onOpenMirror}>Play against your mirror →</button><button type="button" className="home-focus-link" onClick={onOpenVault}>Explore your mistake vault →</button></div>
+        </aside>
       </section>
 
       <div className="section-title">
@@ -546,11 +441,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             )}
           </div>
           <p>
-            <b>{plan?.dueCount.toLocaleString() ?? '—'} positions</b> from your own mistakes are due. About eight focused minutes is enough.
+            <b>{plan?.dueCount.toLocaleString() ?? '—'} positions</b> from your own mistakes are due. Choose a position and work at your own pace.
           </p>
           <button
             type="button"
-            data-tour="start-training"
             className="btn"
             onClick={startTraining}
           >
@@ -586,7 +480,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
         <div className="card s2 op">
           <h3>
-            Opening mastery
+            Opening results
             <button type="button" onClick={onOpenLibrary} className="inline-flex items-center gap-1">
               Repertoire <ArrowUpRight className="h-3 w-3" />
             </button>
@@ -607,7 +501,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             ))}
             {openings.length === 0 && <p className="text-sm text-[var(--ink-muted)]">Openings appear after the archive loads.</p>}
           </div>
-          <div className="legend"><span>Win rate</span><span>Share of games</span></div>
+          <div className="legend"><span>Win rate</span></div>
         </div>
 
         <div className="card s2">
@@ -630,7 +524,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <p className="mt-1 text-[12px] text-[var(--ink-muted)]">
                 {latestGame.date} · {latestGame.openingName} · {latestGame.timeClass}
               </p>
-              <div className="mt-4 flex items-end gap-2">
+              {latestGame.analyzed ? <div className="mt-4 flex items-end gap-2">
                 {[
                   { label: 'Blunders', value: latestGame.blundersCount ?? 0, color: 'var(--warm)' },
                   { label: 'Mistakes', value: latestGame.mistakesCount ?? 0, color: 'var(--amber)' },
@@ -647,14 +541,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     </div>
                   );
                 })}
-              </div>
-              <div className="moment">
+              </div> : <p className="mt-4 text-sm text-[var(--ink-muted)]">This game has not been analyzed yet.</p>}
+              {latestGame.analyzed && <div className="moment">
                 <b className="bad">??</b>
                 <div>
                   Stockfish-verified moments
                   <small>Open the game to train them blind; answers appear only after a final miss.</small>
                 </div>
-              </div>
+              </div>}
             </>
           ) : (
             <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface-soft)] px-4 py-8 text-center text-sm text-[var(--ink-muted)]">
@@ -698,7 +592,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <h4>Fail first, reveal second.</h4>
               <div className="bars">
                 <div><span>Blunders</span><i className="weak" style={{ width: `${((severity?.blunder ?? 0) / maxSeverity) * 100}%` }} /><b>{severity?.blunder.toLocaleString() ?? '—'}</b></div>
-                <div><span>Mastered</span><i style={{ width: `${Math.min(100, plan?.masteredCount ?? 0)}%` }} /><b>{plan?.masteredCount.toLocaleString() ?? '—'}</b></div>
+                <div><span>Mastered</span><i style={{ width: `${plan?.totalMistakes ? (plan.masteredCount / plan.totalMistakes) * 100 : 0}%` }} /><b>{plan?.masteredCount.toLocaleString() ?? '—'}</b></div>
                 <div><span>First try</span><i style={{ width: `${plan?.firstTrySolveRate ?? 0}%` }} /><b>{plan?.firstTrySolveRate ?? 0}%</b></div>
               </div>
               <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-[var(--ink-muted)]">

@@ -19,7 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(APP_ROOT, 'data');
 const LEARNING_PLAN_JSON = path.join(DATA_DIR, 'learning-plan.json');
-const WHAT_TO_LEARN_MD = path.join(APP_ROOT, 'WHAT_TO_LEARN.md');
+const WHAT_TO_LEARN_MD = path.join(DATA_DIR, 'WHAT_TO_LEARN.md');
 const FULL_CACHE_PATH = path.join(DATA_DIR, 'analysis-cache.json');
 
 const PHASE_LABELS: Record<GamePhase, string> = {
@@ -221,7 +221,7 @@ export function buildLearningPlan(analyzeAll: AnalyzeAllStatus): LearningPlanRes
     files: {
       fullAnalysisCache: 'data/analysis-cache.json',
       learningPlanJson: 'data/learning-plan.json',
-      whatToLearnMarkdown: 'WHAT_TO_LEARN.md',
+      whatToLearnMarkdown: 'data/WHAT_TO_LEARN.md',
     },
   };
 
