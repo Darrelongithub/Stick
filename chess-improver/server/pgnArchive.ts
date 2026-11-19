@@ -84,7 +84,7 @@ function estimateMoveCount(rawPgn: string): number {
 function computeOutcome(result: string, userColor: PlayerColor): GameOutcome {
   if (result === '1-0') return userColor === 'w' ? 'win' : 'loss';
   if (result === '0-1') return userColor === 'b' ? 'win' : 'loss';
-  return 'draw';
+  return result === '1/2-1/2' ? 'draw' : 'unfinished';
 }
 
 /**
@@ -153,6 +153,7 @@ class PgnArchiveStore {
   private customGames = new Map<string, StoredGameRecord>();
   private orderedIds: string[] = [];
   private loaded = false;
+  revision = 0;
 
   ensureLoaded() {
     if (this.loaded) return;
@@ -265,6 +266,11 @@ class PgnArchiveStore {
     try {
       const raw = JSON.parse(fs.readFileSync(CUSTOM_GAMES_PATH, 'utf8')) as StoredGameRecord[];
       for (const item of raw) {
+        // Older imports could lose a result supplied in the movetext.
+        if (!item.summary.result || item.summary.result === '*') {
+          try { const game = new Chess(); game.loadPgn(item.pgn); item.summary.result = game.getHeaders().Result || '*'; } catch { /* retain stored metadata */ }
+        }
+        item.summary.userOutcome = computeOutcome(item.summary.result, item.summary.userColor);
         this.customGames.set(item.summary.id, item);
       }
     } catch (err) {
@@ -391,7 +397,7 @@ class PgnArchiveStore {
       const blackElo =
         headers.BlackElo && /^\d+$/.test(headers.BlackElo) ? parseInt(headers.BlackElo, 10) : null;
 
-      const result = headers.Result || '*';
+      const result = headers.Result || chess.getHeaders().Result || '*';
       const timeControl = headers.TimeControl || '600';
       const eco = headers.ECO || '';
       const openingName = cleanOpeningName(headers.ECOUrl, headers.Opening, eco);
@@ -447,6 +453,7 @@ class PgnArchiveStore {
     for (const record of imported) this.customGames.set(record.summary.id, record);
     this.saveCustomGamesToDisk();
     this.rebuildOrder();
+    this.revision++;
     return imported;
   }
 }

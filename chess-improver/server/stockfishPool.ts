@@ -42,6 +42,7 @@ class StockfishWorker {
   private proc!: ChildProcessWithoutNullStreams;
   private buffer = '';
   private ready = false;
+  private readyPromise: Promise<void> | null = null;
   public busy = false;
   private lineListeners: ((line: string) => void)[] = [];
   private id: number;
@@ -58,7 +59,13 @@ class StockfishWorker {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    this.proc.stdout.on('data', (chunk: Buffer) => {
+    const proc = this.proc;
+    proc.stderr.resume();
+    // A dead engine must not crash the Node server through an unhandled EPIPE.
+    proc.stdin.on('error', () => {});
+    proc.on('error', () => { if (this.proc === proc) this.ready = false; });
+    proc.stdout.on('data', (chunk: Buffer) => {
+      if (this.proc !== proc) return;
       this.buffer += chunk.toString('utf8');
       let nlIdx: number;
       while ((nlIdx = this.buffer.indexOf('\n')) !== -1) {
@@ -72,8 +79,8 @@ class StockfishWorker {
       }
     });
 
-    this.proc.on('exit', () => {
-      this.ready = false;
+    proc.on('exit', () => {
+      if (this.proc === proc) this.ready = false;
     });
   }
 
@@ -107,19 +114,25 @@ class StockfishWorker {
   }
 
   async ensureReady(): Promise<void> {
-    if (this.ready && this.proc && !this.proc.killed) return;
-    if (!this.proc || this.proc.killed || this.proc.exitCode !== null) {
-      this.spawnEngine();
-    }
-    const uciPromise = this.waitForLine((l) => l === 'uciok', 10000);
-    this.send('uci');
-    await uciPromise;
-
-    this.send('setoption name Hash value 32');
-    const readyPromise = this.waitForLine((l) => l === 'readyok', 10000);
-    this.send('isready');
-    await readyPromise;
-    this.ready = true;
+    if (this.ready && this.proc && !this.proc.killed && this.proc.exitCode === null) return;
+    // Warmup and a first request can race; share one UCI handshake.
+    if (this.readyPromise) return this.readyPromise;
+    const initialize = async () => {
+      if (!this.proc || this.proc.killed || this.proc.exitCode !== null) this.spawnEngine();
+      const proc = this.proc;
+      const uciPromise = this.waitForLine((l) => l === 'uciok', 10000);
+      this.send('uci');
+      await uciPromise;
+      this.send('setoption name Hash value 32');
+      const readyPromise = this.waitForLine((l) => l === 'readyok', 10000);
+      this.send('isready');
+      await readyPromise;
+      if (this.proc !== proc || proc.exitCode !== null || proc.killed) throw new Error(`Stockfish worker #${this.id} exited during startup`);
+      this.ready = true;
+    };
+    const pending = initialize();
+    this.readyPromise = pending;
+    try { await pending; } finally { if (this.readyPromise === pending) this.readyPromise = null; }
   }
 
   async evaluate(

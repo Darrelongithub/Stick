@@ -125,7 +125,8 @@ for (const key of [
 
 const { createApp } = await import('./index.js');
 const { createCoachService } = await import('./geminiCoach.js');
-const { stockfishPool } = await import('./stockfishPool.js');
+const { stockfishPool, StockfishPool } = await import('./stockfishPool.js');
+const { progressStore } = await import('./progressStore.js');
 const { pgnArchive } = await import('./pgnArchive.js');
 
 const seedRaw = JSON.parse(fs.readFileSync(SEED_PATH, 'utf8')) as Record<string, SeedAnalysis>;
@@ -280,6 +281,12 @@ try {
   const address = server.address() as AddressInfo;
   baseUrl = `http://127.0.0.1:${address.port}`;
   await stockfishPool.warmup();
+  const racePool = new StockfishPool(1);
+  try {
+    const [, , evaluation] = await Promise.all([racePool.warmup(), racePool.warmup(), racePool.evaluateFen(new Chess().fen(), { depth: 4 })]);
+    assert.ok(evaluation.bestMoveUci);
+  } finally { racePool.shutdown(); }
+  passed('Concurrent Stockfish warmup and evaluation share a reliable handshake');
   passed(`Unified API server listening on ${baseUrl}`);
 
   // 1. Archive overview
@@ -365,6 +372,13 @@ try {
   assert.equal(localCoach.suggestions.length, 4);
   assertNoSolution(localCoach, 'local coach answer');
   passed('Coach status and no-key local fallback stay spoiler-free');
+  progressStore.resetMistake(seedMistakes[0].id);
+  const beforeProgress = await postJson('/api/coach/ask', { question: 'Am I improving?', history: [] });
+  progressStore.recordSuccess(seedMistakes[0].id, true);
+  const afterProgress = await postJson('/api/coach/ask', { question: 'Am I improving?', history: [] });
+  assert.equal(afterProgress.knowledge.masteredCount, beforeProgress.knowledge.masteredCount + 1);
+  progressStore.resetMistake(seedMistakes[0].id);
+  passed('Coach answers immediately reflect changed training progress');
 
   const fakeGeminiFetch = (text: string): typeof fetch =>
     (async () =>
@@ -392,6 +406,11 @@ try {
   assert.match(geminiAnswer.answer, /Stockfish-verified cases/i);
   assertNoSolution(geminiAnswer, 'Gemini coach answer');
   passed('Gemini intent maps to a locally generated Stockfish-based answer');
+  const limited = createCoachService({ env: { ...fakeEnv, GEMINI_DAILY_CALL_BUDGET: '1' }, fetchImpl: fakeGeminiFetch('STUDY') });
+  const concurrent = await Promise.all([limited.ask({ question: 'study' }), limited.ask({ question: 'training' })]);
+  assert.equal(concurrent.filter(a => a.source === 'gemini').length, 1);
+  assert.equal(concurrent.filter(a => a.status === 'quota').length, 1);
+  passed('Concurrent coach requests cannot exceed the daily budget');
 
   // A retired configured model should be replaced by a model the key can use.
   const discoveryFetch = ((input: RequestInfo | URL) => {
@@ -515,7 +534,11 @@ try {
   });
   assert.ok(bareSanImported.importedCount >= 1);
   assert.equal(bareSanImported.games[0].userColor, 'w');
-  passed('Pasted PGN import accepted header PGN and bare SAN move list');
+  assert.equal(bareSanImported.games[0].result, '0-1');
+  assert.equal(bareSanImported.games[0].userOutcome, 'loss');
+  const unfinishedImported = await postJson('/api/pgn/import', { pgn: '1. d4 d5 2. c4', preferredSide: 'w' });
+  assert.equal(unfinishedImported.games[0].userOutcome, 'unfinished');
+  passed('PGN import preserves movetext results and marks unfinished games correctly');
   const updatedMirrorProfile = await requestJson('/api/mirror/profile');
   assert.ok(updatedMirrorProfile.indexed >= mirrorProfile.indexed + 2);
   assert.ok(updatedMirrorProfile.games >= mirrorProfile.games + 2);

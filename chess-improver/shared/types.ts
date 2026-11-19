@@ -1,6 +1,6 @@
 export type PlayerColor = 'w' | 'b';
 export type TimeClass = 'bullet' | 'blitz' | 'rapid' | 'classical';
-export type GameOutcome = 'win' | 'loss' | 'draw';
+export type GameOutcome = 'win' | 'loss' | 'draw' | 'unfinished';
 export type MoveClassification =
   | 'book'
   | 'best'

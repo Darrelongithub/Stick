@@ -149,10 +149,10 @@ export async function createApp() {
       const s = rec.summary;
       if (s.userOutcome === 'win') wins++;
       else if (s.userOutcome === 'loss') losses++;
-      else draws++;
+      else if (s.userOutcome === 'draw') draws++;
 
       const tcStats = byTimeClass[s.timeClass];
-      tcStats.games++;
+      if (s.userOutcome !== 'unfinished') tcStats.games++;
       if (s.userOutcome === 'win') tcStats.wins++;
       else if (s.userOutcome === 'loss') tcStats.losses++;
       if (s.userElo !== null) {
@@ -177,7 +177,7 @@ export async function createApp() {
       monthBuckets.set(s.month, mb);
 
       const op = openingCounts.get(s.openingName) ?? { games: 0, wins: 0 };
-      op.games++;
+      if (s.userOutcome !== 'unfinished') op.games++;
       if (s.userOutcome === 'win') op.wins++;
       openingCounts.set(s.openingName, op);
     }
@@ -187,6 +187,7 @@ export async function createApp() {
       .map(([month, v]) => ({ month, ...v }));
 
     const topOpenings = Array.from(openingCounts.entries())
+      .filter(([, value]) => value.games > 0)
       .sort((a, b) => b[1].games - a[1].games)
       .slice(0, 6)
       .map(([name, v]) => ({

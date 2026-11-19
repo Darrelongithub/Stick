@@ -2,6 +2,8 @@
  * produced locally from Stockfish analysis and archive statistics. */
 
 import { pgnArchive } from './pgnArchive.js';
+import { progressStore } from './progressStore.js';
+import { gameAnalyzer } from './analyzer.js';
 import { buildLearningPlan, emptyAnalyzeAllStatus } from './learningPlan.js';
 import type {
   AnalyzeAllStatus,
@@ -182,7 +184,8 @@ function buildCoachKnowledge(analyzeAll?: AnalyzeAllStatus): CoachKnowledge {
     const s = record.summary;
     if (s.userOutcome === 'win') wins += 1;
     else if (s.userOutcome === 'loss') losses += 1;
-    else draws += 1;
+    else if (s.userOutcome === 'draw') draws += 1;
+    else continue;
 
     const score = s.userOutcome === 'win' ? 1 : s.userOutcome === 'draw' ? 0.5 : 0;
     color[s.userColor].games += 1;
@@ -288,7 +291,7 @@ function localCoachAnswer(question: string, knowledge: CoachKnowledge): string {
     return `Three things this week: 1) ${topMotif?.label ?? 'tactical recall'} drills (${fmt(topMotif?.count ?? 0)} Stockfish-verified cases), 2) the ${due} due blind positions, and 3) ${fmt(plan.counts.byPhase.endgame)} endgame mistakes. ${firstDrill ? `Start with move ${firstDrill.moveNumber} ${firstDrill.playedMoveSan} vs ${firstDrill.opponent}: ${firstDrill.focus}.` : 'Start with the first due drill.'}`;
   }
   if (/blunder|worst|mistake|hang|drop|tactic/.test(q)) {
-    return `Stockfish found ${fmt(plan.counts.bySeverity.blunder)} blunders and ${fmt(plan.totalMistakes)} verified mistakes in total. ${topMotif ? `The most repeated pattern is ${topMotif.label} (${fmt(topMotif.count)} times).` : ''} ${firstDrill ? `Your costliest queued drill is move ${firstDrill.moveNumber} ${firstDrill.playedMoveSan} vs ${firstDrill.opponent}, where the game move lost ${Math.round(firstDrill.winProbLost * 100)}% win chance.` : ''} I will keep the answer hidden until you try the position blind.`;
+    return `Stockfish found ${fmt(plan.counts.bySeverity.blunder)} blunders and ${fmt(plan.totalMistakes)} verified mistakes in total. ${topMotif ? `The most repeated pattern is ${topMotif.label} (${fmt(topMotif.count)} times).` : ''} ${firstDrill ? `Your next queued drill is move ${firstDrill.moveNumber} ${firstDrill.playedMoveSan} vs ${firstDrill.opponent}, where the game move lost ${Math.round(firstDrill.winProbLost * 100)}% win chance.` : ''} I will keep the answer hidden until you try the position blind.`;
   }
   if (/improv|rating|progress|better|master|recall/.test(q)) {
     return `Current recall: ${fmt(plan.masteredCount)} positions are mastered and first-try recall is ${plan.firstTrySolveRate}%. ${fmt(plan.counts.byMastery.needs_review)} positions need review and ${fmt(plan.counts.byMastery.learning)} are in learning. Your record is ${fmt(record.wins)} wins, ${fmt(record.losses)} losses, ${fmt(record.draws)} draws. Keep the loop blind: attempt, fail if needed, then reveal and recall cleanly twice.`;
@@ -557,7 +560,7 @@ export function createCoachService(options: CoachServiceOptions = {}) {
 
   /** Reuse the aggregate Stockfish digest for 30s; it is the expensive part of ask(). */
   function getKnowledge(analyzeAll?: AnalyzeAllStatus): CoachKnowledge {
-    const key = `${analyzeAll?.running ?? false}|${analyzeAll?.processed ?? 0}|${analyzeAll?.percent ?? 0}`;
+    const key = `${analyzeAll?.running ?? false}|${analyzeAll?.processed ?? 0}|${analyzeAll?.percent ?? 0}|${progressStore.revision}|${gameAnalyzer.revision}|${pgnArchive.revision}`;
     const now = Date.now();
     if (knowledgeCache && knowledgeCache.key === key && now - knowledgeCache.at < KNOWLEDGE_TTL_MS) {
       return knowledgeCache.value;
@@ -567,9 +570,24 @@ export function createCoachService(options: CoachServiceOptions = {}) {
     return value;
   }
 
+  function syncKey(key: string | null) {
+    if (previousKey !== key) {
+      answerCache.clear();
+      discoveryCache.value = null;
+      lastProviderError = null;
+      previousKey = key;
+    }
+  }
+
+  function remember(key: string, response: CoachAnswerResponse) {
+    if (answerCache.size >= 200) answerCache.delete(answerCache.keys().next().value!);
+    answerCache.set(key, { response, at: Date.now() });
+  }
+
   function status(): CoachStatusResponse {
     rollQuota();
     const settings = readSettings(env);
+    syncKey(settings.key);
     const configured = Boolean(settings.key);
     return {
       provider: 'gemini',
@@ -606,19 +624,14 @@ export function createCoachService(options: CoachServiceOptions = {}) {
 
     rollQuota();
     const settings = readSettings(env);
-    // Changing a key must never reuse an answer or provider error from the old key.
-    if (previousKey !== settings.key) {
-      answerCache.clear();
-      discoveryCache.value = null;
-      lastProviderError = null;
-      previousKey = settings.key;
-    }
+    syncKey(settings.key);
     const knowledge = getKnowledge(analyzeAll);
     const cacheKey = [
       question.toLowerCase(),
       knowledge.summary.totalMistakes,
       knowledge.summary.dueCount,
       knowledge.summary.masteredCount,
+      progressStore.revision, gameAnalyzer.revision, pgnArchive.revision,
       settings.model,
       Boolean(settings.key),
     ].join('|');
@@ -640,7 +653,7 @@ export function createCoachService(options: CoachServiceOptions = {}) {
         knowledge,
         'No server-side Gemini key configured. Add GEMINI_API_KEY to chess-improver/.env and refresh; the deterministic local coach is active.',
       );
-      if (cacheable) answerCache.set(cacheKey, { response, at: Date.now() });
+      if (cacheable) remember(cacheKey, response);
       return response;
     }
 
@@ -669,9 +682,11 @@ export function createCoachService(options: CoachServiceOptions = {}) {
         'Local pacing backlog; used the local coach instead.',
       );
     }
-    if (waitMs > 0) await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
+    // Reserve synchronously before waiting so concurrent requests cannot all
+    // pass the budget and pacing checks against the same old quota state.
     quota.calls += 1;
-    quota.lastAt = Date.now();
+    quota.lastAt = Date.now() + waitMs;
+    if (waitMs > 0) await new Promise<void>((resolve) => setTimeout(resolve, waitMs));
 
     const result = await callGemini(settings, question, request.history, knowledge, fetchImpl, discoveryCache);
     if (result.status !== 'ok' || !result.text) {
@@ -699,7 +714,7 @@ export function createCoachService(options: CoachServiceOptions = {}) {
       localCoachAnswer(INTENTS[result.text], knowledge),
       'gemini', 'ok', result.model, startedAt, true, knowledge,
     );
-    if (cacheable) answerCache.set(cacheKey, { response, at: Date.now() });
+    if (cacheable) remember(cacheKey, response);
     return response;
   }
 

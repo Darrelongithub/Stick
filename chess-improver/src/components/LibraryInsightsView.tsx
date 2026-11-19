@@ -78,7 +78,9 @@ function ResultPill({ game }: { game: GameSummary }) {
       ? { label: 'Win', cls: 'border-[var(--cool)]/30 bg-[var(--cool-bg)] text-[var(--cool)]' }
       : game.userOutcome === 'loss'
         ? { label: 'Loss', cls: 'border-[var(--warm)]/30 bg-[var(--warm)]/10 text-[var(--warm-soft)]' }
-        : { label: 'Draw', cls: 'border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)]' };
+        : game.userOutcome === 'draw'
+          ? { label: 'Draw', cls: 'border-[var(--amber)]/30 bg-[var(--amber)]/10 text-[var(--amber)]' }
+          : { label: 'Unfinished', cls: 'border-[var(--line)] bg-[var(--surface)] text-[var(--ink-muted)]' };
   return <Pill className={meta.cls}>{meta.label} · {game.result}</Pill>;
 }
 
@@ -140,7 +142,7 @@ function GameCard({ game, onOpen }: { game: GameSummary; onOpen: () => void }) {
         <div className="rounded-lg border border-[var(--cool)]/15 bg-[var(--cool)]/[0.04] p-2 text-center">
           <p className="text-[8px] uppercase tracking-wider text-[var(--cool-soft)]">Mastered</p>
           <p className="mt-0.5 font-mono-tabular text-xs font-bold text-[var(--cool)]">
-            {game.masteredMistakesCount ?? 0}
+            {game.masteredMistakesCount ?? '—'}
           </p>
         </div>
       </div>
@@ -628,6 +630,7 @@ export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
                     { value: 'win', label: 'Wins' },
                     { value: 'loss', label: 'Losses' },
                     { value: 'draw', label: 'Draws' },
+                    { value: 'unfinished', label: 'Unfinished' },
                   ]}
                   onChange={(v) => setFilter(setOutcome, v)}
                 />

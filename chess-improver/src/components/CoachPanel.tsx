@@ -299,6 +299,9 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
         : null;
 
   const challengeKey = current ? `${phase}:${roundKey}:${current.id}` : `none:${phase}`;
+  const activeChallengeKey = useRef(challengeKey);
+  activeChallengeKey.current = challengeKey;
+  const feedbackRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     attemptLockRef.current = false;
@@ -458,6 +461,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
 
   const handleAttempt = async (uci: string) => {
     if (!current || attemptLockRef.current || hasSolution || boardDetached || attempting) return;
+    const submittedChallenge = challengeKey;
     attemptLockRef.current = true;
     setAttempting(true);
     setAttemptError(null);
@@ -477,6 +481,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
         isPracticeRetry: isBlindRetest,
       });
 
+      if (activeChallengeKey.current !== submittedChallenge) return;
       setAttemptResponse(response);
       setMasteryOverrides((prev) => ({ ...prev, [current.id]: response.mastery }));
 
@@ -546,11 +551,15 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
         setActiveIndex(-1);
       }
     } catch (err) {
-      setAttemptError(err instanceof Error ? err.message : 'Could not evaluate that move.');
-      soundEngine.playMiss();
+      if (activeChallengeKey.current === submittedChallenge) {
+        setAttemptError(err instanceof Error ? err.message : 'Could not evaluate that move.');
+        soundEngine.playMiss();
+      }
     } finally {
-      attemptLockRef.current = false;
-      setAttempting(false);
+      if (activeChallengeKey.current === submittedChallenge) {
+        attemptLockRef.current = false;
+        setAttempting(false);
+      }
     }
   };
 
@@ -930,6 +939,11 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
               </span>
             </div>
 
+            {current && <div className="coach-mobile-context lg:hidden">
+              <span>Move {current.moveNumber} · {current.userColor === 'w' ? 'White' : 'Black'} to move</span>
+              <strong>Find a better move than {current.playedMove.san}</strong>
+              <small>Use the board below; your game move does not use a try.</small>
+            </div>}
             <div className="flex gap-2.5">
               <div className="flex w-9 shrink-0 flex-col py-[52px]">
                 <EvalBar
@@ -962,6 +976,10 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
               </div>
             </div>
 
+            {(attemptResponse || attemptError) && <div className="coach-mobile-feedback lg:hidden" role="status">
+              <strong>{attemptError ?? attemptResponse?.feedbackHeadline}</strong>
+              <button type="button" onClick={() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>View feedback ↓</button>
+            </div>}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)]/85 px-3 py-2">
               <p className="text-[11px] text-[var(--ink-secondary)]">
                 {boardDetached ? (
@@ -991,7 +1009,7 @@ export const CoachPanel: React.FC<CoachPanelProps> = ({
           </div>
         </div>
 
-        <div className="min-w-0 space-y-4">
+        <div ref={feedbackRef} className="min-w-0 scroll-mt-28 space-y-4">
           {current && severityMeta && currentMastery ? (
             <>
               <SurfaceCard className="p-4">

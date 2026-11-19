@@ -910,3 +910,21 @@
   .glass-nav .nav-imp::after { content:'Import'; font-size:12px; }
   .mobile-nav-select { max-width:115px; }
 }
+
+/* Give the active task and its feedback a clear place beside the mobile board. */
+.coach-mobile-context, .coach-mobile-feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border: 1px solid color-mix(in srgb, var(--a) 28%, transparent);
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--a-soft), var(--surface));
+}
+.coach-mobile-context span { color: var(--a2); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.coach-mobile-context strong { color: var(--ink); font-size: 15px; }
+.coach-mobile-context small { color: var(--ink-secondary); font-size: 12px; line-height: 1.5; }
+.coach-mobile-feedback { margin: 14px 0 0; color: var(--ink); font-size: 13px; }
+.coach-mobile-feedback button { align-self: flex-start; color: var(--a2); padding: 5px 0; font-size: 12px; font-weight: 700; }
+@media (min-width: 1024px) { .coach-mobile-context, .coach-mobile-feedback { display: none; } }
