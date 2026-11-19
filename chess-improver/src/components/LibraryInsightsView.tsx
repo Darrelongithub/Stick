@@ -584,7 +584,7 @@ export const LibraryInsightsView: React.FC<LibraryInsightsViewProps> = ({
                 <h2 className="font-display text-lg font-semibold text-[var(--ink)]">Refine archive</h2>
               </div>
               <p className="mt-1 text-[11px] text-[var(--ink-secondary)]">
-                1,128 games indexed from the ZIP; 20 Chess960 games are listed but not drilled.
+                {overview ? `${overview.totalArchiveGames.toLocaleString()} games indexed from the ZIP; ${overview.totalChess960Games} Chess960 games are listed but not drilled.` : 'Loading archive details…'}
               </p>
 
               <div className="mt-4 space-y-2.5">

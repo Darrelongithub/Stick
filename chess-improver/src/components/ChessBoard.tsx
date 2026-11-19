@@ -99,6 +99,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   const floatingRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+  const [focusedSquare, setFocusedSquare] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string } | null>(
     null
   );
@@ -207,7 +208,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   };
 
   const handleSquarePointerDown = (
-    e: React.PointerEvent<HTMLDivElement>,
+    e: React.PointerEvent<HTMLButtonElement>,
     sq: string,
     cell: { type: PieceSymbol; color: PlayerColor } | null
   ) => {
@@ -296,6 +297,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
         onPointerMove={handleBoardPointerMove}
         onPointerUp={handleBoardPointerUp}
         onPointerCancel={handleBoardPointerCancel}
+        role="group"
+        aria-label="Chess board. Use arrow keys to move between squares, and Enter or Space to select a piece or destination."
         className="relative grid h-full w-full grid-cols-8 grid-rows-8 overflow-hidden rounded-[6px] touch-none"
       >
         {displayRanks.map((rank, rowIdx) =>
@@ -318,9 +321,34 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             const isDraggedOrigin = dragState?.moved && dragState.from === sq;
 
             return (
-              <div
+              <button
+                type="button"
                 key={sq}
                 data-square={sq}
+                aria-label={`${sq}${cell ? ` ${cell.color === 'w' ? 'white' : 'black'} ${{ p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }[cell.type]}` : ' empty'}${isSelected ? ', selected' : ''}${targetMeta ? ', legal destination' : ''}`}
+                aria-pressed={isSelected}
+                tabIndex={canInteractNow && (focusedSquare ? focusedSquare === sq : rowIdx === 0 && colIdx === 0) ? 0 : -1}
+                onFocus={() => setFocusedSquare(sq)}
+                onKeyDown={(e) => {
+                  const direction: Record<string, [number, number]> = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
+                  if (e.key === 'Escape') { setSelectedSquare(null); return; }
+                  const delta = direction[e.key];
+                  if (!delta) return;
+                  e.preventDefault();
+                  const row = Math.max(0, Math.min(7, rowIdx + delta[0]));
+                  const col = Math.max(0, Math.min(7, colIdx + delta[1]));
+                  const next = `${displayFiles[col]}${displayRanks[row]}`;
+                  setFocusedSquare(next);
+                  boardRef.current?.querySelector<HTMLElement>(`[data-square="${next}"]`)?.focus();
+                }}
+                onClick={(e) => {
+                  // Pointer actions are handled on pointer down/up. Keyboard
+                  // activation has detail zero and follows the same legal rules.
+                  if (e.detail !== 0 || !canInteractNow || pendingPromotion) return;
+                  if (selectedSquare && selectedSquare !== sq && legalTargets.has(sq)) tryExecuteMove(selectedSquare, sq);
+                  else if (cell && cell.color === turn) setSelectedSquare(selectedSquare === sq ? null : sq);
+                  else setSelectedSquare(null);
+                }}
                 onPointerDown={(e) =>
                   handleSquarePointerDown(
                     e,
@@ -405,7 +433,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                     {badge.glyph}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })
         )}

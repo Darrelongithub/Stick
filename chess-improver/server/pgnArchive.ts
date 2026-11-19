@@ -370,6 +370,9 @@ class PgnArchiveStore {
       }
 
       const headers = parseHeaders(text);
+      if (headers.Variant && headers.Variant !== 'Standard') {
+        throw new Error('Only standard-chess PGNs can be imported for analysis.');
+      }
       const white = headers.White || (preferredSide === 'b' ? 'Opponent' : DEFAULT_USERNAME);
       const black = headers.Black || (preferredSide === 'b' ? DEFAULT_USERNAME : 'Opponent');
 
@@ -436,10 +439,12 @@ class PgnArchiveStore {
         },
       };
 
-      this.customGames.set(id, record);
       imported.push(record);
     }
 
+    // Commit only after all games validate; a bad later game must not leave
+    // earlier games silently imported in memory.
+    for (const record of imported) this.customGames.set(record.summary.id, record);
     this.saveCustomGamesToDisk();
     this.rebuildOrder();
     return imported;

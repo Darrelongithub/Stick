@@ -18,6 +18,7 @@ import { cx } from './lib/chessFormat';
 import { soundEngine } from './lib/sound';
 import { CoachPanel } from './components/CoachPanel';
 import { HomeView } from './components/HomeView';
+import { MirrorView } from './components/MirrorView';
 import { LibraryInsightsView } from './components/LibraryInsightsView';
 import { MistakeVaultView } from './components/MistakeVaultView';
 import { GuidedTour, TOUR_STORAGE_KEY } from './components/GuidedTour';
@@ -25,7 +26,7 @@ import type { TourView } from './components/GuidedTour';
 import { PastePgnModal } from './components/PastePgnModal';
 import { Spinner } from './components/ui';
 
-type AppView = 'plan' | 'coach' | 'vault' | 'library';
+type AppView = 'plan' | 'coach' | 'vault' | 'library' | 'mirror';
 
 const NAV_ITEMS: Array<{
   id: AppView;
@@ -37,7 +38,8 @@ const NAV_ITEMS: Array<{
   { id: 'plan', step: '1', label: 'Start Here', icon: <Sparkles className="h-3.5 w-3.5" />, hint: 'Your learning plan' },
   { id: 'coach', step: '2', label: 'Coach', icon: <Target className="h-3.5 w-3.5" />, hint: 'Blind mistake training' },
   { id: 'vault', step: '3', label: 'Mistake Vault', icon: <Brain className="h-3.5 w-3.5" />, hint: 'Spaced repetition' },
-  { id: 'library', step: '4', label: 'Library & Insights', icon: <BookOpen className="h-3.5 w-3.5" />, hint: 'All 1,128 games' },
+  { id: 'library', step: '4', label: 'Library', icon: <BookOpen className="h-3.5 w-3.5" />, hint: 'Your games and insights' },
+  { id: 'mirror', step: '5', label: 'Mirror', icon: <Target className="h-3.5 w-3.5" />, hint: 'Play against your recorded patterns' },
 ];
 
 const ACCENTS = [
@@ -51,6 +53,7 @@ export default function App() {
   const [view, setView] = useState<AppView>('plan');
   const [overview, setOverview] = useState<ArchiveOverviewResponse | null>(null);
   const [activeGame, setActiveGame] = useState<GameDetailResponse | null>(null);
+  const [gameLoading, setGameLoading] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress | null>(null);
   const [initialMistakeId, setInitialMistakeId] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -61,6 +64,7 @@ export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
   const streamCloseRef = useRef<(() => void) | null>(null);
   const activeGameIdRef = useRef<string | null>(null);
+  const gameRequestRef = useRef(0);
   const bootedRef = useRef(false);
   const spotRef = useRef<HTMLDivElement | null>(null);
   const [accentIndex, setAccentIndex] = useState(0);
@@ -153,10 +157,14 @@ export default function App() {
   );
 
   const loadGame = useCallback(
-    async (gameId: string, mistakeId: string | null = null, switchView = true) => {
+    async (gameId: string, mistakeId: string | null = null, switchView = true, requestId?: number) => {
+      const token = requestId ?? ++gameRequestRef.current;
+      if (token !== gameRequestRef.current) return;
       streamCloseRef.current?.();
       streamCloseRef.current = null;
       activeGameIdRef.current = gameId;
+      setActiveGame(null);
+      setGameLoading(true);
       // Boot warms the first drill in the background without stealing Start Here.
       if (switchView) setView('coach');
       setInitialMistakeId(mistakeId);
@@ -165,22 +173,30 @@ export default function App() {
 
       try {
         const detail = await api.game(gameId);
-        if (activeGameIdRef.current !== gameId) return;
+        if (activeGameIdRef.current !== gameId || token !== gameRequestRef.current) return;
         setActiveGame(detail);
         if (!detail.analyzed) startAnalysis(gameId);
       } catch (err) {
-        setError(err instanceof Error ? err.message : `Could not open game ${gameId}.`);
+        if (token === gameRequestRef.current) setError(err instanceof Error ? err.message : `Could not open game ${gameId}.`);
+      } finally {
+        if (token === gameRequestRef.current) setGameLoading(false);
       }
     },
     [startAnalysis]
   );
 
   const loadNextGame = useCallback(
-    async (excludeId?: string) => {
+    async (excludeId?: string, switchView = true) => {
+      const token = ++gameRequestRef.current;
+      setGameLoading(true);
       try {
         const result = await api.nextCoachGame(excludeId);
-        if (result.game) await loadGame(result.game.id);
+        if (token !== gameRequestRef.current) return;
+        if (result.game) await loadGame(result.game.id, null, switchView, token);
+        else setGameLoading(false);
       } catch (err) {
+        if (token !== gameRequestRef.current) return;
+        setGameLoading(false);
         setError(err instanceof Error ? err.message : 'Could not pick a game.');
       }
     },
@@ -221,18 +237,18 @@ export default function App() {
 
   const selectView = useCallback(
     (next: AppView) => {
-      if (next === 'coach' && !activeGame) void loadNextGame();
+      if (next === 'coach' && !activeGame && !gameLoading) void loadNextGame(undefined, false);
       setView(next);
     },
-    [activeGame, loadNextGame]
+    [activeGame, gameLoading, loadNextGame]
   );
 
   const navigateForTour = useCallback(
     (next: TourView) => {
       setView(next);
-      if (next === 'coach' && !activeGame) void loadNextGame();
+      if (next === 'coach' && !activeGame && !gameLoading) void loadNextGame(undefined, false);
     },
-    [activeGame, loadNextGame]
+    [activeGame, gameLoading, loadNextGame]
   );
 
   const openTour = useCallback(() => setTourOpen(true), []);
@@ -306,6 +322,9 @@ export default function App() {
           <button type="button" className="logo" onClick={() => selectView('plan')} aria-label="Coach home">
             <b><Crown className="h-4 w-4" /></b> Coach
           </button>
+          <select className="mobile-nav-select" aria-label="Choose a section" value={view} onChange={event => selectView(event.target.value as AppView)}>
+            {NAV_ITEMS.map(item => <option value={item.id} key={item.id}>{item.label}</option>)}
+          </select>
           {NAV_ITEMS.map((item) => {
             const active = view === item.id;
             return (
@@ -319,7 +338,7 @@ export default function App() {
                 onClick={() => selectView(item.id)}
                 className={cx('nav-link', active && 'active')}
               >
-                <span className="font-mono-tabular text-[10px] opacity-70">{item.step}</span> {item.label}
+                {item.label}
               </button>
             );
           })}
@@ -356,8 +375,7 @@ export default function App() {
         <div className="sync">
           <i className="dot" />
           <span className="sync-text">
-            {overview?.totalArchiveGames.toLocaleString() ?? '1,128'} games learned · Chess.com archive · Stockfish 18 NNUE online ·
-            Gemini coach optional · best move hidden until you fail
+            {overview ? `${overview.analyzedGamesCount.toLocaleString()} games analyzed` : 'Loading your archive'} · Stockfish runs locally · Blind drills keep answers hidden
           </span>
         </div>
       </div>
@@ -395,10 +413,13 @@ export default function App() {
             onOpenImport={openImport}
             onOpenLibrary={() => setView('library')}
             onOpenTour={openTour}
+            onOpenMirror={() => selectView('mirror')}
             onRefreshOverview={() => void refreshOverview()}
           />
         ) : view === 'coach' ? (
-          activeGame ? (
+          gameLoading ? (
+            <div role="status" className="flex min-h-[45vh] items-center justify-center gap-3 text-sm text-[var(--ink-secondary)]"><Spinner className="h-4 w-4" /> Loading your game…</div>
+          ) : activeGame ? (
             <CoachPanel
               key={coachKey}
               game={activeGame}
@@ -422,6 +443,8 @@ export default function App() {
               </button>
             </div>
           )
+        ) : view === 'mirror' ? (
+          <MirrorView />
         ) : view === 'vault' ? (
           <MistakeVaultView
             overview={overview}
@@ -440,7 +463,7 @@ export default function App() {
       </main>
 
       <footer className="page-footer relative z-[1]">
-        Built from your games. Private to you. · Stockfish 18 Lite NNUE is the chess source · Gemini is only the coach.
+        Built from your games · Stockfish analysis runs locally · Gemini, if enabled, only selects a topic.
         <div className="mt-2 flex items-center justify-center gap-1.5">
           <CheckCircle2 className="h-3 w-3 text-[var(--a2)]" /> Spoiler-safe by design
         </div>

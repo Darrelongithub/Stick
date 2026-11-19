@@ -106,6 +106,12 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  mirrorProfile(): Promise<{ indexed: number; games: number; skipped: number }> {
+    return requestJson('/api/mirror/profile');
+  },
+  mirrorMove(moves: string[]): Promise<{ move: string; source: 'archive' | 'stockfish'; occurrences: number; samples: number }> {
+    return requestJson('/api/mirror/move', { method: 'POST', body: JSON.stringify({ moves }) });
+  },
   overview(): Promise<ArchiveOverviewResponse> {
     return requestJson<ArchiveOverviewResponse>('/api/overview');
   },

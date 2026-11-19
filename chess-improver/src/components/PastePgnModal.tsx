@@ -81,6 +81,15 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [imported, setImported] = useState<GameSummary[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const timer = window.setTimeout(() => dialogRef.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus(), 0);
+    return () => { window.clearTimeout(timer); previousFocus.current?.focus(); };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -88,6 +97,13 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
     document.body.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !busy) onClose();
+      if (event.key === 'Tab' && dialogRef.current) {
+        const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled):not([type="file"]), textarea:not(:disabled), select:not(:disabled), a[href]')].filter(el => el.getClientRects().length > 0);
+        if (!focusable.length) return;
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !dialogRef.current.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
@@ -141,6 +157,7 @@ export const PastePgnModal: React.FC<PastePgnModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--surface-deep)]/55 p-3 backdrop-blur-md sm:p-6 animate-fade-in">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="pgn-modal-title"

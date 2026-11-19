@@ -18,7 +18,7 @@ Other commands:
 ```bash
 chess status          # server, archive and batch-analysis status
 chess analyze-all     # scan every supported game with local Stockfish (optional; can take time)
-chess plan            # print WHAT_TO_LEARN.md
+chess plan            # print the generated data/WHAT_TO_LEARN.md
 chess logs [-f]       # server logs
 chess stop            # stop the server
 chess restart         # stop + start
@@ -65,6 +65,10 @@ GEMINI_MIN_INTERVAL_MS=700
 
 `GEMINI_API_KEY` wins; `ADAPT_GEMINI_API_KEY` is the fallback for consistency with the Adapt repo. `server/env.ts` loads `.env` server-side only, without adding a dependency, and never copies the value into Vite or any API response. `.env` is gitignored. There is no in-app key setting and no browser-side override. `GET /api/coach/status` reports whether the coach is configured and how many calls remain; `POST /api/coach/ask` accepts a question plus short chat history and returns a typed answer with source, status, knowledge summary, and suggestions.
 
+## Play against your mirror
+
+Choose **Mirror** in the navigation. The mirror indexes the included archive and imported games, and uses the user's selected side in each game. In an exact matching position it chooses the most frequently recorded move; in an unseen position it falls back to local Stockfish. It is an approximation, not a learned personality or a guarantee of your future moves. To protect blind drills, mirror play stops when it reaches an analyzed challenge position, even if that challenge was previously solved. The profile reports how many games were used and skipped. Chess960 games remain listed but are excluded from this standard-chess opponent. New games must be imported manually; the app does not sync Chess.com automatically. The bundled ZIP is a snapshot, not a guarantee that newer games are included.
+
 ## The archive and the learning contract
 
 - The ZIP contains **1,128 games**. All of them are indexed and visible in **Library & Insights**.
@@ -84,7 +88,7 @@ GEMINI_MIN_INTERVAL_MS=700
 
 - `data/analysis-cache.json` — compact full Stockfish analysis cache (gitignored, tens of MB).
 - `data/learning-plan.json` — machine-readable, spoiler-free curriculum (gitignored).
-- `WHAT_TO_LEARN.md` — human-readable “what am I supposed to learn” summary with the highest-priority drills.
+- `data/WHAT_TO_LEARN.md` — gitignored human-readable “what am I supposed to learn” summary with the highest-priority drills.
 - `data/analyze-all-progress.json` — resumable progress snapshot (gitignored).
 
 The **Home** view polls the learning plan while the scan runs, shows a live progress/ETA bar, and immediately lists the due drills. The Mistake Vault and Library update as soon as the scan finishes. No solution fields are ever written into the plan or markdown.
@@ -95,7 +99,7 @@ Use **+ Import games** in the pill nav. You can paste a Chess.com-style PGN, upl
 
 ## Main views
 
-- **Home** — the `chess.html`-style landing: ambient violet orbs, sticky pill nav, sync strip, Gemini-intent/local-facts coach card with ask input and chips, a real-data heatmap, a six-column bento dashboard (rating journey, today’s training, recurring mistakes, openings, latest game, insights), accent swatches, and the full ranked curriculum below.
+- **Home** — the `chess.html`-style landing: ambient violet orbs, sticky pill nav, sync strip, Gemini-intent/local-facts coach card with ask input and chips, a task-first training summary, a six-column bento dashboard (rating journey, today’s training, recurring mistakes, openings, latest game, insights), accent swatches, and the full ranked curriculum below.
 - **Coach** — interactive board with click and drag moves, promotion picker, Violet / Midnight / Linen board palettes, evaluation bar, tactical arrows, clocks/captured material, live SSE analysis progress, a theme-only hint, game-move preview, PV/refutation stepping, practice-the-best-move, a PGN move sheet, and an end-of-game blind re-drill.
 - **Mistake Vault** — cross-game spaced-repetition queue with mastery, severity, motif, and phase filters. Every card is a blind drill; solution fields are never present before failure.
 - **Library & Insights** — searchable/filterable 1,128-game archive, custom PGN library, rating trajectory, opening performance, motif weaknesses, phase split, and time-control stats.
@@ -104,7 +108,7 @@ Use **+ Import games** in the pill nav. You can paste a Chess.com-style PGN, upl
 
 The interface is a dark, editorial **Coach** theme: near-black violet `#06050A`, off-white `#F3F1F8`, muted `#8F8BA0`, violet `#8B7CFF` / `#CFC7FF`, warm mistake `#FF6B57`, and cool `#4CC9F0`. Glass cards use blurred gradients, hairline white borders, inset highlight edges, soft ambient orbs, a cursor spotlight, and SVG grain. Fraunces display type, Inter body type, JetBrains Mono numerals, and Plus Jakarta Sans accents are bundled locally with Fontsource.
 
-Design tokens live in `src/index.css` as CSS variables, with `.glass-nav`, `.coach-card`, `.ask`, `.heatmap`, `.card`, `.premium-card`, `.premium-tile`, and `.swatches` utilities. The four accent swatches update `--a` / `--a2` across both the new CSS and the legacy Tailwind utilities. The three board palettes are **Violet** (default), **Midnight**, and **Linen**; pieces are ivory and near-black with violet detail. `prefers-reduced-motion: reduce` removes animation and transition delays.
+Design tokens live in `src/index.css` as CSS variables, with `.glass-nav`, `.coach-card`, `.ask`, `.home-focus`, `.card`, `.premium-card`, `.premium-tile`, and `.swatches` utilities. The four accent swatches update `--a` / `--a2` across both the new CSS and the legacy Tailwind utilities. The three board palettes are **Violet** (default), **Midnight**, and **Linen**; pieces are ivory and near-black with violet detail. `prefers-reduced-motion: reduce` removes animation and transition delays.
 
 ## Where to click
 
@@ -118,7 +122,7 @@ The no-spoiler contract is unchanged: none of the navigation, tour text, tooltip
 - `data/analysis-cache.json` — runtime cache for every other archive game or pasted PGN (gitignored).
 - `data/custom-games.json` — imported PGNs (gitignored).
 - `data/user-progress.json` — per-mistake mastery records (gitignored).
-- `WHAT_TO_LEARN.md` — tracked, spoiler-free human curriculum regenerated after each full scan.
+- `data/WHAT_TO_LEARN.md` — gitignored, spoiler-free curriculum generated from the current local cache. The tracked root-level `WHAT_TO_LEARN.md` is a historical snapshot.
 - `.env` — optional server-only Gemini key (gitignored); `.env.example` documents every setting.
 
 The self-test snapshots and restores runtime data files, so `npm test` does not leave imported games, altered mastery, or a partial full-archive cache behind. It also exercises the coach status, no-key local fallback, mocked Gemini intent selection and rejection of arbitrary provider text.
