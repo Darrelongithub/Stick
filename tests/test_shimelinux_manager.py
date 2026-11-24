@@ -55,6 +55,25 @@ class FullscreenTests(unittest.TestCase):
             self.assertIsNone(m.query_fullscreen())
 
 
+    def test_queries_share_one_two_second_budget(self):
+        values = [
+            [{'activeWorkspace': {'id': 1}}],
+            [{'id': 1, 'hasfullscreen': False}], []]
+        replies = [subprocess.CompletedProcess([], 0, json.dumps(v)) for v in values]
+        with patch.object(m.time, 'monotonic', side_effect=[0, 0, .8, 1.7]), \
+             patch.object(m.subprocess, 'run', side_effect=replies) as run:
+            self.assertIs(m.query_fullscreen(), False)
+            for call, expected in zip(run.call_args_list, [2, 1.2, .3]):
+                self.assertAlmostEqual(call.kwargs['timeout'], expected)
+
+    def test_expired_snapshot_does_not_issue_more_compositor_requests(self):
+        reply = subprocess.CompletedProcess([], 0, '[]')
+        with patch.object(m.time, 'monotonic', side_effect=[0, 0, 2.1]), \
+             patch.object(m.subprocess, 'run', return_value=reply) as run:
+            self.assertIsNone(m.query_fullscreen())
+            self.assertEqual(run.call_count, 1)
+
+
 class LifecycleTests(unittest.TestCase):
     def test_clear_hysteresis_and_restart_cooldown(self):
         policy = m.Policy()
@@ -201,6 +220,8 @@ class ReviewRegressionTests(unittest.TestCase):
                  patch.object(m.subprocess, 'Popen', return_value=child) as launch:
                 self.assertEqual(m.manager(), 0)
                 self.assertEqual(launch.call_count, 3)
+                self.assertNotIn('-XX:+UseSerialGC', launch.call_args.args[0])
+                self.assertEqual(launch.call_args.kwargs['stdout'], subprocess.PIPE)
                 self.assertTrue((state/'disabled').exists())
 
     def test_incomplete_shutdown_disables_and_does_not_launch(self):
@@ -390,6 +411,134 @@ class FinalReviewTests(unittest.TestCase):
             '\nassert resource.getrlimit(resource.RLIMIT_CORE) == (0, 0)'],
             capture_output=True, text=True, timeout=5)
         self.assertEqual(checked.returncode, 0, checked.stderr)
+
+
+class EngineLogTests(unittest.TestCase):
+    def run_writer(self, state, count, limit=1024):
+        child = subprocess.Popen([sys.executable, '-c',
+            f'import os; os.write(1, b"x" * {count})'], stdout=subprocess.PIPE)
+        with patch.object(m, 'STATE', state):
+            reader = m.capture_engine_output(child, limit)
+            try:
+                self.assertEqual(child.wait(timeout=10), 0)
+                reader.join(timeout=5)
+                self.assertFalse(reader.is_alive())
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait()
+        return sorted(state.glob('engine.log*'))
+
+    def test_long_unbroken_output_is_bounded_during_one_engine_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            files = self.run_writer(state, 250_000)
+            self.assertEqual(len(files), 3)
+            self.assertTrue(all(0 < f.stat().st_size <= 1024 for f in files))
+
+    def test_legacy_append_only_log_is_trimmed_before_rotation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            (state/'engine.log').write_bytes(b'z' * 50_000)
+            files = self.run_writer(state, 40)
+            self.assertTrue(all(f.stat().st_size <= 1024 for f in files))
+            self.assertEqual((state/'engine.log.1').read_bytes(), b'z' * 1024)
+            self.assertEqual((state/'engine.log').read_bytes(), b'x' * 40)
+
+    def test_output_is_drained_even_when_log_cannot_be_opened(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)/'missing'
+            with self.assertLogs(m.LOG, level='ERROR') as logs:
+                self.run_writer(state, 250_000)
+            self.assertEqual(len(logs.output), 1)
+
+    def test_small_output_is_preserved_exactly(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory)
+            self.run_writer(state, 400)
+            self.assertEqual((state/'engine.log').read_bytes(), b'x' * 400)
+
+
+class StartupInventoryTests(unittest.TestCase):
+    def put(self, config, relative, text):
+        path = config/relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        return path
+
+    def test_multiple_launchers_are_reported_without_running_commands(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            self.put(config, 'autostart/ava.desktop',
+                     '[Desktop Entry]\nExec=/home/user/.local/bin/shimeji start\n')
+            self.put(config, 'hypr/extra/pets.conf',
+                     '# exec-once = shimelinux\nexec-once = /opt/ava-toggle.sh --start\n')
+            self.put(config, 'systemd/user/ava-runner.service',
+                     '[Service]\nExecStart=python3 /opt/ava_runner.py\n')
+            wants = config/'systemd/user/default.target.wants'
+            wants.mkdir()
+            (wants/'ava-runner.service').symlink_to('../ava-runner.service')
+            with patch.object(m.subprocess, 'run') as run, \
+                 patch.object(m.subprocess, 'Popen') as launch:
+                found = m.startup_inventory(config)
+            run.assert_not_called()
+            launch.assert_not_called()
+            self.assertEqual({f['kind'] for f in found}, {
+                'xdg-autostart', 'hyprland-exec', 'systemd-unit', 'systemd-enabled-reference'})
+            self.assertEqual(len(found), 4)
+            self.assertEqual(next(f['line'] for f in found if f['kind'] == 'hyprland-exec'), 2)
+
+    def test_hidden_desktop_is_distinguished_and_values_are_not_interpolated(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            self.put(config, 'autostart/pets.desktop',
+                     '[Desktop Entry]\nExec=shimelinux %u\nHidden=true\n')
+            self.assertEqual(m.startup_inventory(config)[0]['state'], 'disabled')
+
+    def test_comments_and_unrelated_entries_do_not_count(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            self.put(config, 'hypr/hyprland.conf',
+                     '# exec-once = shimeji start\nexec-once = terminal # shimeji\n')
+            self.put(config, 'systemd/user/editor.service',
+                     '# ExecStart=shimelinux\nExecStart=/usr/bin/editor\nDescription=shimeji\n')
+            self.assertEqual(m.startup_inventory(config), [])
+
+    def test_large_and_malformed_files_do_not_look_like_a_clean_scan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            self.put(config, 'hypr/huge.conf', 'x' * 65537)
+            self.put(config, 'autostart/broken.desktop', 'not a desktop entry')
+            found = m.startup_inventory(config)
+            self.assertEqual(len(found), 2)
+            self.assertTrue(all(f['kind'] == 'unreadable' for f in found))
+
+    def test_special_file_is_not_opened(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            (config/'hypr').mkdir()
+            os.mkfifo(config/'hypr/blocked.conf')
+            self.assertEqual(m.startup_inventory(config)[0]['reason'], 'not a regular file')
+
+    def test_scan_limit_and_missing_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            self.assertEqual(m.startup_inventory(config/'absent'), [])
+            self.put(config, 'hypr/one.conf', 'exec-once = shimelinux')
+            self.put(config, 'hypr/two.conf', 'exec-once = shimelinux')
+            self.assertEqual(m.startup_inventory(config, max_files=1)[-1]['kind'], 'incomplete')
+
+    def test_audit_does_not_create_state_or_execute_probes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            state = home/'state'
+            env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home/'config'),
+                       XDG_STATE_HOME=str(state))
+            result = subprocess.run([sys.executable, str(ROOT/'linux/shimelinux-manager.py'), 'audit'],
+                                    env=env, capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('read-only', result.stdout)
+            self.assertFalse(state.exists())
 
 
 if __name__ == '__main__':

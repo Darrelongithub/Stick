@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Conservative ShimeLinux/Hyprland lifecycle manager. Python stdlib only."""
 import argparse
+import configparser
 import fcntl
 import glob
 import json
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import re
 from pathlib import Path
 import signal
+import stat
 import subprocess
 import sys
 import threading
@@ -75,11 +78,17 @@ def fullscreen_state(monitors, workspaces, clients):
 
 
 def query_fullscreen():
+    # One budget for the whole snapshot, not two seconds PER command.
+    # Slow successful replies used to delay shutdown by almost six seconds.
+    deadline = time.monotonic() + 2
     try:
         result = []
         for name in ('monitors', 'workspaces', 'clients'):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired('Hyprland snapshot', 2)
             command = subprocess.run(['hyprctl', '-j', name], capture_output=True,
-                                     text=True, timeout=2, check=True)
+                                     text=True, timeout=remaining, check=True)
             value = json.loads(command.stdout)
             if not isinstance(value, list):
                 return None
@@ -253,6 +262,66 @@ class Policy:
                 (self.last_launch is None or now-self.last_launch >= 30))
 
 
+ENGINE_LOG_LIMIT = 2 * 1024 * 1024
+
+
+def capture_engine_output(child, limit=ENGINE_LOG_LIMIT):
+    """Drain in bounded chunks, rotating even while Java remains running.
+
+    Never wait for a newline (native failures can print very long lines).
+    On disk errors keep draining/discarding so a full disk cannot block Java
+    on its stdout pipe. The daemon reader never delays the stop transaction.
+    """
+    path = STATE/'engine.log'
+
+    def drain():
+        output = None
+        failed = False
+        try:
+            while True:
+                chunk = child.stdout.read1(min(8192, limit))
+                if not isinstance(chunk, bytes) or not chunk:
+                    break
+                if failed:
+                    continue
+                try:
+                    if output is None:
+                        # Bound an old append-only log too, without reading it
+                        # all into memory or retaining a huge legacy backup.
+                        if path.exists() and path.stat().st_size > limit:
+                            with path.open('rb') as old:
+                                old.seek(-limit, os.SEEK_END)
+                                tail = old.read(limit)
+                            path.write_bytes(tail)
+                        output = path.open('ab')
+                    if output.tell() + len(chunk) > limit:
+                        output.close()
+                        output = None
+                        path.with_name('engine.log.2').unlink(missing_ok=True)
+                        backup = path.with_name('engine.log.1')
+                        if backup.exists():
+                            backup.replace(path.with_name('engine.log.2'))
+                        if path.exists():
+                            path.replace(backup)
+                        output = path.open('ab')
+                    output.write(chunk)
+                    output.flush()
+                except OSError:
+                    failed = True
+                    LOG.exception('Engine log unavailable; discarding output to avoid blocking Java')
+        finally:
+            if output is not None:
+                try:
+                    output.close()
+                except OSError:
+                    pass
+            child.stdout.close()
+
+    reader = threading.Thread(target=drain, name='engine-log', daemon=True)
+    reader.start()
+    return reader
+
+
 def manager():
     lock = (STATE/'manager.lock').open('w')
     try:
@@ -316,10 +385,10 @@ def manager():
                         (STATE/'disabled').touch()
                         break
                     env = dict(os.environ, GDK_BACKEND='x11', _JAVA_AWT_WM_NONREPARENTING='1')
-                    with (STATE/'engine.log').open('ab') as output:
-                        child = subprocess.Popen([java_bin(), '-XX:+UseSerialGC', '-jar', str(JAR)],
-                                                 env=env, cwd=HOME, stdout=output,
-                                                 stderr=subprocess.STDOUT, start_new_session=True)
+                    child = subprocess.Popen([java_bin(), '-jar', str(JAR)],
+                                             env=env, cwd=HOME, stdout=subprocess.PIPE,
+                                             stderr=subprocess.STDOUT, start_new_session=True)
+                    capture_engine_output(child)
                     policy.last_launch = time.monotonic()
                     LOG.info('Launched engine pid=%s', child.pid)
             end.wait(1)
@@ -349,10 +418,84 @@ def manager_pid():
         return None
 
 
+def startup_inventory(config=None, max_files=256):
+    """Read-only hints, NOT an assertion that an entry runs in this session.
+
+    Inspect a bounded set of user config files, without running systemctl,
+    hyprctl, shell source directives, or any configured command. Report paths
+    and line numbers rather than exposing arbitrary command-line secrets.
+    """
+    config = Path(config or os.environ.get('XDG_CONFIG_HOME') or HOME/'.config')
+    marker = re.compile(r'shimeji|shimelinux|shijima|ava[-_]runner|ava-toggle', re.I)
+    findings = []
+    patterns = ('autostart/*.desktop', 'hypr/*.conf', 'hypr/**/*.conf',
+                'systemd/user/*.service', 'systemd/user/*.wants/*.service')
+    seen = set()
+    count = 0
+    for pattern in patterns:
+        for path in config.glob(pattern):
+            if path in seen:
+                continue
+            seen.add(path)
+            count += 1
+            if count > max_files:
+                findings.append({'kind': 'incomplete', 'reason': 'file count limit reached'})
+                return findings
+            try:
+                if not stat.S_ISREG(path.stat().st_mode):
+                    findings.append({'kind': 'unreadable', 'file': str(path),
+                                     'reason': 'not a regular file'})
+                    continue
+                with path.open('rb') as source:
+                    raw = source.read(65537)
+                if len(raw) > 65536:
+                    findings.append({'kind': 'unreadable', 'file': str(path),
+                                     'reason': 'file exceeds 64 KiB scan limit'})
+                    continue
+                text = raw.decode('utf-8')
+                if path.suffix == '.desktop':
+                    parser = configparser.ConfigParser(interpolation=None, strict=False)
+                    parser.read_string(text)
+                    entry = parser['Desktop Entry']
+                    if not marker.search(entry.get('Exec', '')):
+                        continue
+                    disabled = (entry.get('Hidden', '').lower() == 'true' or
+                                entry.get('X-GNOME-Autostart-enabled', '').lower() == 'false')
+                    findings.append({'kind': 'xdg-autostart', 'file': str(path),
+                                     'state': 'disabled' if disabled else 'configured; provider-dependent'})
+                else:
+                    for number, line in enumerate(text.splitlines(), 1):
+                        line = line.strip()
+                        if not line or line.startswith(('#', ';')):
+                            continue
+                        if path.suffix == '.conf':
+                            if not re.match(r'^exec(?:-once)?\s*=', line):
+                                continue
+                            line = line.split('#', 1)[0]
+                            kind = 'hyprland-exec'
+                        else:
+                            if not re.match(r'^ExecStart\s*=', line):
+                                continue
+                            kind = 'systemd-enabled-reference' if path.parent.name.endswith('.wants') else 'systemd-unit'
+                        if marker.search(line):
+                            findings.append({'kind': kind, 'file': str(path), 'line': number,
+                                             'state': 'configured; execution not verified'})
+            except (OSError, UnicodeError, configparser.Error, KeyError) as error:
+                findings.append({'kind': 'unreadable', 'file': str(path),
+                                 'reason': type(error).__name__})
+    return findings
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['start', 'stop', 'status', 'run', 'diagnose'])
+    parser.add_argument('command', choices=['start', 'stop', 'status', 'run', 'diagnose', 'audit'])
     args = parser.parse_args()
+    if args.command == 'audit':
+        print('User startup inventory (read-only; configured does not mean running):')
+        print(json.dumps(startup_inventory(), indent=2))
+        print('Scope: user XDG autostart, Hyprland *.conf snippets and systemd user units.')
+        print('Does not resolve sourced configs, system-wide entries, scripts or live service state.')
+        return 0
     STATE.mkdir(parents=True, exist_ok=True, mode=0o700)
     logging.basicConfig(handlers=[RotatingFileHandler(STATE/'manager.log', maxBytes=2*1024*1024, backupCount=2)],
                         level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')

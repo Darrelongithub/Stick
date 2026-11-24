@@ -49,8 +49,8 @@ The stop timeout is NOT evidence of or a cure for a compositor freeze.
 
 ## Installation (after this change is available locally)
 
-Keep mascot autostart disabled during diagnosis. Save work first. Do not attempt
-another deliberate fullscreen freeze to validate this patch.
+Save work first. Do not attempt another deliberate fullscreen freeze to validate
+this patch. The installer leaves your existing autostart choice unchanged.
 
 1. With the OLD launcher, `shimeji stop` and allow it time to finish.
 2. Confirm neither the old watcher nor the engine is running. The installer also
@@ -87,9 +87,10 @@ Under `${XDG_STATE_HOME:-$HOME/.local/state}/stick-shimelinux/`:
 
 - `manager.log` (rotates at 2 MiB, retains two backups): state changes, query
   failures, engine starts, shutdown escalation and remaining processes.
-- `engine.log`: engine stdout/stderr, including load/configuration errors. This
-  file is appended and is not rotated while Java has it open; inspect its size
-  periodically. It cannot guarantee capturing the final event in a hard freeze.
+- `engine.log`: engine stdout/stderr, including load/configuration errors. Rotates
+  during a single engine run at 2 MiB, retaining two backups (6 MiB total). A legacy
+  oversized current log is trimmed to its last 2 MiB on first new output. It cannot
+  guarantee capturing the final event in a hard freeze.
 
 ```bash
 state="${XDG_STATE_HOME:-$HOME/.local/state}/stick-shimelinux"
@@ -101,7 +102,7 @@ tail -n 40 "$state/engine.log"
 
 Stop and verify exit with the NEW launcher before restoring any backup. Copy the
 backed-up `shimeji` and `shimeji-watchd` files from the recorded backup directory
-to `~/.local/bin/`. Keep autostart disabled; restoration does not start anything.
+to `~/.local/bin/`. Restoration does not start anything or change autostart.
 
 ## Verification
 
@@ -139,11 +140,9 @@ crash-loop manager iterations, failed shutdown, a simulated spawn error,
 installer scan-error refusal, and immediate-reinstall backup preservation.
 The process scanner also recognizes a manager launched directly from this repo.
 
-Remaining limits: `engine.log` is still an append-only engine stream, so it can
-grow during prolonged use; it is not covered by manager-log rotation. Explicitly
-launching the engine outside the manager bypasses launch locking. No automated
-unit test here establishes that a fullscreen transition is safe on the user's
-GPU/compositor. Keep autostart disabled during diagnosis.
+Remaining limits: explicitly launching the engine outside the manager bypasses
+launch locking. No automated unit test here establishes that a fullscreen
+transition is safe on the user's GPU/compositor.
 
 
 ## Shutdown lag follow-up: targeted waits and passive diagnostics
@@ -253,3 +252,52 @@ The isolated native probe sets its own core-dump limit to zero. If Xlib itself
 aborts, retries cannot generate new probe core dumps. This does not change
 Java's core-dump policy or erase existing diagnostic evidence. Regression tests
 verify both the changed-state launch refusal and the probe's core limit.
+
+
+## Slowdown audit: garbage collection and continuous logging
+
+The launcher previously forced `-XX:+UseSerialGC`. Serial GC performs collection
+with one worker and stops Java application threads during collection. This was
+not justified by measurements on this laptop; the launcher now lets Java 21
+choose its default collector. This may reduce mascot pauses but is not evidence
+that garbage collection froze Hyprland, and does not impose a heap cap.
+
+The engine console was redirected to an append-only file. Upstream logs behavior
+changes at INFO level, making that file grow for as long as pets run. A bounded
+reader now drains stdout/stderr in at most 8 KiB chunks and rotates files during
+a running Java process, not just on restart. It does not accumulate whole lines
+in memory. If storage fails, it logs the failure once and continues draining and
+discarding output rather than blocking Java on a full stdout pipe. It never
+waits for the log reader during shutdown. The oldest console diagnostics can be
+overwritten; save relevant excerpts before a long session.
+
+Still unresolved: polling issues three Hyprland queries and scans processes per
+second; fullscreen hiding intentionally exits Java, so returning reloads assets;
+other launchers can bypass the manager. These are overhead/race risks, not
+confirmed explanations for a whole-desktop stall. The native GTK tray abort
+previously identified remains a separate concern: the display preflight cannot
+guarantee that later tray initialization succeeds.
+
+Autostart remains the user's choice and is not disabled by this fix. Bare
+Hyprland does not itself process XDG autostart desktop entries: check whether the
+session already runs an autostart provider (for example UWSM) before relying on
+one. Do not add a second direct engine launcher alongside the manager.
+
+## Further scan: engine IPC and shutdown latency
+
+See [the additional performance audit](shimelinux-performance-audit.md) for pinned
+ShimeLinux 1.4.0 source references. Its animation timer synchronously launches
+`hyprctl cursorpos` at a nominal 25 Hz and waits without a timeout; this engine
+hot path is separate from the manager's polling and is not fixed by this wrapper.
+
+The manager's three-command fullscreen snapshot now shares one nominal two-second
+budget instead of allowing two seconds per command. This limits IPC-related
+stop latency during slow replies while preserving fail-closed behavior.
+
+A read-only `shimeji audit` command now inventories potential user startup
+conflicts without display queries, service commands, state/log writes or changes
+to autostart. See the performance audit for scope and limits. The audit also
+explains the optional offline image-reference deduplicator: it preserves all
+pixels and animation semantics while sharing identical frames in the engine's
+path-keyed cache. Neither the manager installer nor this audit installs a new
+character pack automatically.
